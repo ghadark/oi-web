@@ -274,9 +274,7 @@ function renderTable() {
   }
   html += "</tbody></table></div>";
   host.innerHTML = html;
-}
-
-function exportExcel() {
+}function exportExcel() {
   const data = state.cache[state.ticker];
   if (!data || !state.expiration) {
     setStatus("لا بيانات للتصدير", "err");
@@ -293,7 +291,6 @@ function exportExcel() {
   }
   const pullDates = view.pullDates;
   const rows = view.rows;
-  const close = view.close;
   const canDelta = state.showDelta && pullDates.length >= 2;
   const lastI = pullDates.length - 1;
   const prevI = pullDates.length - 2;
@@ -307,9 +304,10 @@ function exportExcel() {
   if (canDelta) callCols.push({ kind: "deltaCall" });
   for (let i = n - 1; i >= 0; i--) callCols.push({ kind: "call", idx: i, label: pullDates[i] });
 
-  const colDefs = callCols.concat([{ kind: "strike" }], putCols);
+  const colDefs = putCols.concat([{ kind: "strike" }], callCols);
   const total = colDefs.length;
-  const strikeCol = callCols.length + 1;
+  const startCol = 2;
+  const strikeCol = startCol + putCols.length;
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("OI", {
@@ -338,30 +336,31 @@ function exportExcel() {
       if (opts.fill) cell.fill = opts.fill;
       if (opts.align) cell.alignment = opts.align;
       if (opts.border) cell.border = opts.border;
-      if (opts.numFmt) cell.numFmt = opts.numFmt;
     }
   }
 
-  ws.mergeCells(1, 1, 1, total);
-  ws.getCell(1, 1).value = state.ticker + "  |  Open Interest";
-  styleRange(1, 1, total, { font: fontWhite, fill: fillTitle, align: alignC });
+  const endCol = startCol + total - 1;
+
+  ws.mergeCells(1, startCol, 1, endCol);
+  ws.getCell(1, startCol).value = state.ticker + "  |  Open Interest";
+  styleRange(1, startCol, endCol, { font: fontWhite, fill: fillTitle, align: alignC });
   ws.getRow(1).height = 22;
 
-  ws.getCell(2, 1).value = "Call";
-  if (callCols.length > 1) ws.mergeCells(2, 1, 2, callCols.length);
+  ws.getCell(2, startCol).value = "Put";
+  if (putCols.length > 1) ws.mergeCells(2, startCol, 2, startCol + putCols.length - 1);
   ws.getCell(2, strikeCol).value = "Strike";
-  ws.getCell(2, strikeCol + 1).value = "Put";
-  if (putCols.length > 1) ws.mergeCells(2, strikeCol + 1, 2, total);
-  styleRange(2, 1, total, { font: fontHeader, fill: fillSec, align: alignC, border: border });
+  ws.getCell(2, strikeCol + 1).value = "Call";
+  if (callCols.length > 1) ws.mergeCells(2, strikeCol + 1, 2, endCol);
+  styleRange(2, startCol, endCol, { font: fontHeader, fill: fillSec, align: alignC, border: border });
   ws.getRow(2).height = 18;
 
-  for (let c = 0; c < total; c++) {
-    const def = colDefs[c];
+  for (let i = 0; i < total; i++) {
+    const def = colDefs[i];
     let v = "";
     if (def.kind === "call" || def.kind === "put") v = def.label;
     else if (def.kind === "strike") v = "STRIKE";
     else if (def.kind === "deltaCall" || def.kind === "deltaPut") v = "Δ";
-    const cell = ws.getCell(3, c + 1);
+    const cell = ws.getCell(3, startCol + i);
     cell.value = v;
     cell.font = fontHeader;
     cell.alignment = alignC;
@@ -370,26 +369,25 @@ function exportExcel() {
   }
   ws.getRow(3).height = 18;
 
-  for (let c = 1; c <= total; c++) {
+  for (let c = startCol; c <= endCol; c++) {
     ws.getCell(4, c).border = border;
     ws.getCell(4, c).alignment = alignC;
     ws.getCell(4, c).font = fontBody;
     ws.getCell(4, c).fill = fillDates;
   }
-  if (close != null) ws.getCell(4, 1).value = "Close " + Number(close).toFixed(2);
   ws.getCell(4, strikeCol).value = state.expiration;
   ws.getRow(4).height = 18;
 
   rows.forEach(function (r, ri) {
     const rowIdx = 5 + ri;
-    colDefs.forEach(function (def, ci) {
-      const cell = ws.getCell(rowIdx, ci + 1);
+    colDefs.forEach(function (def, i) {
+      const cell = ws.getCell(rowIdx, startCol + i);
       cell.alignment = alignC;
       cell.font = fontBody;
       cell.border = border;
       if (def.kind === "strike") {
-        cell.value = r.strike;
-        cell.numFmt = "#,##0.##";
+        cell.value = Math.round(Number(r.strike));
+        cell.numFmt = "0";
         cell.font = { name: "Calibri", size: 11, bold: true };
       } else if (def.kind === "call") {
         cell.value = r.calls[def.idx] || 0;
@@ -411,8 +409,9 @@ function exportExcel() {
     });
   });
 
-  for (let c = 1; c <= total; c++) {
-    ws.getColumn(c).width = 11;
+  ws.getColumn(1).width = 3;
+  for (let i = 0; i < total; i++) {
+    ws.getColumn(startCol + i).width = 11;
   }
   ws.getColumn(strikeCol).width = 12;
 
