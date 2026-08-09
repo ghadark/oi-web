@@ -1,0 +1,6 @@
+{
+  "generated_at": null,
+  "session_pull_date": null,
+  "tickers": ["SPY", "QQQ", "IWM", "GLD", "SPX"],
+  "note": "Filled automatically by GitHub Actions / scripts/fetch_occ.py"
+}

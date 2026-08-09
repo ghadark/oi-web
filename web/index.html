@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oi | Open Interest</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-data-base="../data">
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">Oi</div>
+        <div>
+          <h1>Oi</h1>
+          <p>Open Interest</p>
+        </div>
+      </div>
+      <div class="meta">
+        <div id="updatedAt">—</div>
+        <div class="theme-row">
+          <span>☀</span>
+          <button id="themeSwitch" class="switch" type="button" aria-label="theme"><i></i></button>
+          <span>🌙</span>
+        </div>
+        <p style="margin-top:10px;font-size:11px">عرض مشترك — يتحدث تلقائيًا صباحًا عبر GitHub Actions</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="top">
+        <div style="width:120px"></div>
+        <div>
+          <h2>المؤشرات</h2>
+          <div class="sub">عرض فقط · SPY QQQ IWM GLD SPX</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="reloadBtn" class="btn btn-primary" type="button">تحديث العرض</button>
+          <button id="exportBtn" class="btn btn-teal" type="button">تصدير Excel</button>
+        </div>
+      </div>
+
+      <div id="tickers" class="tickers"></div>
+
+      <div class="controls">
+        <div class="select">
+          <label for="expSelect">الانتهاء</label>
+          <select id="expSelect"></select>
+        </div>
+        <label>Days</label>
+        <div id="daysRow" class="chip-row"></div>
+        <label>Strikes</label>
+        <div id="strikesRow" class="chip-row"></div>
+        <button id="deltaBtn" class="delta-btn" type="button" title="التزايد">Δ</button>
+      </div>
+
+      <div class="panel">
+        <div id="tableHost"></div>
+        <div id="status" class="status"></div>
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
