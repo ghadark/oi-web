@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Oi | Open Interest</title>
   <link rel="stylesheet" href="styles.css" />
-  <!-- مكتبة Excel الحقيقية -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 </head>
 <body data-data-base="../data">
   <div class="app">
@@ -28,7 +28,6 @@
         <p style="margin-top:10px;font-size:11px">عرض مشترك — يتحدث تلقائيًا صباحًا</p>
       </div>
     </aside>
-
     <main class="main">
       <div class="top">
         <div style="width:120px"></div>
@@ -41,9 +40,7 @@
           <button id="exportBtn" class="btn btn-teal" type="button">تصدير Excel</button>
         </div>
       </div>
-
       <div id="tickers" class="tickers"></div>
-
       <div class="controls">
         <div class="select">
           <label for="expSelect">الانتهاء</label>
@@ -55,7 +52,6 @@
         <div id="strikesRow" class="chip-row"></div>
         <button id="deltaBtn" class="delta-btn" type="button" title="التزايد">Δ</button>
       </div>
-
       <div class="panel">
         <div id="tableHost"></div>
         <div id="status" class="status"></div>
