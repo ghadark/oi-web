@@ -282,7 +282,7 @@ function exportExcel() {
     setStatus("لا بيانات للتصدير", "err");
     return;
   }
-  if (typeof XLSX === "undefined") {
+  if (typeof ExcelJS === "undefined") {
     setStatus("مكتبة Excel لم تُحمّل — تحقق من الإنترنت", "err");
     return;
   }
@@ -298,64 +298,144 @@ function exportExcel() {
   const lastI = pullDates.length - 1;
   const prevI = pullDates.length - 2;
   const n = pullDates.length;
-  const callCount = n + (canDelta ? 1 : 0);
-  const putCount = n + (canDelta ? 1 : 0);
-  const totalCols = callCount + 1 + putCount;
 
-  const aoa = [];
-  const r1 = new Array(totalCols).fill("");
-  r1[0] = state.ticker;
-  aoa.push(r1);
+  const putCols = [];
+  for (let j = 0; j < n; j++) putCols.push({ kind: "put", idx: j, label: pullDates[j] });
+  if (canDelta) putCols.push({ kind: "deltaPut" });
 
-  const r2 = new Array(totalCols).fill("");
-  r2[0] = "Call";
-  r2[callCount] = "Strike";
-  r2[callCount + 1] = "Put";
-  aoa.push(r2);
+  const callCols = [];
+  if (canDelta) callCols.push({ kind: "deltaCall" });
+  for (let i = n - 1; i >= 0; i--) callCols.push({ kind: "call", idx: i, label: pullDates[i] });
 
-  const r3 = [];
-  if (canDelta) r3.push("Δ");
-  for (let i = n - 1; i >= 0; i--) r3.push(pullDates[i]);
-  r3.push("STRIKE");
-  for (let j = 0; j < n; j++) r3.push(pullDates[j]);
-  if (canDelta) r3.push("Δ");
-  aoa.push(r3);
+  const colDefs = callCols.concat([{ kind: "strike" }], putCols);
+  const total = colDefs.length;
+  const strikeCol = callCols.length + 1;
 
-  const r4 = new Array(totalCols).fill("");
-  r4[callCount] = state.expiration;
-  if (close != null) r4[0] = "Close " + close;
-  aoa.push(r4);
-
-  rows.forEach(function (r) {
-    const line = [];
-    if (canDelta) {
-      const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
-      line.push(d != null ? d : "");
-    }
-    for (let i = n - 1; i >= 0; i--) line.push(r.calls[i] || 0);
-    line.push(r.strike);
-    for (let i = 0; i < n; i++) line.push(r.puts[i] || 0);
-    if (canDelta) {
-      const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
-      line.push(d != null ? d : "");
-    }
-    aoa.push(line);
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("OI", {
+    views: [{ rightToLeft: true, state: "frozen", ySplit: 4 }],
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  const merges = [];
-  if (callCount > 1) merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: callCount - 1 } });
-  if (putCount > 1) merges.push({ s: { r: 1, c: callCount + 1 }, e: { r: 1, c: totalCols - 1 } });
-  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
-  ws["!merges"] = merges;
-  ws["!cols"] = [];
-  for (let c = 0; c < totalCols; c++) ws["!cols"].push({ wch: 11 });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "OI");
+  const fontHeader = { name: "Calibri", size: 11, bold: true };
+  const fontBody = { name: "Calibri", size: 11 };
+  const alignC = { horizontal: "center", vertical: "middle" };
+  const border = {
+    top: { style: "thin", color: { argb: "FFCBD5E1" } },
+    bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
+    left: { style: "thin", color: { argb: "FFCBD5E1" } },
+    right: { style: "thin", color: { argb: "FFCBD5E1" } },
+  };
+  const fillTitle = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2563EB" } };
+  const fillSec = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
+  const fillDates = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+  const fillDelta = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
+  const fontWhite = { name: "Calibri", size: 12, bold: true, color: { argb: "FFFFFFFF" } };
+
+  function styleRange(r, c1, c2, opts) {
+    for (let c = c1; c <= c2; c++) {
+      const cell = ws.getCell(r, c);
+      if (opts.font) cell.font = opts.font;
+      if (opts.fill) cell.fill = opts.fill;
+      if (opts.align) cell.alignment = opts.align;
+      if (opts.border) cell.border = opts.border;
+      if (opts.numFmt) cell.numFmt = opts.numFmt;
+    }
+  }
+
+  ws.mergeCells(1, 1, 1, total);
+  ws.getCell(1, 1).value = state.ticker + "  |  Open Interest";
+  styleRange(1, 1, total, { font: fontWhite, fill: fillTitle, align: alignC });
+  ws.getRow(1).height = 22;
+
+  ws.getCell(2, 1).value = "Call";
+  if (callCols.length > 1) ws.mergeCells(2, 1, 2, callCols.length);
+  ws.getCell(2, strikeCol).value = "Strike";
+  ws.getCell(2, strikeCol + 1).value = "Put";
+  if (putCols.length > 1) ws.mergeCells(2, strikeCol + 1, 2, total);
+  styleRange(2, 1, total, { font: fontHeader, fill: fillSec, align: alignC, border: border });
+  ws.getRow(2).height = 18;
+
+  for (let c = 0; c < total; c++) {
+    const def = colDefs[c];
+    let v = "";
+    if (def.kind === "call" || def.kind === "put") v = def.label;
+    else if (def.kind === "strike") v = "STRIKE";
+    else if (def.kind === "deltaCall" || def.kind === "deltaPut") v = "Δ";
+    const cell = ws.getCell(3, c + 1);
+    cell.value = v;
+    cell.font = fontHeader;
+    cell.alignment = alignC;
+    cell.border = border;
+    cell.fill = def.kind.indexOf("delta") === 0 ? fillDelta : fillDates;
+  }
+  ws.getRow(3).height = 18;
+
+  for (let c = 1; c <= total; c++) {
+    ws.getCell(4, c).border = border;
+    ws.getCell(4, c).alignment = alignC;
+    ws.getCell(4, c).font = fontBody;
+    ws.getCell(4, c).fill = fillDates;
+  }
+  if (close != null) ws.getCell(4, 1).value = "Close " + Number(close).toFixed(2);
+  ws.getCell(4, strikeCol).value = state.expiration;
+  ws.getRow(4).height = 18;
+
+  rows.forEach(function (r, ri) {
+    const rowIdx = 5 + ri;
+    colDefs.forEach(function (def, ci) {
+      const cell = ws.getCell(rowIdx, ci + 1);
+      cell.alignment = alignC;
+      cell.font = fontBody;
+      cell.border = border;
+      if (def.kind === "strike") {
+        cell.value = r.strike;
+        cell.numFmt = "#,##0.##";
+        cell.font = { name: "Calibri", size: 11, bold: true };
+      } else if (def.kind === "call") {
+        cell.value = r.calls[def.idx] || 0;
+        cell.numFmt = "#,##0";
+      } else if (def.kind === "put") {
+        cell.value = r.puts[def.idx] || 0;
+        cell.numFmt = "#,##0";
+      } else if (def.kind === "deltaCall") {
+        const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
+        cell.value = d != null ? d : "";
+        cell.numFmt = "#,##0";
+        cell.fill = fillDelta;
+      } else if (def.kind === "deltaPut") {
+        const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
+        cell.value = d != null ? d : "";
+        cell.numFmt = "#,##0";
+        cell.fill = fillDelta;
+      }
+    });
+  });
+
+  for (let c = 1; c <= total; c++) {
+    ws.getColumn(c).width = 11;
+  }
+  ws.getColumn(strikeCol).width = 12;
+
   const fname =
     state.ticker + "_" + state.expiration + "_D" + state.days + "_S" + state.strikes + ".xlsx";
-  XLSX.writeFile(wb, fname);
-  setStatus("تم تنزيل ملف Excel (.xlsx)", "ok");
+
+  wb.xlsx.writeBuffer().then(function (buffer) {
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    if (typeof saveAs === "function") {
+      saveAs(blob, fname);
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fname;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    setStatus("تم تنزيل ملف Excel (.xlsx) بتنسيق كامل", "ok");
+  }).catch(function (err) {
+    setStatus("خطأ تصدير: " + (err && err.message ? err.message : err), "err");
+  });
 }
 
 function toggleTheme() {
