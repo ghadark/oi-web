@@ -8,7 +8,7 @@ const TICKERS = [
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
-  expiration: null, showDelta: false, dark: false, cache: {},
+  expiration: null, showDelta: false, dark: false, cache: {}, livePrice: null,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -88,8 +88,10 @@ function renderTickers() {
     el.onclick = function () {
       state.ticker = t.symbol;
       state.expiration = null;
+      state.livePrice = null;
       renderTickers();
       refresh();
+      refreshLivePrice();
     };
     box.appendChild(el);
   });
@@ -186,7 +188,7 @@ function renderTable() {
   }
   const pullDates = view.pullDates;
   const rows = view.rows;
-  const close = view.close;
+  const close = effectiveClose(data);
   const canDelta = state.showDelta && pullDates.length >= 2;
   const lastI = pullDates.length - 1;
   const prevI = pullDates.length - 2;
@@ -199,9 +201,11 @@ function renderTable() {
     state.expiration +
     "</div>";
   if (close != null) {
+    const liveTag = state.livePrice != null ? " · مباشر" : "";
     html +=
       '<div class="close-pill">الإغلاق: ' +
       Number(close).toLocaleString(undefined, { maximumFractionDigits: 2 }) +
+      liveTag +
       "</div>";
   }
   html += '</div><div class="table-scroll"><table class="oi"><thead><tr>';
@@ -218,6 +222,30 @@ function renderTable() {
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
   html += "</tr></thead><tbody>";
+
+  // أعلى قيمة لكل عمود Call/Put (بدون Strike)
+  const callMax = [];
+  const putMax = [];
+  for (let i = 0; i < pullDates.length; i++) {
+    let mc = 0, mp = 0;
+    rows.forEach(function (r) {
+      const cv = r.calls[i] || 0;
+      const pv = r.puts[i] || 0;
+      if (cv > mc) mc = cv;
+      if (pv > mp) mp = pv;
+    });
+    callMax.push(mc);
+    putMax.push(mp);
+  }
+  let deltaCallMax = 0, deltaPutMax = 0;
+  if (canDelta) {
+    rows.forEach(function (r) {
+      const dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      const dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      if (dc != null && dc > deltaCallMax) deltaCallMax = dc;
+      if (dp != null && dp > deltaPutMax) deltaPutMax = dp;
+    });
+  }
 
   let barDone = false;
   rows.forEach(function (r, ri) {
@@ -236,28 +264,48 @@ function renderTable() {
     html += '<tr class="' + zebra + '">';
     if (canDelta) {
       const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      const maxCls = d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
       html +=
-        '<td class="' + callCls + ' delta">' +
+        '<td class="' +
+        callCls +
+        " delta" +
+        maxCls +
+        '">' +
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
     for (let i = pullDates.length - 1; i >= 0; i--) {
+      const cv = r.calls[i] || 0;
+      const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
       html +=
-        '<td class="' + callCls + '">' +
-        (r.calls[i] || 0).toLocaleString() +
+        '<td class="' +
+        callCls +
+        maxCls +
+        '">' +
+        cv.toLocaleString() +
         "</td>";
     }
     html += '<td class="strike">' + r.strike + "</td>";
     for (let i = 0; i < pullDates.length; i++) {
+      const pv = r.puts[i] || 0;
+      const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
       html +=
-        '<td class="' + putCls + '">' +
-        (r.puts[i] || 0).toLocaleString() +
+        '<td class="' +
+        putCls +
+        maxCls +
+        '">' +
+        pv.toLocaleString() +
         "</td>";
     }
     if (canDelta) {
       const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      const maxCls = d != null && deltaPutMax > 0 && d === deltaPutMax ? " max-oi" : "";
       html +=
-        '<td class="' + putCls + ' delta">' +
+        '<td class="' +
+        putCls +
+        " delta" +
+        maxCls +
+        '">' +
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
@@ -268,7 +316,9 @@ function renderTable() {
   }
   html += "</tbody></table></div>";
   host.innerHTML = html;
-}function exportExcel() {
+}
+
+function exportExcel() {
   const data = state.cache[state.ticker];
   if (!data || !state.expiration) {
     setStatus("لا بيانات للتصدير", "err");
@@ -290,6 +340,10 @@ function renderTable() {
   const prevI = pullDates.length - 2;
   const n = pullDates.length;
 
+  // Column order in file (A empty spacer, then content from B):
+  // With RTL: right side shows earlier columns.
+  // Want visual: Put (right) | Strike | Call (left)
+  // => file order: Put block, Strike, Call block  (starts at col B)
   const putCols = [];
   for (let j = 0; j < n; j++) putCols.push({ kind: "put", idx: j, label: pullDates[j] });
   if (canDelta) putCols.push({ kind: "deltaPut" });
@@ -300,8 +354,8 @@ function renderTable() {
 
   const colDefs = putCols.concat([{ kind: "strike" }], callCols);
   const total = colDefs.length;
-  const startCol = 2;
-  const strikeCol = startCol + putCols.length;
+  const startCol = 2; // column B
+  const strikeCol = startCol + putCols.length; // 1-based sheet col
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("OI", {
@@ -335,11 +389,13 @@ function renderTable() {
 
   const endCol = startCol + total - 1;
 
+  // Row 1: title
   ws.mergeCells(1, startCol, 1, endCol);
   ws.getCell(1, startCol).value = state.ticker + "  |  Open Interest";
   styleRange(1, startCol, endCol, { font: fontWhite, fill: fillTitle, align: alignC });
   ws.getRow(1).height = 22;
 
+  // Row 2: Put | Strike | Call
   ws.getCell(2, startCol).value = "Put";
   if (putCols.length > 1) ws.mergeCells(2, startCol, 2, startCol + putCols.length - 1);
   ws.getCell(2, strikeCol).value = "Strike";
@@ -348,6 +404,7 @@ function renderTable() {
   styleRange(2, startCol, endCol, { font: fontHeader, fill: fillSec, align: alignC, border: border });
   ws.getRow(2).height = 18;
 
+  // Row 3: dates
   for (let i = 0; i < total; i++) {
     const def = colDefs[i];
     let v = "";
@@ -363,6 +420,7 @@ function renderTable() {
   }
   ws.getRow(3).height = 18;
 
+  // Row 4: expiration only (no close)
   for (let c = startCol; c <= endCol; c++) {
     ws.getCell(4, c).border = border;
     ws.getCell(4, c).alignment = alignC;
@@ -372,6 +430,7 @@ function renderTable() {
   ws.getCell(4, strikeCol).value = state.expiration;
   ws.getRow(4).height = 18;
 
+  // Data
   rows.forEach(function (r, ri) {
     const rowIdx = 5 + ri;
     colDefs.forEach(function (def, i) {
@@ -384,11 +443,15 @@ function renderTable() {
         cell.numFmt = "0";
         cell.font = { name: "Calibri", size: 11, bold: true };
       } else if (def.kind === "call") {
-        cell.value = r.calls[def.idx] || 0;
+        const cv = r.calls[def.idx] || 0;
+        cell.value = cv;
         cell.numFmt = "#,##0";
+        if (callMaxX[def.idx] > 0 && cv === callMaxX[def.idx]) cell.fill = maxFill;
       } else if (def.kind === "put") {
-        cell.value = r.puts[def.idx] || 0;
+        const pv = r.puts[def.idx] || 0;
+        cell.value = pv;
         cell.numFmt = "#,##0";
+        if (putMaxX[def.idx] > 0 && pv === putMaxX[def.idx]) cell.fill = maxFill;
       } else if (def.kind === "deltaCall") {
         const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
         cell.value = d != null ? d : "";
@@ -404,7 +467,9 @@ function renderTable() {
   });
 
   ws.getColumn(1).width = 3;
-  for (let i = 0; i < total; i++) ws.getColumn(startCol + i).width = 11;
+  for (let i = 0; i < total; i++) {
+    ws.getColumn(startCol + i).width = 11;
+  }
   ws.getColumn(strikeCol).width = 12;
 
   const fname =
@@ -428,6 +493,88 @@ function renderTable() {
     setStatus("خطأ تصدير: " + (err && err.message ? err.message : err), "err");
   });
 }
+
+
+// —— سعر مباشر للشريط الأخضر (ويب فقط، مع قيود الاستضافة الثابتة) ——
+const YAHOO_MAP = { SPY: "SPY", QQQ: "QQQ", IWM: "IWM", GLD: "GLD", SPX: "^GSPC" };
+let liveTimer = null;
+
+function isUsMarketHours() {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      weekday: "short", hour: "numeric", minute: "numeric", hour12: false,
+    }).formatToParts(new Date());
+    const map = {};
+    parts.forEach(function (p) { map[p.type] = p.value; });
+    const wd = map.weekday;
+    if (wd === "Sat" || wd === "Sun") return false;
+    const h = parseInt(map.hour, 10);
+    const m = parseInt(map.minute, 10);
+    const mins = h * 60 + m;
+    // 9:30–16:00 ET
+    return mins >= 9 * 60 + 30 && mins <= 16 * 60;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function fetchLivePrice(ticker) {
+  const sym = YAHOO_MAP[ticker] || ticker;
+  const yahoo =
+    "https://query1.finance.yahoo.com/v8/finance/chart/" +
+    encodeURIComponent(sym) +
+    "?interval=1m&range=1d";
+  // محاولة مباشرة ثم عبر وكيل CORS بسيط عند الفشل
+  async function fromUrl(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("http " + res.status);
+    return res.json();
+  }
+  let json;
+  try {
+    json = await fromUrl(yahoo);
+  } catch (e1) {
+    try {
+      json = await fromUrl(
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(yahoo)
+      );
+    } catch (e2) {
+      return null;
+    }
+  }
+  try {
+    const meta = json.chart.result[0].meta;
+    const p = meta.regularMarketPrice || meta.postMarketPrice || meta.previousClose;
+    return p != null ? Number(p) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function effectiveClose(data) {
+  if (state.livePrice != null && !isNaN(state.livePrice)) return state.livePrice;
+  return data && data.close != null ? data.close : null;
+}
+
+async function refreshLivePrice() {
+  if (!isUsMarketHours()) {
+    state.livePrice = null;
+    return;
+  }
+  const p = await fetchLivePrice(state.ticker);
+  if (p != null) {
+    state.livePrice = p;
+    renderTable();
+  }
+}
+
+function startLivePriceLoop() {
+  if (liveTimer) clearInterval(liveTimer);
+  refreshLivePrice();
+  liveTimer = setInterval(refreshLivePrice, 60000); // كل دقيقة أثناء الجلسة
+}
+
 
 function toggleTheme() {
   state.dark = !state.dark;
@@ -458,6 +605,7 @@ function init() {
     refresh();
   };
   refresh();
+  startLivePriceLoop();
 }
 
 document.addEventListener("DOMContentLoaded", init);
