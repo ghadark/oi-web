@@ -340,10 +340,20 @@ function exportExcel() {
   const prevI = pullDates.length - 2;
   const n = pullDates.length;
 
-  // Column order in file (A empty spacer, then content from B):
-  // With RTL: right side shows earlier columns.
-  // Want visual: Put (right) | Strike | Call (left)
-  // => file order: Put block, Strike, Call block  (starts at col B)
+  const callMaxX = [];
+  const putMaxX = [];
+  for (let i = 0; i < n; i++) {
+    let mc = 0, mp = 0;
+    rows.forEach(function (r) {
+      if ((r.calls[i] || 0) > mc) mc = r.calls[i] || 0;
+      if ((r.puts[i] || 0) > mp) mp = r.puts[i] || 0;
+    });
+    callMaxX.push(mc);
+    putMaxX.push(mp);
+  }
+  const maxFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC7D2FE" } };
+
+  // Column order: Put | Strike | Call (RTL → Put on the right), starts at column B
   const putCols = [];
   for (let j = 0; j < n; j++) putCols.push({ kind: "put", idx: j, label: pullDates[j] });
   if (canDelta) putCols.push({ kind: "deltaPut" });
@@ -598,7 +608,14 @@ function init() {
     $("#deltaBtn").classList.toggle("active", state.showDelta);
     renderTable();
   };
-  $("#exportBtn").onclick = exportExcel;
+  $("#exportBtn").onclick = function () {
+    try {
+      exportExcel();
+    } catch (err) {
+      setStatus("خطأ تصدير: " + (err && err.message ? err.message : err), "err");
+      console.error(err);
+    }
+  };
   $("#themeSwitch").onclick = toggleTheme;
   $("#reloadBtn").onclick = function () {
     delete state.cache[state.ticker];
