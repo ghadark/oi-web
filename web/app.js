@@ -193,9 +193,11 @@ function renderTable() {
 
   let html =
     '<div class="table-title">' +
+    "<div>" +
     state.ticker +
     " | Exp: " +
-    state.expiration;
+    state.expiration +
+    "</div>";
   if (close != null) {
     html +=
       '<div class="close-pill">الإغلاق: ' +
@@ -235,35 +237,27 @@ function renderTable() {
     if (canDelta) {
       const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
       html +=
-        '<td class="' +
-        callCls +
-        ' delta">' +
+        '<td class="' + callCls + ' delta">' +
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
     for (let i = pullDates.length - 1; i >= 0; i--) {
       html +=
-        '<td class="' +
-        callCls +
-        '">' +
+        '<td class="' + callCls + '">' +
         (r.calls[i] || 0).toLocaleString() +
         "</td>";
     }
     html += '<td class="strike">' + r.strike + "</td>";
     for (let i = 0; i < pullDates.length; i++) {
       html +=
-        '<td class="' +
-        putCls +
-        '">' +
+        '<td class="' + putCls + '">' +
         (r.puts[i] || 0).toLocaleString() +
         "</td>";
     }
     if (canDelta) {
       const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
       html +=
-        '<td class="' +
-        putCls +
-        ' delta">' +
+        '<td class="' + putCls + ' delta">' +
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
@@ -410,9 +404,7 @@ function renderTable() {
   });
 
   ws.getColumn(1).width = 3;
-  for (let i = 0; i < total; i++) {
-    ws.getColumn(startCol + i).width = 11;
-  }
+  for (let i = 0; i < total; i++) ws.getColumn(startCol + i).width = 11;
   ws.getColumn(strikeCol).width = 12;
 
   const fname =
