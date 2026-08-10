@@ -75,6 +75,14 @@ def get_close(ticker: str) -> float | None:
         return None
 
 
+def _product_matches(product: str, ticker: str) -> bool:
+    p = (product or "").upper().strip()
+    t = (ticker or "").upper().strip()
+    if t == "SPX":
+        return p in ("SPX", "SPXW")
+    return p == t
+
+
 def parse_occ_text(ticker: str, text: str) -> list[dict[str, Any]]:
     """Parse OCC series-search plain text rows into records."""
     rows: list[dict[str, Any]] = []
@@ -82,7 +90,7 @@ def parse_occ_text(ticker: str, text: str) -> list[dict[str, Any]]:
         parts = line.split()
         if len(parts) < 10:
             continue
-        if parts[0].upper() != ticker.upper():
+        if not _product_matches(parts[0], ticker):
             continue
         try:
             exp = f"{parts[1]}-{parts[2].zfill(2)}-{parts[3].zfill(2)}"
