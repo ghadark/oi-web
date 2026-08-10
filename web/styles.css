@@ -58,9 +58,8 @@ html, body {
   margin-bottom: 16px; gap: 12px; flex-wrap: wrap;
 }
 .top h2 { margin: 0; font-size: 22px; text-align: center; flex: 1; color: var(--text); }
-.tickers {
-  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px;
-}
+.top .sub { color: var(--gray); font-size: 12px; text-align: center; }
+.tickers { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
 .tcard {
   width: 150px; background: var(--card); border: 1px solid var(--border);
   border-radius: 12px; padding: 10px 12px; cursor: pointer;
@@ -139,9 +138,7 @@ table.oi .delta { background: var(--delta-bg); color: var(--text); }
 .status.err { color: #dc2626; }
 html[data-theme="dark"] .status.ok { color: #4ade80; }
 html[data-theme="dark"] .status.err { color: #f87171; }
-.theme-row {
-  display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px;
-}
+.theme-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
 .switch {
   width: 42px; height: 24px; border-radius: 999px; background: #cbd5e1;
   position: relative; cursor: pointer; border: none; padding: 0;
@@ -154,15 +151,50 @@ html[data-theme="dark"] .switch { background: #475569; }
 }
 .switch.on i { left: 21px; }
 
-/* تظليل متناوب — نهاري وليلي */
-html[data-theme="dark"] table.oi tbody tr.zebra td.itm { background: #172a45; }
-html[data-theme="dark"] table.oi tbody tr.zebra td.otm { background: #111c2e; }
-html[data-theme="light"] table.oi tbody tr.zebra td.itm { background: #cfe0f8; }
-html[data-theme="light"] table.oi tbody tr.zebra td.otm { background: #eef2f7; }
-html[data-theme="dark"] table.oi tbody tr td { border-bottom: 1px solid #2a3a52; }
-html[data-theme="dark"] table.oi th { border-bottom: 1px solid #475569; }
+/* alternating rows — clear in light and dark */
+table.oi tbody tr.zebra td.itm { filter: brightness(0.96); }
+table.oi tbody tr.zebra td.otm { filter: brightness(0.97); }
+html[data-theme="dark"] table.oi tbody tr.zebra td.itm {
+  background: #172a45;
+  filter: none;
+}
+html[data-theme="dark"] table.oi tbody tr.zebra td.otm {
+  background: #111c2e;
+  filter: none;
+}
+html[data-theme="light"] table.oi tbody tr.zebra td.itm {
+  background: #cfe0f8;
+  filter: none;
+}
+html[data-theme="light"] table.oi tbody tr.zebra td.otm {
+  background: #eef2f7;
+  filter: none;
+}
+/* subtle separator line between strikes */
+table.oi tbody tr td {
+  border-bottom-color: var(--border);
+}
+html[data-theme="dark"] table.oi tbody tr td {
+  border-bottom: 1px solid #2a3a52;
+}
+html[data-theme="dark"] table.oi th {
+  border-bottom: 1px solid #475569;
+}
 
 @media (max-width: 900px) {
   .app { grid-template-columns: 1fr; }
   .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+}
+
+
+/* أعلى رقم في عمود Call/Put */
+table.oi td.max-oi {
+  background: #c7d2fe !important;
+  color: #1e1b4b !important;
+  font-weight: 700;
+}
+html[data-theme="dark"] table.oi td.max-oi {
+  background: #3730a3 !important;
+  color: #e0e7ff !important;
+  font-weight: 700;
 }
