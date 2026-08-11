@@ -27,6 +27,15 @@ async function loadTicker(ticker) {
   return json;
 }
 
+function futureExpirations(list) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return (list || []).filter(function (exp) {
+    const d = new Date(String(exp) + "T00:00:00");
+    return !isNaN(d.getTime()) && d >= today;
+  });
+}
+
 function formatPullDate(s) {
   try {
     const parts = s.split("-").map(Number);
@@ -65,7 +74,6 @@ function positiveDelta(last, prev) {
 
 function setStatus(msg, cls) {
   const el = $("#status");
-  if (!el) return;
   el.textContent = msg;
   el.className = "status " + (cls || "");
 }
@@ -139,14 +147,15 @@ async function refresh() {
     const data = await loadTicker(state.ticker);
     const sel = $("#expSelect");
     sel.innerHTML = "";
-    (data.expirations || []).forEach(function (exp) {
+    const exps = futureExpirations(data.expirations || []);
+    exps.forEach(function (exp) {
       const o = document.createElement("option");
       o.value = exp;
       o.textContent = exp;
       sel.appendChild(o);
     });
-    if (!state.expiration || !(data.expirations || []).includes(state.expiration)) {
-      state.expiration = (data.expirations && data.expirations[0]) || null;
+    if (!state.expiration || !exps.includes(state.expiration)) {
+      state.expiration = exps[0] || null;
     }
     sel.value = state.expiration || "";
     $("#updatedAt").textContent = data.updated_at
@@ -224,6 +233,7 @@ function renderTable() {
   if (canDelta) html += '<th class="delta">Δ</th>';
   html += "</tr></thead><tbody>";
 
+  // أعلى قيمة لكل عمود Call/Put (بدون Strike)
   const callMax = [];
   const putMax = [];
   for (let i = 0; i < pullDates.length; i++) {
@@ -266,7 +276,9 @@ function renderTable() {
       const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
       const maxCls = d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
       html +=
-        '<td class="' + callCls + " delta" + maxCls + '">' +
+        '<td class="delta' +
+        maxCls +
+        '">' +
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
@@ -274,7 +286,10 @@ function renderTable() {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
       html +=
-        '<td class="' + callCls + maxCls + '">' +
+        '<td class="' +
+        callCls +
+        maxCls +
+        '">' +
         cv.toLocaleString() +
         "</td>";
     }
@@ -283,7 +298,10 @@ function renderTable() {
       const pv = r.puts[i] || 0;
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
       html +=
-        '<td class="' + putCls + maxCls + '">' +
+        '<td class="' +
+        putCls +
+        maxCls +
+        '">' +
         pv.toLocaleString() +
         "</td>";
     }
@@ -291,7 +309,9 @@ function renderTable() {
       const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
       const maxCls = d != null && deltaPutMax > 0 && d === deltaPutMax ? " max-oi" : "";
       html +=
-        '<td class="' + putCls + " delta" + maxCls + '">' +
+        '<td class="delta' +
+        maxCls +
+        '">' +
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
@@ -302,14 +322,16 @@ function renderTable() {
   }
   html += "</tbody></table></div>";
   host.innerHTML = html;
-}function exportExcel() {
+}
+
+function exportExcel() {
   const data = state.cache[state.ticker];
   if (!data || !state.expiration) {
     setStatus("لا بيانات للتصدير", "err");
     return;
   }
   if (typeof ExcelJS === "undefined") {
-    setStatus("مكتبة Excel لم تُحمّل — افتحي index.html وتأكدي من سطر exceljs", "err");
+    setStatus("مكتبة Excel لم تُحمّل — تحقق من الإنترنت", "err");
     return;
   }
   const view = getViewRows(data);
@@ -324,7 +346,6 @@ function renderTable() {
   const prevI = pullDates.length - 2;
   const n = pullDates.length;
 
-  // ★★★ هذا كان ناقص — سبب توقف التصدير ★★★
   const callMaxX = [];
   const putMaxX = [];
   for (let i = 0; i < n; i++) {
@@ -338,18 +359,19 @@ function renderTable() {
   }
   const maxFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC7D2FE" } };
 
-  const putCols = [];
-  for (let j = 0; j < n; j++) putCols.push({ kind: "put", idx: j, label: pullDates[j] });
-  if (canDelta) putCols.push({ kind: "deltaPut" });
+  // RTL: colDefs[0] يظهر يمين الشاشة → ΔPut على الطرف الأيمن، ΔCall على الطرف الأيسر
+  // ترتيب الملف: deltaPut | puts... | STRIKE | calls... | deltaCall
+  // العرض LTR بعد RTL: ΔCall | calls | STRIKE | puts | ΔPut
+  const colDefs = [];
+  if (canDelta) colDefs.push({ kind: "deltaPut" });
+  for (let j = 0; j < n; j++) colDefs.push({ kind: "put", idx: j, label: pullDates[j] });
+  colDefs.push({ kind: "strike" });
+  for (let i = n - 1; i >= 0; i--) colDefs.push({ kind: "call", idx: i, label: pullDates[i] });
+  if (canDelta) colDefs.push({ kind: "deltaCall" });
 
-  const callCols = [];
-  if (canDelta) callCols.push({ kind: "deltaCall" });
-  for (let i = n - 1; i >= 0; i--) callCols.push({ kind: "call", idx: i, label: pullDates[i] });
-
-  const colDefs = putCols.concat([{ kind: "strike" }], callCols);
   const total = colDefs.length;
-  const startCol = 2;
-  const strikeCol = startCol + putCols.length;
+  const startCol = 2; // column B
+  const strikeCol = startCol + colDefs.findIndex(function (d) { return d.kind === "strike"; });
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("OI", {
@@ -383,19 +405,34 @@ function renderTable() {
 
   const endCol = startCol + total - 1;
 
+  // Row 1: title
   ws.mergeCells(1, startCol, 1, endCol);
-  ws.getCell(1, startCol).value = state.ticker + " | Open Interest";
+  ws.getCell(1, startCol).value = state.ticker + "  |  Open Interest";
   styleRange(1, startCol, endCol, { font: fontWhite, fill: fillTitle, align: alignC });
   ws.getRow(1).height = 22;
 
-  ws.getCell(2, startCol).value = "Put";
-  if (putCols.length > 1) ws.mergeCells(2, startCol, 2, startCol + putCols.length - 1);
+  // Row 2: Put (يمين) | Strike | Call (يسار) — حسب RTL
+  const putStart = startCol + (canDelta ? 1 : 0);
+  const putEnd = strikeCol - 1;
+  const callStart = strikeCol + 1;
+  const callEnd = endCol - (canDelta ? 1 : 0);
+  if (putEnd >= putStart) {
+    ws.getCell(2, putStart).value = "Put";
+    if (putEnd > putStart) ws.mergeCells(2, putStart, 2, putEnd);
+  }
   ws.getCell(2, strikeCol).value = "Strike";
-  ws.getCell(2, strikeCol + 1).value = "Call";
-  if (callCols.length > 1) ws.mergeCells(2, strikeCol + 1, 2, endCol);
+  if (callEnd >= callStart) {
+    ws.getCell(2, callStart).value = "Call";
+    if (callEnd > callStart) ws.mergeCells(2, callStart, 2, callEnd);
+  }
+  if (canDelta) {
+    ws.getCell(2, startCol).value = "Δ";
+    ws.getCell(2, endCol).value = "Δ";
+  }
   styleRange(2, startCol, endCol, { font: fontHeader, fill: fillSec, align: alignC, border: border });
   ws.getRow(2).height = 18;
 
+  // Row 3: dates
   for (let i = 0; i < total; i++) {
     const def = colDefs[i];
     let v = "";
@@ -411,6 +448,7 @@ function renderTable() {
   }
   ws.getRow(3).height = 18;
 
+  // Row 4: expiration only (no close)
   for (let c = startCol; c <= endCol; c++) {
     ws.getCell(4, c).border = border;
     ws.getCell(4, c).alignment = alignC;
@@ -420,6 +458,7 @@ function renderTable() {
   ws.getCell(4, strikeCol).value = state.expiration;
   ws.getRow(4).height = 18;
 
+  // Data
   rows.forEach(function (r, ri) {
     const rowIdx = 5 + ri;
     colDefs.forEach(function (def, i) {
@@ -456,7 +495,9 @@ function renderTable() {
   });
 
   ws.getColumn(1).width = 3;
-  for (let i = 0; i < total; i++) ws.getColumn(startCol + i).width = 11;
+  for (let i = 0; i < total; i++) {
+    ws.getColumn(startCol + i).width = 11;
+  }
   ws.getColumn(strikeCol).width = 12;
 
   const fname =
@@ -481,6 +522,8 @@ function renderTable() {
   });
 }
 
+
+// —— سعر مباشر للشريط الأخضر (ويب فقط، مع قيود الاستضافة الثابتة) ——
 const YAHOO_MAP = { SPY: "SPY", QQQ: "QQQ", IWM: "IWM", GLD: "GLD", SPX: "^GSPC" };
 let liveTimer = null;
 
@@ -492,8 +535,12 @@ function isUsMarketHours() {
     }).formatToParts(new Date());
     const map = {};
     parts.forEach(function (p) { map[p.type] = p.value; });
-    if (map.weekday === "Sat" || map.weekday === "Sun") return false;
-    const mins = parseInt(map.hour, 10) * 60 + parseInt(map.minute, 10);
+    const wd = map.weekday;
+    if (wd === "Sat" || wd === "Sun") return false;
+    const h = parseInt(map.hour, 10);
+    const m = parseInt(map.minute, 10);
+    const mins = h * 60 + m;
+    // 9:30–16:00 ET
     return mins >= 9 * 60 + 30 && mins <= 16 * 60;
   } catch (e) {
     return false;
@@ -506,6 +553,7 @@ async function fetchLivePrice(ticker) {
     "https://query1.finance.yahoo.com/v8/finance/chart/" +
     encodeURIComponent(sym) +
     "?interval=1m&range=1d";
+  // محاولة مباشرة ثم عبر وكيل CORS بسيط عند الفشل
   async function fromUrl(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error("http " + res.status);
@@ -516,7 +564,9 @@ async function fetchLivePrice(ticker) {
     json = await fromUrl(yahoo);
   } catch (e1) {
     try {
-      json = await fromUrl("https://api.allorigins.win/raw?url=" + encodeURIComponent(yahoo));
+      json = await fromUrl(
+        "https://api.allorigins.win/raw?url=" + encodeURIComponent(yahoo)
+      );
     } catch (e2) {
       return null;
     }
@@ -550,8 +600,9 @@ async function refreshLivePrice() {
 function startLivePriceLoop() {
   if (liveTimer) clearInterval(liveTimer);
   refreshLivePrice();
-  liveTimer = setInterval(refreshLivePrice, 60000);
+  liveTimer = setInterval(refreshLivePrice, 60000); // كل دقيقة أثناء الجلسة
 }
+
 
 function toggleTheme() {
   state.dark = !state.dark;
