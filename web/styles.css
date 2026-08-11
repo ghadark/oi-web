@@ -1,212 +1,984 @@
-<!DOCTYPE html>
-<html lang="ar" data-theme="light">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+/* =========================================================
+   Oi | By Gee
+   Main Styles
+========================================================= */
+
+
+/* =========================================================
+   FONT
+========================================================= */
 
-  <title>Oi | By Gee</title>
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap');
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-  <!-- خط التوقيع -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap"
-    rel="stylesheet"
-  />
+/* =========================================================
+   VARIABLES
+========================================================= */
 
-  <link rel="stylesheet" href="styles.css" />
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --gray: #64748b;
+  --primary: #2563eb;
+  --header: #f1f5f9;
+  --itm: #dbeafe;
+  --otm: #f8fafc;
+  --green-bar: #ecfdf5;
+  --green-text: #0f766e;
+  --delta-bg: #e8e4d9;
+  --chip: #f1f5f9;
+  --sidebar: #ffffff;
+}
 
-  <!-- ExcelJS -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js">
-  </script>
 
-  <!-- FileSaver -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js">
-  </script>
-</head>
+html[data-theme="dark"] {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --border: #334155;
+  --text: #f1f5f9;
+  --gray: #94a3b8;
+  --primary: #3b82f6;
+  --header: #1e293b;
+  --itm: #1e3a5f;
+  --otm: #0b1526;
+  --green-bar: #134e4a;
+  --green-text: #5eead4;
+  --delta-bg: #2f3a4a;
+  --chip: #334155;
+  --sidebar: #1e293b;
+}
 
-<body data-data-base="../data">
 
-  <div class="app">
+/* =========================================================
+   RESET
+========================================================= */
 
-    <!-- =========================
-         SIDEBAR
-    ========================== -->
-    <aside class="sidebar">
+* {
+  box-sizing: border-box;
+}
 
-      <div class="brand">
 
-        <div class="logo">
-          Oi
-        </div>
+html,
+body {
+  margin: 0;
+  padding: 0;
 
-        <div class="brand-text">
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
 
-          <div class="brand-title">
+  background: var(--bg);
+  color: var(--text);
 
-            <h1>Oi</h1>
+  min-height: 100%;
+}
 
-            <span class="brand-sep">|</span>
 
-            <span class="brand-sign">
-              By Gee
-            </span>
+/* =========================================================
+   APP
+========================================================= */
 
-          </div>
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
 
-          <p>
-            Open Interest
-          </p>
 
-        </div>
+/* =========================================================
+   SIDEBAR
+========================================================= */
 
-      </div>
+.sidebar {
+  background: var(--sidebar);
 
+  border-right: 1px solid var(--border);
 
-      <!-- Sidebar bottom -->
-      <div class="meta">
+  padding: 20px 16px;
 
-        <div id="updatedAt">
-          —
-        </div>
+  display: flex;
+  flex-direction: column;
 
-        <div class="theme-row">
+  gap: 16px;
+}
 
-          <span>☀</span>
 
-          <button
-            id="themeSwitch"
-            class="switch"
-            type="button"
-            aria-label="theme">
-            <i></i>
-          </button>
+/* =========================================================
+   BRAND
+========================================================= */
 
-          <span>🌙</span>
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
 
-        </div>
 
-        <p style="margin-top:10px;font-size:11px">
-          عرض مشترك — يتحدث تلقائيًا ~7 ص
-        </p>
+/* Oi Logo */
 
-      </div>
+.logo {
+  width: 40px;
+  height: 40px;
 
-    </aside>
+  border-radius: 10px;
 
+  background: var(--primary);
 
-    <!-- =========================
-         MAIN
-    ========================== -->
-    <main class="main">
+  color: #fff;
 
-      <div class="top">
+  display: grid;
+  place-items: center;
 
-        <div style="width:120px"></div>
+  font-weight: 700;
+}
 
-        <div>
-          <h2>
-            المؤشرات
-          </h2>
-        </div>
 
-        <div style="display:flex;gap:8px;align-items:center">
+/* Brand text */
 
-          <button
-            id="reloadBtn"
-            class="btn btn-primary"
-            type="button">
-            تحديث العرض
-          </button>
+.brand-text {
+  display: flex;
+  flex-direction: column;
 
-          <button
-            id="exportBtn"
-            class="btn btn-teal"
-            type="button">
-            تصدير Excel
-          </button>
+  gap: 3px;
 
-        </div>
+  min-width: 0;
+}
 
-      </div>
 
+/* =========================================================
+   Oi + By Gee
+========================================================= */
 
-      <!-- Tickers -->
-      <div
-        id="tickers"
-        class="tickers">
-      </div>
+.brand-title {
+  display: flex;
 
+  align-items: center;
 
-      <!-- Controls -->
-      <div class="controls">
+  gap: 7px;
 
-        <div class="select">
+  flex-wrap: nowrap;
 
-          <label for="expSelect">
-            الانتهاء
-          </label>
+  white-space: nowrap;
+}
 
-          <select id="expSelect">
-          </select>
 
-        </div>
+/* Oi */
 
+.brand-title h1 {
+  margin: 0;
 
-        <label>
-          Days
-        </label>
+  line-height: 1;
 
-        <div
-          id="daysRow"
-          class="chip-row">
-        </div>
+  display: flex;
+  align-items: center;
 
+  font-size: 16px;
 
-        <label>
-          Strikes
-        </label>
+  color: var(--text);
 
-        <div
-          id="strikesRow"
-          class="chip-row">
-        </div>
+  font-weight: 700;
+}
 
 
-        <button
-          id="deltaBtn"
-          class="delta-btn"
-          type="button"
-          title="التزايد">
-          Δ
-        </button>
+/* Separator */
 
-      </div>
+.brand-sep {
+  color: var(--gray);
 
+  font-weight: 400;
 
-      <!-- Table -->
-      <div class="panel">
+  font-size: 14px;
 
-        <div id="tableHost">
-        </div>
+  line-height: 1;
 
-        <div
-          id="status"
-          class="status">
-        </div>
+  display: inline-flex;
 
-      </div>
+  align-items: center;
+}
 
-    </main>
 
-  </div>
+/* =========================================================
+   BY GEE — SIGNATURE
+========================================================= */
 
+.brand-sign {
 
-  <script src="app.js"></script>
+  /*
+    الخط المختار للتوقيع
+    Signature / Handwritten
+  */
+  font-family: "Alex Brush", cursive;
 
-</body>
-</html>
+  /*
+    الحجم أكبر من Oi قليلًا
+    حتى يظهر كتوقيع حقيقي
+  */
+  font-size: 29px;
+
+  font-weight: 400;
+
+  line-height: 0.9;
+
+  /*
+    اللون هادئ وغير صارخ
+  */
+  color: #64748b;
+
+  padding: 0;
+
+  margin: 0;
+
+  white-space: nowrap;
+
+  border: none !important;
+
+  text-decoration: none !important;
+
+  letter-spacing: 0.2px;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  /*
+    رفع التوقيع قليلًا
+    ليكون بمحاذاة Oi
+  */
+  transform: translateY(1px);
+
+  /*
+    منع تحديد النص من تغيير شكله
+  */
+  user-select: none;
+
+  /*
+    تحسين الرندر
+  */
+  -webkit-font-smoothing: antialiased;
+
+  text-rendering: geometricPrecision;
+}
+
+
+/* Light */
+
+html[data-theme="light"] .brand-sign {
+  color: #64748b;
+}
+
+
+/* Dark */
+
+html[data-theme="dark"] .brand-sign {
+  color: #aebfff;
+}
+
+
+/* =========================================================
+   OPEN INTEREST
+========================================================= */
+
+.brand p {
+  margin: 0;
+
+  font-size: 11px;
+
+  color: var(--gray);
+}
+
+
+/* =========================================================
+   SIDEBAR META
+========================================================= */
+
+.sidebar .meta {
+  margin-top: auto;
+
+  padding-top: 12px;
+
+  border-top: 1px solid var(--border);
+
+  font-size: 12px;
+
+  color: var(--gray);
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.main {
+  padding: 20px;
+}
+
+
+/* =========================================================
+   TOP
+========================================================= */
+
+.top {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  margin-bottom: 16px;
+
+  gap: 12px;
+
+  flex-wrap: wrap;
+}
+
+
+.top h2 {
+  margin: 0;
+
+  font-size: 22px;
+
+  text-align: center;
+
+  flex: 1;
+
+  color: var(--text);
+}
+
+
+.top .sub {
+  color: var(--gray);
+
+  font-size: 12px;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   TICKERS
+========================================================= */
+
+.tickers {
+  display: flex;
+
+  gap: 10px;
+
+  justify-content: center;
+
+  flex-wrap: wrap;
+
+  margin-bottom: 16px;
+}
+
+
+.tcard {
+  width: 150px;
+
+  background: var(--card);
+
+  border: 1px solid var(--border);
+
+  border-radius: 12px;
+
+  padding: 10px 12px;
+
+  cursor: pointer;
+
+  display: flex;
+
+  gap: 10px;
+
+  align-items: center;
+
+  color: var(--text);
+}
+
+
+.tcard.active {
+  border: 2px solid var(--primary);
+}
+
+
+.dot {
+  width: 28px;
+  height: 28px;
+
+  border-radius: 50%;
+
+  color: #fff;
+
+  font-size: 10px;
+
+  font-weight: 700;
+
+  display: grid;
+
+  place-items: center;
+
+  flex-shrink: 0;
+}
+
+
+.tcard b {
+  display: block;
+
+  font-size: 13px;
+
+  color: var(--text);
+}
+
+
+.tcard span {
+  font-size: 10px;
+
+  color: var(--gray);
+}
+
+
+/* =========================================================
+   CONTROLS
+========================================================= */
+
+.controls {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 10px;
+
+  align-items: center;
+
+  justify-content: center;
+
+  margin-bottom: 16px;
+}
+
+
+.select,
+.chip-row {
+  display: flex;
+
+  gap: 6px;
+
+  align-items: center;
+
+  flex-wrap: wrap;
+}
+
+
+label {
+  font-size: 13px;
+
+  font-weight: 700;
+
+  color: var(--text);
+}
+
+
+select {
+  height: 36px;
+
+  border-radius: 8px;
+
+  border: 1px solid var(--border);
+
+  background: var(--card);
+
+  color: var(--text);
+
+  padding: 0 10px;
+}
+
+
+/* =========================================================
+   CHIPS
+========================================================= */
+
+.chip {
+  min-width: 44px;
+
+  height: 32px;
+
+  border-radius: 8px;
+
+  border: 1px solid var(--border);
+
+  background: var(--chip);
+
+  color: var(--text);
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+.chip.active {
+  background: var(--primary);
+
+  color: #fff;
+
+  border-color: var(--primary);
+}
+
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.btn {
+  height: 36px;
+
+  border-radius: 8px;
+
+  border: none;
+
+  padding: 0 12px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+
+.btn-primary {
+  background: var(--primary);
+
+  color: #fff;
+}
+
+
+.btn-teal {
+  background: #0f766e;
+
+  color: #fff;
+}
+
+
+/* =========================================================
+   DELTA BUTTON
+========================================================= */
+
+.delta-btn {
+  width: 32px;
+
+  height: 32px;
+
+  border-radius: 6px;
+
+  border: 1px solid var(--border);
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  background: var(--chip);
+
+  color: var(--text);
+}
+
+
+.delta-btn.active {
+  background: var(--primary);
+
+  color: #fff;
+
+  border-color: var(--primary);
+}
+
+
+/* =========================================================
+   PANEL
+========================================================= */
+
+.panel {
+  background: var(--card);
+
+  border: 1px solid var(--border);
+
+  border-radius: 12px;
+
+  padding: 16px;
+}
+
+
+.table-scroll {
+  overflow: auto;
+
+  max-width: 100%;
+}
+
+
+/* =========================================================
+   TABLE TITLE
+========================================================= */
+
+.table-title {
+  text-align: center;
+
+  margin-bottom: 12px;
+
+  font-weight: 700;
+
+  color: var(--text);
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 8px;
+}
+
+
+.close-pill {
+  display: inline-block;
+
+  padding: 5px 12px;
+
+  border-radius: 8px;
+
+  background: var(--header);
+
+  color: var(--gray);
+
+  font-size: 12px;
+
+  font-weight: 500;
+
+  border: 1px solid var(--border);
+}
+
+
+/* =========================================================
+   OI TABLE
+========================================================= */
+
+table.oi {
+  border-collapse: collapse;
+
+  margin: 0 auto;
+
+  font-size: 11px;
+
+  color: var(--text);
+}
+
+
+table.oi th,
+table.oi td {
+  min-width: 72px;
+
+  height: 34px;
+
+  text-align: center;
+
+  border: 1px solid var(--border);
+
+  padding: 2px 4px;
+}
+
+
+table.oi th {
+  background: var(--header);
+
+  font-weight: 700;
+
+  color: var(--text);
+}
+
+
+table.oi th .subh {
+  font-weight: 500;
+
+  color: var(--gray);
+
+  font-size: 10px;
+}
+
+
+table.oi .strike {
+  min-width: 64px;
+
+  font-weight: 700;
+}
+
+
+table.oi .itm {
+  background: var(--itm);
+
+  color: var(--text);
+}
+
+
+table.oi .otm {
+  background: var(--otm);
+
+  color: var(--text);
+}
+
+
+table.oi .green {
+  background: var(--green-bar);
+
+  color: var(--green-text);
+
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   DELTA COLUMNS
+========================================================= */
+
+table.oi th.delta,
+table.oi td.delta {
+  background: var(--delta-bg) !important;
+
+  color: var(--text) !important;
+
+  border-color: var(--delta-bg) !important;
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.status {
+  font-size: 12px;
+
+  color: var(--gray);
+
+  text-align: center;
+
+  margin-top: 10px;
+}
+
+
+.status.ok {
+  color: #16a34a;
+}
+
+
+.status.err {
+  color: #dc2626;
+}
+
+
+html[data-theme="dark"] .status.ok {
+  color: #4ade80;
+}
+
+
+html[data-theme="dark"] .status.err {
+  color: #f87171;
+}
+
+
+/* =========================================================
+   THEME SWITCH
+========================================================= */
+
+.theme-row {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  margin-top: 10px;
+}
+
+
+.switch {
+  width: 42px;
+
+  height: 24px;
+
+  border-radius: 999px;
+
+  background: #cbd5e1;
+
+  position: relative;
+
+  cursor: pointer;
+
+  border: none;
+
+  padding: 0;
+}
+
+
+html[data-theme="dark"] .switch {
+  background: #475569;
+}
+
+
+.switch.on {
+  background: var(--primary);
+}
+
+
+.switch i {
+  position: absolute;
+
+  top: 3px;
+
+  left: 3px;
+
+  width: 18px;
+
+  height: 18px;
+
+  border-radius: 50%;
+
+  background: #fff;
+
+  transition: left .15s;
+
+  display: block;
+}
+
+
+.switch.on i {
+  left: 21px;
+}
+
+
+/* =========================================================
+   ZEBRA ROWS
+========================================================= */
+
+table.oi tbody tr.zebra td.itm {
+  filter: brightness(0.96);
+}
+
+
+table.oi tbody tr.zebra td.otm {
+  filter: brightness(0.97);
+}
+
+
+html[data-theme="dark"] table.oi tbody tr.zebra td.itm {
+  background: #172a45;
+
+  filter: none;
+}
+
+
+html[data-theme="dark"] table.oi tbody tr.zebra td.otm {
+  background: #111c2e;
+
+  filter: none;
+}
+
+
+html[data-theme="light"] table.oi tbody tr.zebra td.itm {
+  background: #cfe0f8;
+
+  filter: none;
+}
+
+
+html[data-theme="light"] table.oi tbody tr.zebra td.otm {
+  background: #eef2f7;
+
+  filter: none;
+}
+
+
+/* =========================================================
+   TABLE SEPARATORS
+========================================================= */
+
+table.oi tbody tr td {
+  border-bottom-color: var(--border);
+}
+
+
+html[data-theme="dark"] table.oi tbody tr td {
+  border-bottom: 1px solid #2a3a52;
+}
+
+
+html[data-theme="dark"] table.oi th {
+  border-bottom: 1px solid #475569;
+}
+
+
+/* =========================================================
+   MAX OI
+========================================================= */
+
+table.oi td.max-oi {
+  background: #c7d2fe !important;
+
+  color: #1e1b4b !important;
+
+  font-weight: 700;
+}
+
+
+html[data-theme="dark"] table.oi td.max-oi {
+  background: #3730a3 !important;
+
+  color: #e0e7ff !important;
+
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: none;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand-sign {
+    font-size: 27px;
+  }
+}
+
+
+/* =========================================================
+   SMALL SCREENS
+========================================================= */
+
+@media (max-width: 500px) {
+
+  .brand-sign {
+    font-size: 25px;
+  }
+
+  .brand-title {
+    gap: 5px;
+  }
+
+  .main {
+    padding: 12px;
+  }
+
+  .panel {
+    padding: 10px;
+  }
+}
