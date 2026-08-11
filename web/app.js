@@ -740,22 +740,35 @@ function buildMapSvg(L) {
     { key: "next_opx", label: "OPX+" },
   ];
 
-  // جمع المستويات مع دمج نفس السعر (حتى لا يتكرر الخط والتسمية)
+  // جمع المستويات مع دمج نفس السعر — تسمية عربية نظيفة
+  const labelOf = {
+    daily: "اليوم",
+    tomorrow: "بكرا",
+    weekly: "الأسبوع",
+    opx: "OPX",
+    next_opx: "OPX القادم",
+  };
   const resMap = {};
   const supMap = {};
   bandDefs.forEach(function (b) {
     const block = L[b.key] || {};
+    const lab = labelOf[b.key] || b.label;
     if (block.resistance != null) {
       const k = String(Math.round(Number(block.resistance) * 100) / 100);
       if (!resMap[k]) resMap[k] = [];
-      resMap[k].push(b.label);
+      if (resMap[k].indexOf(lab) < 0) resMap[k].push(lab);
     }
     if (block.support != null) {
       const k = String(Math.round(Number(block.support) * 100) / 100);
       if (!supMap[k]) supMap[k] = [];
-      supMap[k].push(b.label);
+      if (supMap[k].indexOf(lab) < 0) supMap[k].push(lab);
     }
   });
+  function niceLabel(kind, price, names) {
+    // مثال: 290 قاع الأسبوع + بكرا
+    const joined = names.join(" + ");
+    return Math.round(Number(price)) + " " + kind + " " + joined;
+  }
 
   const nums = [];
   if (price != null) nums.push(Number(price));
@@ -808,14 +821,14 @@ function buildMapSvg(L) {
   const resItems = Object.keys(resMap).map(function (k) {
     return {
       v: Number(k),
-      text: "قمة " + Number(k).toFixed(0) + " · " + resMap[k].join("/"),
+      text: niceLabel("قمة", k, resMap[k]),
       color: "#c4b5fd",
     };
   });
   const supItems = Object.keys(supMap).map(function (k) {
     return {
       v: Number(k),
-      text: "قاع " + Number(k).toFixed(0) + " · " + supMap[k].join("/"),
+      text: niceLabel("قاع", k, supMap[k]),
       color: "#5eead4",
     };
   });
