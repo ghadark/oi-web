@@ -277,8 +277,131 @@ def build_public_snapshot(hist: dict[str, Any], ticker: str) -> dict[str, Any]:
     }
 
 
+
+def third_friday(year: int, month: int) -> date:
+    d = date(year, month, 1)
+    # first Friday
+    while d.weekday() != 4:
+        d += timedelta(days=1)
+    return d + timedelta(days=14)
+
+
+def next_friday_on_or_after(d: date) -> date:
+    while d.weekday() != 4:
+        d += timedelta(days=1)
+    return d
+
+
+def pick_expiration(available: list[str], target: date) -> str | None:
+    """Nearest expiration on or after target; else closest overall."""
+    parsed = []
+    for e in available:
+        try:
+            parsed.append((datetime.strptime(e, "%Y-%m-%d").date(), e))
+        except Exception:
+            continue
+    if not parsed:
+        return None
+    on_or_after = [p for p in parsed if p[0] >= target]
+    if on_or_after:
+        on_or_after.sort(key=lambda x: x[0])
+        return on_or_after[0][1]
+    parsed.sort(key=lambda x: abs((x[0] - target).days))
+    return parsed[0][1]
+
+
+def max_oi_levels_for_exp(hist: dict[str, Any], exp: str, pull_date: str) -> dict[str, Any]:
+    """Highest put_oi strike = support, highest call_oi strike = resistance for one expiration."""
+    block = (hist.get("days") or {}).get(pull_date, {}).get(exp) or {}
+    if not block:
+        # fallback: search latest pull_date that has this exp
+        for pd in reversed(sort_pull_dates(list((hist.get("days") or {}).keys()))):
+            block = (hist.get("days") or {}).get(pd, {}).get(exp) or {}
+            if block:
+                pull_date = pd
+                break
+    max_put_s, max_put_v = None, -1
+    max_call_s, max_call_v = None, -1
+    for sk, cell in block.items():
+        try:
+            strike = float(sk)
+        except Exception:
+            continue
+        put_v = int(cell.get("put_oi") or 0)
+        call_v = int(cell.get("call_oi") or 0)
+        if put_v > max_put_v:
+            max_put_v, max_put_s = put_v, strike
+        if call_v > max_call_v:
+            max_call_v, max_call_s = call_v, strike
+    return {
+        "exp": exp,
+        "pull_date": pull_date,
+        "support": max_put_s,   # قاع = أعلى Put
+        "resistance": max_call_s,  # قمة = أعلى Call
+        "support_oi": max_put_v if max_put_s is not None else None,
+        "resistance_oi": max_call_v if max_call_s is not None else None,
+    }
+
+
+def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, close: float | None) -> dict[str, Any]:
+    """Daily / weekly / OPX / next OPX walls from max OI + close path history."""
+    year = datetime.now().year
+    today = date.today()
+    # all expirations known
+    available: set[str] = set()
+    for day in (hist.get("days") or {}).values():
+        available.update(day.keys())
+    avail = sorted(available)
+
+    daily_exp = pick_expiration(avail, today)
+    weekly_exp = pick_expiration(avail, next_friday_on_or_after(today))
+    opx_date = third_friday(today.year, today.month)
+    if opx_date < today:
+        # next month
+        m = today.month + 1
+        y = today.year
+        if m > 12:
+            m, y = 1, y + 1
+        opx_date = third_friday(y, m)
+    opx_exp = pick_expiration(avail, opx_date)
+    # next month third friday
+    m2 = opx_date.month + 1
+    y2 = opx_date.year
+    if m2 > 12:
+        m2, y2 = 1, y2 + 1
+    next_opx_date = third_friday(y2, m2)
+    next_opx_exp = pick_expiration(avail, next_opx_date)
+
+    def safe_levels(exp):
+        if not exp:
+            return {"exp": None, "support": None, "resistance": None}
+        return max_oi_levels_for_exp(hist, exp, pull_date)
+
+    # price path from closes (phase 3)
+    closes = hist.get("closes") or {}
+    path = []
+    for pd in sort_pull_dates(list(closes.keys()), year):
+        try:
+            path.append({"date": pd, "close": float(closes[pd])})
+        except Exception:
+            pass
+
+    return {
+        "ticker": ticker,
+        "close": close,
+        "as_of": pull_date,
+        "updated_at": hist.get("updated_at"),
+        "daily": safe_levels(daily_exp),
+        "weekly": safe_levels(weekly_exp),
+        "opx": safe_levels(opx_exp),
+        "next_opx": safe_levels(next_opx_exp),
+        "path": path[-30:],  # last ~30 sessions
+    }
+
+
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+    levels_all: dict[str, Any] = {}
     pull_date, pull_day = session_pull_date()
     now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     print(f"session column: {pull_date} ({pull_day})")
@@ -324,11 +447,16 @@ def main() -> int:
         with pub_path.open("w", encoding="utf-8") as f:
             json.dump(snap, f, ensure_ascii=False, separators=(",", ":"))
 
+        levels_all[ticker] = build_levels_for_ticker(hist, ticker, pull_date, close)
         index["tickers"].append(ticker)
         print(f"[saved] {pub_path.name} days={len(snap['pull_dates'])} exps={len(snap['expirations'])}")
 
     with (DATA_DIR / "index.json").open("w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
+
+    with (DATA_DIR / "levels.json").open("w", encoding="utf-8") as f:
+        json.dump({"updated_at": datetime.utcnow().isoformat() + "Z", "tickers": levels_all}, f, ensure_ascii=False, indent=2)
+    print("[saved] levels.json")
 
     print("done.")
     return 0
