@@ -10,7 +10,7 @@
   --otm: #f8fafc;
   --green-bar: #ecfdf5;
   --green-text: #0f766e;
-  --delta-bg: #e8e0c8;
+  --delta-bg: #e6e0d4;
   --chip: #f1f5f9;
   --sidebar: #ffffff;
 }
@@ -26,7 +26,7 @@ html[data-theme="dark"] {
   --otm: #0b1526;
   --green-bar: #134e4a;
   --green-text: #5eead4;
-  --delta-bg: #4a4638;
+  --delta-bg: #3d4555;
   --chip: #334155;
   --sidebar: #1e293b;
 }
@@ -59,12 +59,9 @@ html, body {
   font-size: 22px;
   line-height: 1;
   color: var(--text);
-  border-bottom: 1.5px solid var(--text);
-  padding: 0 2px 1px;
+  padding: 0 2px;
   white-space: nowrap;
-}
-html[data-theme="dark"] .brand-sign {
-  border-bottom-color: var(--text);
+  border-bottom: none;
 }
 
 .sidebar .meta {
