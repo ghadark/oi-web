@@ -359,16 +359,17 @@ function exportExcel() {
   }
   const maxFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC7D2FE" } };
 
-  // RTL: colDefs[0] = يمين الشاشة
-  // الهدف البصري LTR: Δ | 10-8 | 11-8 | … | STRIKE | 10-8 | 11-8 | … | Δ
-  // (الأيام تصاعديًا على الجهتين)
-  const colDefs = [];
-  if (canDelta) colDefs.push({ kind: "deltaPut" });
-  for (let j = n - 1; j >= 0; j--) colDefs.push({ kind: "put", idx: j, label: pullDates[j] });
-  colDefs.push({ kind: "strike" });
-  for (let i = n - 1; i >= 0; i--) colDefs.push({ kind: "call", idx: i, label: pullDates[i] });
-  if (canDelta) colDefs.push({ kind: "deltaCall" });
+  // بناء الترتيب البصري أولاً (يسار→يمين على الشاشة):
+  // Δ | Call 10→11→… | STRIKE | Put 10→11→… | Δ
+  // مع rightToLeft: true عمود B يظهر يمينًا؛ لذلك نعكس المصفوفة عند الكتابة.
+  const visual = [];
+  if (canDelta) visual.push({ kind: "deltaCall" });
+  for (let j = 0; j < n; j++) visual.push({ kind: "call", idx: j, label: pullDates[j] });
+  visual.push({ kind: "strike" });
+  for (let j = 0; j < n; j++) visual.push({ kind: "put", idx: j, label: pullDates[j] });
+  if (canDelta) visual.push({ kind: "deltaPut" });
 
+  const colDefs = visual.slice().reverse();
   const total = colDefs.length;
   const startCol = 2; // column B
   const strikeCol = startCol + colDefs.findIndex(function (d) { return d.kind === "strike"; });
@@ -411,24 +412,33 @@ function exportExcel() {
   styleRange(1, startCol, endCol, { font: fontWhite, fill: fillTitle, align: alignC });
   ws.getRow(1).height = 22;
 
-  // Row 2: Put (يمين) | Strike | Call (يسار) — حسب RTL
-  const putStart = startCol + (canDelta ? 1 : 0);
-  const putEnd = strikeCol - 1;
-  const callStart = strikeCol + 1;
-  const callEnd = endCol - (canDelta ? 1 : 0);
-  if (putEnd >= putStart) {
-    ws.getCell(2, putStart).value = "Put";
-    if (putEnd > putStart) ws.mergeCells(2, putStart, 2, putEnd);
+  // Row 2 labels حسب مواقع colDefs الفعلية
+  function spanKind(kindPrefix) {
+    let a = -1, b = -1;
+    colDefs.forEach(function (d, i) {
+      if (d.kind === kindPrefix || (kindPrefix === "call" && d.kind === "call") || (kindPrefix === "put" && d.kind === "put")) {
+        if (a < 0) a = i;
+        b = i;
+      }
+    });
+    return a < 0 ? null : { a: startCol + a, b: startCol + b };
+  }
+  const putSpan = spanKind("put");
+  const callSpan = spanKind("call");
+  if (putSpan) {
+    ws.getCell(2, putSpan.a).value = "Put";
+    if (putSpan.b > putSpan.a) ws.mergeCells(2, putSpan.a, 2, putSpan.b);
   }
   ws.getCell(2, strikeCol).value = "Strike";
-  if (callEnd >= callStart) {
-    ws.getCell(2, callStart).value = "Call";
-    if (callEnd > callStart) ws.mergeCells(2, callStart, 2, callEnd);
+  if (callSpan) {
+    ws.getCell(2, callSpan.a).value = "Call";
+    if (callSpan.b > callSpan.a) ws.mergeCells(2, callSpan.a, 2, callSpan.b);
   }
-  if (canDelta) {
-    ws.getCell(2, startCol).value = "Δ";
-    ws.getCell(2, endCol).value = "Δ";
-  }
+  colDefs.forEach(function (d, i) {
+    if (d.kind === "deltaCall" || d.kind === "deltaPut") {
+      ws.getCell(2, startCol + i).value = "Δ";
+    }
+  });
   styleRange(2, startCol, endCol, { font: fontHeader, fill: fillSec, align: alignC, border: border });
   ws.getRow(2).height = 18;
 
