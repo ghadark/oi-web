@@ -359,12 +359,12 @@ function exportExcel() {
   }
   const maxFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC7D2FE" } };
 
-  // RTL: colDefs[0] يظهر يمين الشاشة → ΔPut على الطرف الأيمن، ΔCall على الطرف الأيسر
-  // ترتيب الملف: deltaPut | puts... | STRIKE | calls... | deltaCall
-  // العرض LTR بعد RTL: ΔCall | calls | STRIKE | puts | ΔPut
+  // RTL: colDefs[0] = يمين الشاشة
+  // الهدف البصري LTR: Δ | 10-8 | 11-8 | … | STRIKE | 10-8 | 11-8 | … | Δ
+  // (الأيام تصاعديًا على الجهتين)
   const colDefs = [];
   if (canDelta) colDefs.push({ kind: "deltaPut" });
-  for (let j = 0; j < n; j++) colDefs.push({ kind: "put", idx: j, label: pullDates[j] });
+  for (let j = n - 1; j >= 0; j--) colDefs.push({ kind: "put", idx: j, label: pullDates[j] });
   colDefs.push({ kind: "strike" });
   for (let i = n - 1; i >= 0; i--) colDefs.push({ kind: "call", idx: i, label: pullDates[i] });
   if (canDelta) colDefs.push({ kind: "deltaCall" });
