@@ -3,67 +3,210 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <title>Oi | By Gee</title>
+
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap" rel="stylesheet" />
+
+  <!-- خط التوقيع -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+  <!-- ExcelJS -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js">
+  </script>
+
+  <!-- FileSaver -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js">
+  </script>
 </head>
+
 <body data-data-base="../data">
+
   <div class="app">
+
+    <!-- =========================
+         SIDEBAR
+    ========================== -->
     <aside class="sidebar">
+
       <div class="brand">
-        <div class="logo">Oi</div>
+
+        <div class="logo">
+          Oi
+        </div>
+
         <div class="brand-text">
+
           <div class="brand-title">
+
             <h1>Oi</h1>
+
             <span class="brand-sep">|</span>
-            <span class="brand-sign">By Gee</span>
+
+            <span class="brand-sign">
+              By Gee
+            </span>
+
           </div>
-          <p>Open Interest</p>
+
+          <p>
+            Open Interest
+          </p>
+
         </div>
+
       </div>
+
+
+      <!-- Sidebar bottom -->
       <div class="meta">
-        <div id="updatedAt">—</div>
+
+        <div id="updatedAt">
+          —
+        </div>
+
         <div class="theme-row">
+
           <span>☀</span>
-          <button id="themeSwitch" class="switch" type="button" aria-label="theme"><i></i></button>
+
+          <button
+            id="themeSwitch"
+            class="switch"
+            type="button"
+            aria-label="theme">
+            <i></i>
+          </button>
+
           <span>🌙</span>
+
         </div>
-        <p style="margin-top:10px;font-size:11px">عرض مشترك — يتحدث تلقائيًا ~7 ص</p>
+
+        <p style="margin-top:10px;font-size:11px">
+          عرض مشترك — يتحدث تلقائيًا ~7 ص
+        </p>
+
       </div>
+
     </aside>
+
+
+    <!-- =========================
+         MAIN
+    ========================== -->
     <main class="main">
+
       <div class="top">
+
         <div style="width:120px"></div>
+
         <div>
-          <h2>المؤشرات</h2>
+          <h2>
+            المؤشرات
+          </h2>
         </div>
+
         <div style="display:flex;gap:8px;align-items:center">
-          <button id="reloadBtn" class="btn btn-primary" type="button">تحديث العرض</button>
-          <button id="exportBtn" class="btn btn-teal" type="button">تصدير Excel</button>
+
+          <button
+            id="reloadBtn"
+            class="btn btn-primary"
+            type="button">
+            تحديث العرض
+          </button>
+
+          <button
+            id="exportBtn"
+            class="btn btn-teal"
+            type="button">
+            تصدير Excel
+          </button>
+
         </div>
+
       </div>
-      <div id="tickers" class="tickers"></div>
+
+
+      <!-- Tickers -->
+      <div
+        id="tickers"
+        class="tickers">
+      </div>
+
+
+      <!-- Controls -->
       <div class="controls">
+
         <div class="select">
-          <label for="expSelect">الانتهاء</label>
-          <select id="expSelect"></select>
+
+          <label for="expSelect">
+            الانتهاء
+          </label>
+
+          <select id="expSelect">
+          </select>
+
         </div>
-        <label>Days</label>
-        <div id="daysRow" class="chip-row"></div>
-        <label>Strikes</label>
-        <div id="strikesRow" class="chip-row"></div>
-        <button id="deltaBtn" class="delta-btn" type="button" title="التزايد">Δ</button>
+
+
+        <label>
+          Days
+        </label>
+
+        <div
+          id="daysRow"
+          class="chip-row">
+        </div>
+
+
+        <label>
+          Strikes
+        </label>
+
+        <div
+          id="strikesRow"
+          class="chip-row">
+        </div>
+
+
+        <button
+          id="deltaBtn"
+          class="delta-btn"
+          type="button"
+          title="التزايد">
+          Δ
+        </button>
+
       </div>
+
+
+      <!-- Table -->
       <div class="panel">
-        <div id="tableHost"></div>
-        <div id="status" class="status"></div>
+
+        <div id="tableHost">
+        </div>
+
+        <div
+          id="status"
+          class="status">
+        </div>
+
       </div>
+
     </main>
+
   </div>
+
+
   <script src="app.js"></script>
+
 </body>
 </html>
