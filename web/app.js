@@ -730,6 +730,7 @@ function levelRowsHtml(L, price) {
 
 
 
+
 function buildMapSvg(L) {
   const path = (L.path || []).slice();
   const price = L.close;
@@ -775,8 +776,7 @@ function buildMapSvg(L) {
   minV -= pad;
   maxV += pad;
 
-  // هوامش واسعة للنص: يسار قاع | يمين قمة
-  const W = 720, H = 360, ML = 118, MR = 118, MT = 16, MB = 20;
+  const W = 760, H = 380, ML = 150, MR = 150, MT = 16, MB = 20;
   const iw = W - ML - MR, ih = H - MT - MB;
 
   function yScale(v) {
@@ -787,12 +787,14 @@ function buildMapSvg(L) {
     return ML + (i / (n - 1)) * iw;
   }
 
-  // تفريق عمودي بسيط للتسميات على كل جانب
+  function joinNames(names) {
+    return names.join("+");
+  }
+
   function spread(sideItems) {
-    // sideItems: [{v, text}]
     sideItems.sort(function (a, b) { return b.v - a.v; });
     const out = [];
-    const gap = 15;
+    const gap = 16;
     sideItems.forEach(function (it) {
       let y = yScale(it.v);
       if (out.length) {
@@ -806,24 +808,20 @@ function buildMapSvg(L) {
     return out;
   }
 
-  const leftItems = []; // قاع
-  const rightItems = []; // قمة
+  const leftItems = [];
+  const rightItems = [];
   levels.forEach(function (v) {
     const info = byPrice[v];
-    const isSup = info.sup.length > 0;
-    const isRes = info.res.length > 0;
-    if (isSup) {
+    if (info.sup.length) {
       leftItems.push({
         v: v,
-        text: v + " قاع",
-        dual: isRes,
+        text: v + " قاع " + joinNames(info.sup),
       });
     }
-    if (isRes) {
+    if (info.res.length) {
       rightItems.push({
         v: v,
-        text: v + " قمة",
-        dual: isSup,
+        text: v + " قمة " + joinNames(info.res),
       });
     }
   });
@@ -831,16 +829,7 @@ function buildMapSvg(L) {
   const rightPlaced = spread(rightItems);
 
   let svg = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">';
-  svg += "<defs>";
-  svg += '<linearGradient id="dualGrad" x1="0%" y1="0%" x2="100%" y2="0%">';
-  svg += '<stop offset="0%" stop-color="#2dd4bf"/>';
-  svg += '<stop offset="50%" stop-color="#2dd4bf"/>';
-  svg += '<stop offset="50%" stop-color="#a78bfa"/>';
-  svg += '<stop offset="100%" stop-color="#a78bfa"/>';
-  svg += "</linearGradient>";
-  svg += "</defs>";
 
-  // شبكة خفيفة
   for (let g = 0; g < 5; g++) {
     const yy = MT + (ih * g) / 4;
     svg +=
@@ -848,22 +837,22 @@ function buildMapSvg(L) {
       '" stroke="#1e293b" stroke-width="1"/>';
   }
 
-  // خطوط المستويات
+  // خطوط: قاع تركواز | قمة بنفسجي | الاثنان معًا رمادي محايد
   levels.forEach(function (v) {
     const info = byPrice[v];
     const isSup = info.sup.length > 0;
     const isRes = info.res.length > 0;
     const y = yScale(v);
-    let stroke = "#64748b";
-    if (isSup && isRes) stroke = "url(#dualGrad)";
+    let stroke = "#94a3b8";
+    if (isSup && isRes) stroke = "#94a3b8"; // محايد
     else if (isSup) stroke = "#2dd4bf";
     else if (isRes) stroke = "#a78bfa";
+    const width = isSup && isRes ? 2.2 : 1.8;
     svg +=
       '<line x1="' + ML + '" x2="' + (W - MR) + '" y1="' + y + '" y2="' + y +
-      '" stroke="' + stroke + '" stroke-dasharray="6 4" stroke-width="1.8" opacity="0.9"/>';
+      '" stroke="' + stroke + '" stroke-dasharray="6 4" stroke-width="' + width + '" opacity="0.95"/>';
   });
 
-  // مسار السعر
   if (path.length) {
     let d = "";
     path.forEach(function (p, i) {
@@ -878,24 +867,21 @@ function buildMapSvg(L) {
     });
   }
 
-  // تسميات اليسار = قاع (نص قصير كامل)
   leftPlaced.forEach(function (it) {
     svg +=
       '<text x="' + (ML - 8) + '" y="' + (it.y + 4) +
-      '" fill="#5eead4" font-size="12" font-weight="600" text-anchor="end">' +
+      '" fill="#5eead4" font-size="11" font-weight="600" text-anchor="end">' +
       it.text +
       "</text>";
   });
-  // تسميات اليمين = قمة
   rightPlaced.forEach(function (it) {
     svg +=
       '<text x="' + (W - MR + 8) + '" y="' + (it.y + 4) +
-      '" fill="#c4b5fd" font-size="12" font-weight="600" text-anchor="start">' +
+      '" fill="#c4b5fd" font-size="11" font-weight="600" text-anchor="start">' +
       it.text +
       "</text>";
   });
 
-  // إغلاق أمس
   if (price != null) {
     const y = yScale(price);
     const x = path.length ? xScale(path.length - 1, Math.max(path.length, 1)) : ML + iw * 0.92;
@@ -951,13 +937,11 @@ function renderMapPanel(L) {
     '<div class="map-card map-chart-wrap">' +
     buildMapSvg(L) +
     '<div class="map-legend">' +
-    '<span><span class="map-dot" style="background:#a78bfa"></span> قمة يمين</span>' +
-    '<span><span class="map-dot" style="background:#2dd4bf"></span> قاع يسار</span>' +
-    '<span><span class="map-dot" style="background:linear-gradient(90deg,#2dd4bf,#a78bfa)"></span> قمة وقاع معًا</span>' +
+    '<span><span class="map-dot" style="background:#a78bfa"></span> قمة</span>' +
+    '<span><span class="map-dot" style="background:#2dd4bf"></span> قاع</span>' +
+    '<span><span class="map-dot" style="background:#94a3b8"></span> قمة وقاع معًا</span>' +
     '<span><span class="map-dot" style="background:#22d3ee"></span> إغلاق أمس</span>' +
-    "</div>" +
-    '<p class="map-hint" style="margin-top:6px">التفاصيل والأسماء (اليوم / بكرا / …) في الجدول تحت الرسم</p>' +
-    "</div>" +
+    "</div></div>" +
     rows +
     "</div>"
   );
