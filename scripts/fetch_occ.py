@@ -286,6 +286,14 @@ def third_friday(year: int, month: int) -> date:
     return d + timedelta(days=14)
 
 
+def next_session_day(d: date) -> date:
+    """Next US equity session (skip weekend + listed holidays)."""
+    x = d + timedelta(days=1)
+    while x.weekday() >= 5 or x in US_MARKET_HOLIDAYS:
+        x += timedelta(days=1)
+    return x
+
+
 def next_friday_on_or_after(d: date) -> date:
     while d.weekday() != 4:
         d += timedelta(days=1)
@@ -354,6 +362,8 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
     avail = sorted(available)
 
     daily_exp = pick_expiration(avail, today)
+    tomorrow = next_session_day(today)
+    tomorrow_exp = pick_expiration(avail, tomorrow)
     weekly_exp = pick_expiration(avail, next_friday_on_or_after(today))
     opx_date = third_friday(today.year, today.month)
     if opx_date < today:
@@ -392,10 +402,15 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         "as_of": pull_date,
         "updated_at": hist.get("updated_at"),
         "daily": safe_levels(daily_exp),
+        "tomorrow": safe_levels(tomorrow_exp),
         "weekly": safe_levels(weekly_exp),
         "opx": safe_levels(opx_exp),
         "next_opx": safe_levels(next_opx_exp),
-        "path": path[-30:],  # last ~30 sessions
+        "meta": {
+            "today": today.isoformat(),
+            "tomorrow": tomorrow.isoformat(),
+        },
+        "path": path[-30:],
     }
 
 
