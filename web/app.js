@@ -729,114 +729,118 @@ function levelRowsHtml(L, price) {
 
 
 
+
 function buildMapSvg(L) {
   const path = (L.path || []).slice();
   const price = L.close;
   const bandDefs = [
     { key: "daily", label: "اليوم" },
     { key: "tomorrow", label: "بكرا" },
-    { key: "weekly", label: "أسبوع" },
+    { key: "weekly", label: "الأسبوع" },
     { key: "opx", label: "OPX" },
     { key: "next_opx", label: "OPX+" },
   ];
 
-  // جمع المستويات مع دمج نفس السعر — تسمية عربية نظيفة
-  const labelOf = {
-    daily: "اليوم",
-    tomorrow: "بكرا",
-    weekly: "الأسبوع",
-    opx: "OPX",
-    next_opx: "OPX القادم",
-  };
-  const resMap = {};
-  const supMap = {};
+  // price -> { sup: [labels], res: [labels] }
+  const byPrice = {};
+  function add(price, kind, lab) {
+    if (price == null || isNaN(price)) return;
+    const k = Math.round(Number(price));
+    if (!byPrice[k]) byPrice[k] = { sup: [], res: [] };
+    const arr = byPrice[k][kind];
+    if (arr.indexOf(lab) < 0) arr.push(lab);
+  }
   bandDefs.forEach(function (b) {
     const block = L[b.key] || {};
-    const lab = labelOf[b.key] || b.label;
-    if (block.resistance != null) {
-      const k = String(Math.round(Number(block.resistance) * 100) / 100);
-      if (!resMap[k]) resMap[k] = [];
-      if (resMap[k].indexOf(lab) < 0) resMap[k].push(lab);
-    }
-    if (block.support != null) {
-      const k = String(Math.round(Number(block.support) * 100) / 100);
-      if (!supMap[k]) supMap[k] = [];
-      if (supMap[k].indexOf(lab) < 0) supMap[k].push(lab);
-    }
+    add(block.support, "sup", b.label);
+    add(block.resistance, "res", b.label);
   });
-  function niceLabel(kind, price, names) {
-    // مثال: 290 قاع الأسبوع + بكرا
-    const joined = names.join(" + ");
-    return Math.round(Number(price)) + " " + kind + " " + joined;
-  }
 
-  const nums = [];
+  const levels = Object.keys(byPrice)
+    .map(Number)
+    .sort(function (a, b) { return b - a; });
+
+  const nums = levels.slice();
   if (price != null) nums.push(Number(price));
   path.forEach(function (p) {
     if (p.close != null) nums.push(Number(p.close));
   });
-  Object.keys(resMap).forEach(function (k) { nums.push(Number(k)); });
-  Object.keys(supMap).forEach(function (k) { nums.push(Number(k)); });
   if (!nums.length) {
     return '<p style="color:#94a3b8;padding:20px;text-align:center">لا بيانات رسم بعد</p>';
   }
 
   let minV = Math.min.apply(null, nums);
   let maxV = Math.max.apply(null, nums);
-  const pad = (maxV - minV) * 0.14 || 10;
+  const pad = (maxV - minV) * 0.12 || 10;
   minV -= pad;
   maxV += pad;
 
-  const W = 700, H = 340, ML = 44, MR = 130, MT = 18, MB = 24;
+  // هوامش واسعة للنص: يسار قاع | يمين قمة
+  const W = 720, H = 360, ML = 118, MR = 118, MT = 16, MB = 20;
   const iw = W - ML - MR, ih = H - MT - MB;
 
   function yScale(v) {
     return MT + ((maxV - v) / (maxV - minV)) * ih;
   }
   function xScale(i, n) {
-    if (n <= 1) return ML + iw * 0.9;
+    if (n <= 1) return ML + iw * 0.92;
     return ML + (i / (n - 1)) * iw;
   }
 
-  // ترتيب التسميات وتفريقها عموديًا إذا تقاربت
-  function placeLabels(items, side) {
-    // items: [{v, text, color}]
-    items.sort(function (a, b) { return b.v - a.v; });
-    const placed = [];
-    const minGap = 14;
-    items.forEach(function (it) {
+  // تفريق عمودي بسيط للتسميات على كل جانب
+  function spread(sideItems) {
+    // sideItems: [{v, text}]
+    sideItems.sort(function (a, b) { return b.v - a.v; });
+    const out = [];
+    const gap = 15;
+    sideItems.forEach(function (it) {
       let y = yScale(it.v);
-      if (placed.length) {
-        const prev = placed[placed.length - 1];
-        if (y - prev.y < minGap) y = prev.y + minGap;
+      if (out.length) {
+        const prev = out[out.length - 1];
+        if (y - prev.y < gap) y = prev.y + gap;
       }
-      // لا تخرج من الرسم
       if (y > MT + ih) y = MT + ih;
-      if (y < MT) y = MT;
-      placed.push({ y: y, v: it.v, text: it.text, color: it.color, lineY: yScale(it.v) });
+      if (y < MT + 8) y = MT + 8;
+      out.push({ v: it.v, text: it.text, y: y, lineY: yScale(it.v) });
     });
-    return placed;
+    return out;
   }
 
-  const resItems = Object.keys(resMap).map(function (k) {
-    return {
-      v: Number(k),
-      text: niceLabel("قمة", k, resMap[k]),
-      color: "#c4b5fd",
-    };
+  const leftItems = []; // قاع
+  const rightItems = []; // قمة
+  levels.forEach(function (v) {
+    const info = byPrice[v];
+    const isSup = info.sup.length > 0;
+    const isRes = info.res.length > 0;
+    if (isSup) {
+      leftItems.push({
+        v: v,
+        text: v + " قاع",
+        dual: isRes,
+      });
+    }
+    if (isRes) {
+      rightItems.push({
+        v: v,
+        text: v + " قمة",
+        dual: isSup,
+      });
+    }
   });
-  const supItems = Object.keys(supMap).map(function (k) {
-    return {
-      v: Number(k),
-      text: niceLabel("قاع", k, supMap[k]),
-      color: "#5eead4",
-    };
-  });
-  const resPlaced = placeLabels(resItems, "right");
-  const supPlaced = placeLabels(supItems, "right");
+  const leftPlaced = spread(leftItems);
+  const rightPlaced = spread(rightItems);
 
   let svg = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">';
+  svg += "<defs>";
+  svg += '<linearGradient id="dualGrad" x1="0%" y1="0%" x2="100%" y2="0%">';
+  svg += '<stop offset="0%" stop-color="#2dd4bf"/>';
+  svg += '<stop offset="50%" stop-color="#2dd4bf"/>';
+  svg += '<stop offset="50%" stop-color="#a78bfa"/>';
+  svg += '<stop offset="100%" stop-color="#a78bfa"/>';
+  svg += "</linearGradient>";
+  svg += "</defs>";
 
+  // شبكة خفيفة
   for (let g = 0; g < 5; g++) {
     const yy = MT + (ih * g) / 4;
     svg +=
@@ -844,33 +848,29 @@ function buildMapSvg(L) {
       '" stroke="#1e293b" stroke-width="1"/>';
   }
 
-  // خطوط القمم
-  resPlaced.forEach(function (it) {
+  // خطوط المستويات
+  levels.forEach(function (v) {
+    const info = byPrice[v];
+    const isSup = info.sup.length > 0;
+    const isRes = info.res.length > 0;
+    const y = yScale(v);
+    let stroke = "#64748b";
+    if (isSup && isRes) stroke = "url(#dualGrad)";
+    else if (isSup) stroke = "#2dd4bf";
+    else if (isRes) stroke = "#a78bfa";
     svg +=
-      '<line x1="' + ML + '" x2="' + (W - MR) + '" y1="' + it.lineY + '" y2="' + it.lineY +
-      '" stroke="#a78bfa" stroke-dasharray="6 4" stroke-width="1.5" opacity="0.85"/>';
-    svg +=
-      '<text x="' + (W - MR + 8) + '" y="' + (it.y + 4) +
-      '" fill="' + it.color + '" font-size="11">' + it.text + "</text>";
-  });
-  // خطوط القيعان
-  supPlaced.forEach(function (it) {
-    svg +=
-      '<line x1="' + ML + '" x2="' + (W - MR) + '" y1="' + it.lineY + '" y2="' + it.lineY +
-      '" stroke="#2dd4bf" stroke-dasharray="6 4" stroke-width="1.5" opacity="0.85"/>';
-    svg +=
-      '<text x="' + (W - MR + 8) + '" y="' + (it.y + 4) +
-      '" fill="' + it.color + '" font-size="11">' + it.text + "</text>";
+      '<line x1="' + ML + '" x2="' + (W - MR) + '" y1="' + y + '" y2="' + y +
+      '" stroke="' + stroke + '" stroke-dasharray="6 4" stroke-width="1.8" opacity="0.9"/>';
   });
 
-  // مسار الإغلاق
+  // مسار السعر
   if (path.length) {
     let d = "";
     path.forEach(function (p, i) {
       d += (i === 0 ? "M" : "L") + xScale(i, path.length) + " " + yScale(p.close) + " ";
     });
     svg +=
-      '<path d="' + d + '" fill="none" stroke="#38bdf8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>';
+      '<path d="' + d + '" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
     path.forEach(function (p, i) {
       svg +=
         '<circle cx="' + xScale(i, path.length) + '" cy="' + yScale(p.close) +
@@ -878,19 +878,37 @@ function buildMapSvg(L) {
     });
   }
 
-  // إغلاق أمس — بارز بدون نص مزدحم
+  // تسميات اليسار = قاع (نص قصير كامل)
+  leftPlaced.forEach(function (it) {
+    svg +=
+      '<text x="' + (ML - 8) + '" y="' + (it.y + 4) +
+      '" fill="#5eead4" font-size="12" font-weight="600" text-anchor="end">' +
+      it.text +
+      "</text>";
+  });
+  // تسميات اليمين = قمة
+  rightPlaced.forEach(function (it) {
+    svg +=
+      '<text x="' + (W - MR + 8) + '" y="' + (it.y + 4) +
+      '" fill="#c4b5fd" font-size="12" font-weight="600" text-anchor="start">' +
+      it.text +
+      "</text>";
+  });
+
+  // إغلاق أمس
   if (price != null) {
     const y = yScale(price);
-    const x = path.length ? xScale(path.length - 1, Math.max(path.length, 1)) : ML + iw * 0.9;
+    const x = path.length ? xScale(path.length - 1, Math.max(path.length, 1)) : ML + iw * 0.92;
     svg +=
       '<line x1="' + ML + '" x2="' + (W - MR) + '" y1="' + y + '" y2="' + y +
-      '" stroke="#f8fafc" stroke-width="1.4" opacity="0.5"/>';
+      '" stroke="#f8fafc" stroke-width="1.3" opacity="0.45"/>';
     svg +=
       '<circle cx="' + x + '" cy="' + y + '" r="6" fill="#22d3ee" stroke="#f8fafc" stroke-width="2"/>';
     svg +=
-      '<text x="' + (x - 10) + '" y="' + (y - 12) +
-      '" fill="#f8fafc" font-size="13" font-weight="700" text-anchor="end">' +
-      fmtNum(price, 2) + "</text>";
+      '<text x="' + x + '" y="' + (y - 14) +
+      '" fill="#f8fafc" font-size="13" font-weight="700" text-anchor="middle">' +
+      fmtNum(price, 2) +
+      "</text>";
   }
 
   svg += "</svg>";
@@ -930,15 +948,17 @@ function renderMapPanel(L) {
     '<div class="map-simple">' +
     '<div class="map-price"><div class="n">' + fmtNum(price, 2) + "</div>" +
     '<div class="l">إغلاق أمس</div></div>' +
-    '<div class="map-card map-chart-wrap">' + buildMapSvg(L) +
+    '<div class="map-card map-chart-wrap">' +
+    buildMapSvg(L) +
     '<div class="map-legend">' +
-    '<span><span class="map-dot" style="background:#a78bfa"></span> قمة</span>' +
-    '<span><span class="map-dot" style="background:#2dd4bf"></span> قاع</span>' +
+    '<span><span class="map-dot" style="background:#a78bfa"></span> قمة يمين</span>' +
+    '<span><span class="map-dot" style="background:#2dd4bf"></span> قاع يسار</span>' +
+    '<span><span class="map-dot" style="background:linear-gradient(90deg,#2dd4bf,#a78bfa)"></span> قمة وقاع معًا</span>' +
     '<span><span class="map-dot" style="background:#22d3ee"></span> إغلاق أمس</span>' +
-    '<span><span class="map-dot" style="background:#38bdf8"></span> مسار</span>' +
-    "</div></div>" +
+    "</div>" +
+    '<p class="map-hint" style="margin-top:6px">التفاصيل والأسماء (اليوم / بكرا / …) في الجدول تحت الرسم</p>' +
+    "</div>" +
     rows +
-    '<p class="map-hint">قاع = أعلى Put OI · قمة = أعلى Call OI</p>' +
     "</div>"
   );
 }
