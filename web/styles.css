@@ -51,20 +51,22 @@ html, body {
 
 .brand-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .brand-title {
-  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
 }
 .brand-sep { color: var(--gray); font-weight: 500; font-size: 14px; }
 .brand-sign {
   font-family: "Alex Brush", cursive;
-  font-size: 26px;
+  font-size: 15px;
   font-weight: 400;
-  line-height: 1.1;
-  color: var(--text);
-  padding: 0 4px;
+  line-height: 1;
+  color: var(--gray);
+  opacity: 0.92;
+  padding: 0 2px;
   white-space: nowrap;
   border-bottom: none !important;
   text-decoration: none !important;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  align-self: center;
 }
 
 .sidebar .meta {
