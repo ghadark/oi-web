@@ -620,9 +620,8 @@ function toggleTheme() {
 }
 
 function init() {
-  try {
-    if (localStorage.getItem("oi-theme") === "dark") state.dark = true;
-  } catch (e) {}
+  state.dark = true;
+  try { localStorage.setItem("oi-theme", "dark"); } catch (e) {}
   applyTheme();
   renderTickers();
   renderChips("#daysRow", ["2", "3", "5", "10", "ALL"], "days");
@@ -644,7 +643,7 @@ function init() {
       console.error(err);
     }
   };
-  $("#themeSwitch").onclick = toggleTheme;
+  if ($("#themeSwitch")) $("#themeSwitch").onclick = toggleTheme;
   if ($("#mapBtn")) $("#mapBtn").onclick = function () { openMap(); };
   if ($("#mapClose")) $("#mapClose").onclick = closeMap;
   if ($("#mapModal")) $("#mapModal").addEventListener("click", function (e) {
