@@ -727,94 +727,85 @@ function levelRowsHtml(L, price) {
   return html;
 }
 
+
 function buildMapSvg(L) {
   const path = (L.path || []).slice();
   const price = L.close;
-  const levels = [];
-  ["daily", "weekly", "opx", "next_opx"].forEach(function (k) {
-    const b = L[k] || {};
-    if (b.resistance != null) levels.push({ v: b.resistance, kind: "res", name: k });
-    if (b.support != null) levels.push({ v: b.support, kind: "sup", name: k });
-  });
-  if (price != null) levels.push({ v: price, kind: "px", name: "close" });
+  const bandKeys = [
+    { key: "next_opx", label: "OPX+" },
+    { key: "opx", label: "OPX" },
+    { key: "weekly", label: "أسبوع" },
+    { key: "tomorrow", label: "بكرا" },
+    { key: "daily", label: "اليوم" },
+  ];
+
+  const nums = [];
+  if (price != null) nums.push(Number(price));
   path.forEach(function (p) {
-    if (p.close != null) levels.push({ v: p.close, kind: "path", name: "p" });
+    if (p.close != null) nums.push(Number(p.close));
   });
-  if (!levels.length) {
-    return '<p style="color:#94a3b8;padding:20px">لا بيانات مستويات بعد</p>';
+  bandKeys.forEach(function (b) {
+    const block = L[b.key] || {};
+    if (block.support != null) nums.push(Number(block.support));
+    if (block.resistance != null) nums.push(Number(block.resistance));
+  });
+  if (!nums.length) {
+    return '<p style="color:#94a3b8;padding:20px;text-align:center">لا بيانات رسم بعد</p>';
   }
-  const vals = levels.map(function (x) { return x.v; });
-  let minV = Math.min.apply(null, vals);
-  let maxV = Math.max.apply(null, vals);
-  const pad = (maxV - minV) * 0.08 || 5;
+
+  let minV = Math.min.apply(null, nums);
+  let maxV = Math.max.apply(null, nums);
+  const pad = (maxV - minV) * 0.12 || 8;
   minV -= pad;
   maxV += pad;
 
-  const W = 640, H = 300, ML = 48, MR = 16, MT = 16, MB = 36;
+  const W = 680, H = 320, ML = 52, MR = 110, MT = 20, MB = 28;
   const iw = W - ML - MR, ih = H - MT - MB;
 
   function yScale(v) {
     return MT + ((maxV - v) / (maxV - minV)) * ih;
   }
   function xScale(i, n) {
-    if (n <= 1) return ML + iw / 2;
+    if (n <= 1) return ML + iw * 0.85;
     return ML + (i / (n - 1)) * iw;
   }
 
   let svg = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">';
 
-  // level lines
-  ["daily", "weekly", "opx", "next_opx"].forEach(function (k) {
-    const b = L[k] || {};
-    if (b.resistance != null) {
-      const y = yScale(b.resistance);
+  // horizontal grid faint
+  for (let g = 0; g < 5; g++) {
+    const yy = MT + (ih * g) / 4;
+    svg +=
+      '<line x1="' + ML + '" x2="' + (W - MR) + '" y1="' + yy + '" y2="' + yy +
+      '" stroke="#1e293b" stroke-width="1"/>';
+  }
+
+  // resistance / support lines — daily & tomorrow thicker for clarity
+  bandKeys.forEach(function (b) {
+    const block = L[b.key] || {};
+    const thick = b.key === "daily" || b.key === "tomorrow" ? 2 : 1.2;
+    const opac = b.key === "daily" || b.key === "tomorrow" ? 0.95 : 0.7;
+    if (block.resistance != null) {
+      const y = yScale(block.resistance);
       svg +=
-        '<line x1="' +
-        ML +
-        '" x2="' +
-        (W - MR) +
-        '" y1="' +
-        y +
-        '" y2="' +
-        y +
-        '" stroke="#a78bfa" stroke-dasharray="5 4" stroke-width="1.2" opacity="0.85"/>';
+        '<line x1="' + ML + '" x2="' + (W - MR) + '" y1="' + y + '" y2="' + y +
+        '" stroke="#a78bfa" stroke-dasharray="6 4" stroke-width="' + thick + '" opacity="' + opac + '"/>';
       svg +=
-        '<text x="' +
-        (W - MR - 4) +
-        '" y="' +
-        (y - 4) +
-        '" fill="#c4b5fd" font-size="10" text-anchor="end">قمة ' +
-        k +
-        " " +
-        fmtNum(b.resistance, 0) +
-        "</text>";
+        '<text x="' + (W - MR + 6) + '" y="' + (y + 4) +
+        '" fill="#c4b5fd" font-size="11">قمة ' + b.label + " " + fmtNum(block.resistance, 0) + "</text>";
     }
-    if (b.support != null) {
-      const y = yScale(b.support);
+    if (block.support != null) {
+      const y = yScale(block.support);
       svg +=
-        '<line x1="' +
-        ML +
-        '" x2="' +
-        (W - MR) +
-        '" y1="' +
-        y +
-        '" y2="' +
-        y +
-        '" stroke="#2dd4bf" stroke-dasharray="5 4" stroke-width="1.2" opacity="0.85"/>';
+        '<line x1="' + ML + '" x2="' + (W - MR) + '" y1="' + y + '" y2="' + y +
+        '" stroke="#2dd4bf" stroke-dasharray="6 4" stroke-width="' + thick + '" opacity="' + opac + '"/>';
       svg +=
-        '<text x="' +
-        (ML + 4) +
-        '" y="' +
-        (y - 4) +
-        '" fill="#5eead4" font-size="10">قاع ' +
-        k +
-        " " +
-        fmtNum(b.support, 0) +
-        "</text>";
+        '<text x="' + (W - MR + 6) + '" y="' + (y + 4) +
+        '" fill="#5eead4" font-size="11">قاع ' + b.label + " " + fmtNum(block.support, 0) + "</text>";
     }
   });
 
-  // price path
+  // path
   if (path.length) {
     let d = "";
     path.forEach(function (p, i) {
@@ -823,48 +814,27 @@ function buildMapSvg(L) {
       d += (i === 0 ? "M" : "L") + x + " " + y + " ";
     });
     svg +=
-      '<path d="' +
-      d +
-      '" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+      '<path d="' + d + '" fill="none" stroke="#38bdf8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>';
     path.forEach(function (p, i) {
-      const x = xScale(i, path.length);
-      const y = yScale(p.close);
       svg +=
-        '<circle cx="' +
-        x +
-        '" cy="' +
-        y +
-        '" r="3" fill="#38bdf8"/>';
+        '<circle cx="' + xScale(i, path.length) + '" cy="' + yScale(p.close) +
+        '" r="3.2" fill="#38bdf8"/>';
     });
   }
 
-  // current close marker
+  // current close — solid emphasis
   if (price != null) {
     const y = yScale(price);
+    const x = path.length ? xScale(path.length - 1, Math.max(path.length, 1)) : ML + iw * 0.85;
     svg +=
-      '<line x1="' +
-      ML +
-      '" x2="' +
-      (W - MR) +
-      '" y1="' +
-      y +
-      '" y2="' +
-      y +
-      '" stroke="#f8fafc" stroke-width="1" opacity="0.35"/>';
+      '<line x1="' + ML + '" x2="' + (W - MR) + '" y1="' + y + '" y2="' + y +
+      '" stroke="#f8fafc" stroke-width="1.5" opacity="0.55"/>';
     svg +=
-      '<circle cx="' +
-      (W - MR - 10) +
-      '" cy="' +
-      y +
-      '" r="5" fill="#22d3ee" stroke="#ecfeff" stroke-width="2"/>';
+      '<circle cx="' + x + '" cy="' + y + '" r="6" fill="#22d3ee" stroke="#f8fafc" stroke-width="2"/>';
     svg +=
-      '<text x="' +
-      (W - MR - 18) +
-      '" y="' +
-      (y - 8) +
-      '" fill="#e2e8f0" font-size="11" text-anchor="end">إغلاق ' +
-      fmtNum(price, 2) +
-      "</text>";
+      '<text x="' + (x - 10) + '" y="' + (y - 12) +
+      '" fill="#f8fafc" font-size="12" font-weight="700" text-anchor="end">' +
+      fmtNum(price, 2) + "</text>";
   }
 
   svg += "</svg>";
@@ -881,6 +851,7 @@ function renderMapPanel(L) {
     { key: "opx", label: "OPX" },
     { key: "next_opx", label: "OPX القادم" },
   ];
+
   let rows = "";
   bands.forEach(function (b) {
     const block = L[b.key] || {};
@@ -888,7 +859,7 @@ function renderMapPanel(L) {
     const r = block.resistance;
     const ds = distInfo(price, s);
     const dr = distInfo(price, r);
-    const exp = block.exp ? String(block.exp).slice(5) : "";
+    const exp = block.exp ? String(block.exp) : "";
     rows +=
       '<div class="map-band">' +
       '<div class="name">' + b.label +
@@ -898,12 +869,20 @@ function renderMapPanel(L) {
       '<div class="cell sup"><b>' + fmtNum(s, 0) + "</b><span>قاع · " + ds.txt + "</span></div>" +
       "</div>";
   });
+
   return (
     '<div class="map-simple">' +
     '<div class="map-price"><div class="n">' + fmtNum(price, 2) + '</div>' +
-    '<div class="l">إغلاق أمس · المرجع للمسافات</div></div>' +
+    '<div class="l">إغلاق أمس — أين نقف بين القاع والقمة؟</div></div>' +
+    '<div class="map-card map-chart-wrap">' + buildMapSvg(L) +
+    '<div class="map-legend">' +
+    '<span><span class="map-dot" style="background:#a78bfa"></span> قمة</span>' +
+    '<span><span class="map-dot" style="background:#2dd4bf"></span> قاع</span>' +
+    '<span><span class="map-dot" style="background:#f8fafc"></span> إغلاق أمس</span>' +
+    '<span><span class="map-dot" style="background:#38bdf8"></span> مسار الإغلاق</span>' +
+    "</div></div>" +
     rows +
-    '<p class="map-hint">قاع = أعلى Put OI · قمة = أعلى Call OI · يتحدث مع التحديث الصباحي</p>' +
+    '<p class="map-hint">قاع = أعلى Put OI · قمة = أعلى Call OI · بكرا = اليوم التالي (جلسة التداول إن لزم)</p>' +
     "</div>"
   );
 }
