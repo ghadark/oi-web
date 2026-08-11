@@ -10,7 +10,7 @@
   --otm: #f8fafc;
   --green-bar: #ecfdf5;
   --green-text: #0f766e;
-  --delta-bg: #e6e0d4;
+  --delta-bg: #e8e4d9;
   --chip: #f1f5f9;
   --sidebar: #ffffff;
 }
@@ -26,7 +26,7 @@ html[data-theme="dark"] {
   --otm: #0b1526;
   --green-bar: #134e4a;
   --green-text: #5eead4;
-  --delta-bg: #3d4555;
+  --delta-bg: #2f3a4a;
   --chip: #334155;
   --sidebar: #1e293b;
 }
@@ -55,13 +55,16 @@ html, body {
 }
 .brand-sep { color: var(--gray); font-weight: 500; font-size: 14px; }
 .brand-sign {
-  font-family: "Great Vibes", cursive;
-  font-size: 22px;
-  line-height: 1;
+  font-family: "Great Vibes", "Segoe Script", cursive;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.1;
   color: var(--text);
-  padding: 0 2px;
+  padding: 0 4px;
   white-space: nowrap;
-  border-bottom: none;
+  border-bottom: none !important;
+  text-decoration: none !important;
+  letter-spacing: 0.5px;
 }
 
 .sidebar .meta {
@@ -148,7 +151,12 @@ table.oi .strike { min-width: 64px; font-weight: 700; }
 table.oi .itm { background: var(--itm); color: var(--text); }
 table.oi .otm { background: var(--otm); color: var(--text); }
 table.oi .green { background: var(--green-bar); color: var(--green-text); font-weight: 700; }
-table.oi .delta { background: var(--delta-bg); color: var(--text); }
+table.oi th.delta,
+table.oi td.delta {
+  background: var(--delta-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--delta-bg) !important;
+}
 .status { font-size: 12px; color: var(--gray); text-align: center; margin-top: 10px; }
 .status.ok { color: #16a34a; }
 .status.err { color: #dc2626; }
