@@ -1,611 +1,212 @@
-@import url('https://fonts.googleapis.com/css2?family=Allura&display=swap');
-
-:root {
-  --bg: #f8fafc;
-  --card: #ffffff;
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --gray: #64748b;
-  --primary: #2563eb;
-  --header: #f1f5f9;
-  --itm: #dbeafe;
-  --otm: #f8fafc;
-  --green-bar: #ecfdf5;
-  --green-text: #0f766e;
-  --delta-bg: #e8e4d9;
-  --chip: #f1f5f9;
-  --sidebar: #ffffff;
-}
-
-html[data-theme="dark"] {
-  --bg: #0f172a;
-  --card: #1e293b;
-  --border: #334155;
-  --text: #f1f5f9;
-  --gray: #94a3b8;
-  --primary: #3b82f6;
-  --header: #1e293b;
-  --itm: #1e3a5f;
-  --otm: #0b1526;
-  --green-bar: #134e4a;
-  --green-text: #5eead4;
-  --delta-bg: #2f3a4a;
-  --chip: #334155;
-  --sidebar: #1e293b;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100%;
-}
-
-.app {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  min-height: 100vh;
-}
-
-.sidebar {
-  background: var(--sidebar);
-  border-right: 1px solid var(--border);
-  padding: 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.brand {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--primary);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-}
-
-.brand h1 {
-  margin: 0;
-  font-size: 16px;
-  color: var(--text);
-  font-weight: 700;
-}
-
-.brand p {
-  margin: 0;
-  font-size: 11px;
-  color: var(--gray);
-}
-
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.brand-title h1 {
-  margin: 0;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-}
-
-.brand-sep {
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  color: var(--gray);
-}
-
-.brand-title {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: nowrap;
-}
-
-.brand-sep {
-  color: var(--gray);
-  font-weight: 500;
-  font-size: 14px;
-}
-
-/* =========================================================
-   By Gee — Signature
-   ========================================================= */
-
-.brand-sign {
-  font-family: "Allura", cursive;
-  font-size: 26px;
-  font-weight: 400;
-  line-height: 1;
-
-  /* لون هادئ قريب من هوية الموقع */
-  color: #aebfff;
-
-  padding: 0;
-  margin: 0;
-
-  white-space: nowrap;
-
-  border-bottom: none !important;
-  text-decoration: none !important;
-
-  letter-spacing: 0.3px;
-
-  display: inline-flex;
-  align-items: center;
-
-  /* ضبط بسيط لمحاذاة التوقيع مع Oi */
-  transform: translateY(1px);
-}
-
-/* في الوضع الفاتح */
-html[data-theme="light"] .brand-sign {
-  color: #64748b;
-}
-
-/* في الوضع الداكن */
-html[data-theme="dark"] .brand-sign {
-  color: #aebfff;
-}
-
-/* =========================================================
-   Sidebar Meta
-   ========================================================= */
-
-.sidebar .meta {
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--gray);
-  text-align: center;
-}
-
-/* =========================================================
-   Main
-   ========================================================= */
-
-.main {
-  padding: 20px;
-}
-
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.top h2 {
-  margin: 0;
-  font-size: 22px;
-  text-align: center;
-  flex: 1;
-  color: var(--text);
-}
-
-.top .sub {
-  color: var(--gray);
-  font-size: 12px;
-  text-align: center;
-}
-
-/* =========================================================
-   Tickers
-   ========================================================= */
-
-.tickers {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.tcard {
-  width: 150px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 12px;
-  cursor: pointer;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  color: var(--text);
-}
-
-.tcard.active {
-  border: 2px solid var(--primary);
-}
-
-.dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-
-.tcard b {
-  display: block;
-  font-size: 13px;
-  color: var(--text);
-}
-
-.tcard span {
-  font-size: 10px;
-  color: var(--gray);
-}
-
-/* =========================================================
-   Controls
-   ========================================================= */
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-}
-
-.select,
-.chip-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-select {
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-  padding: 0 10px;
-}
-
-.chip {
-  min-width: 44px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--chip);
-  color: var(--text);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.chip.active {
-  background: var(--primary);
-  color: #fff;
-  border-color: var(--primary);
-}
-
-.btn {
-  height: 36px;
-  border-radius: 8px;
-  border: none;
-  padding: 0 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: #fff;
-}
-
-.btn-teal {
-  background: #0f766e;
-  color: #fff;
-}
-
-.delta-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  font-weight: 700;
-  cursor: pointer;
-  background: var(--chip);
-  color: var(--text);
-}
-
-.delta-btn.active {
-  background: var(--primary);
-  color: #fff;
-  border-color: var(--primary);
-}
-
-/* =========================================================
-   Panel
-   ========================================================= */
-
-.panel {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.table-scroll {
-  overflow: auto;
-  max-width: 100%;
-}
-
-.table-title {
-  text-align: center;
-  margin-bottom: 12px;
-  font-weight: 700;
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.close-pill {
-  display: inline-block;
-  padding: 5px 12px;
-  border-radius: 8px;
-  background: var(--header);
-  color: var(--gray);
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid var(--border);
-}
-
-/* =========================================================
-   OI Table
-   ========================================================= */
-
-table.oi {
-  border-collapse: collapse;
-  margin: 0 auto;
-  font-size: 11px;
-  color: var(--text);
-}
-
-table.oi th,
-table.oi td {
-  min-width: 72px;
-  height: 34px;
-  text-align: center;
-  border: 1px solid var(--border);
-  padding: 2px 4px;
-}
-
-table.oi th {
-  background: var(--header);
-  font-weight: 700;
-  color: var(--text);
-}
-
-table.oi th .subh {
-  font-weight: 500;
-  color: var(--gray);
-  font-size: 10px;
-}
-
-table.oi .strike {
-  min-width: 64px;
-  font-weight: 700;
-}
-
-table.oi .itm {
-  background: var(--itm);
-  color: var(--text);
-}
-
-table.oi .otm {
-  background: var(--otm);
-  color: var(--text);
-}
-
-table.oi .green {
-  background: var(--green-bar);
-  color: var(--green-text);
-  font-weight: 700;
-}
-
-table.oi th.delta,
-table.oi td.delta {
-  background: var(--delta-bg) !important;
-  color: var(--text) !important;
-  border-color: var(--delta-bg) !important;
-}
-
-/* =========================================================
-   Status
-   ========================================================= */
-
-.status {
-  font-size: 12px;
-  color: var(--gray);
-  text-align: center;
-  margin-top: 10px;
-}
-
-.status.ok {
-  color: #16a34a;
-}
-
-.status.err {
-  color: #dc2626;
-}
-
-html[data-theme="dark"] .status.ok {
-  color: #4ade80;
-}
-
-html[data-theme="dark"] .status.err {
-  color: #f87171;
-}
-
-/* =========================================================
-   Theme Switch
-   ========================================================= */
-
-.theme-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.switch {
-  width: 42px;
-  height: 24px;
-  border-radius: 999px;
-  background: #cbd5e1;
-  position: relative;
-  cursor: pointer;
-  border: none;
-  padding: 0;
-}
-
-html[data-theme="dark"] .switch {
-  background: #475569;
-}
-
-.switch.on {
-  background: var(--primary);
-}
-
-.switch i {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #fff;
-  transition: left .15s;
-  display: block;
-}
-
-.switch.on i {
-  left: 21px;
-}
-
-/* =========================================================
-   Alternating Rows
-   ========================================================= */
-
-/* alternating rows — clear in light and dark */
-
-table.oi tbody tr.zebra td.itm {
-  filter: brightness(0.96);
-}
-
-table.oi tbody tr.zebra td.otm {
-  filter: brightness(0.97);
-}
-
-html[data-theme="dark"] table.oi tbody tr.zebra td.itm {
-  background: #172a45;
-  filter: none;
-}
-
-html[data-theme="dark"] table.oi tbody tr.zebra td.otm {
-  background: #111c2e;
-  filter: none;
-}
-
-html[data-theme="light"] table.oi tbody tr.zebra td.itm {
-  background: #cfe0f8;
-  filter: none;
-}
-
-html[data-theme="light"] table.oi tbody tr.zebra td.otm {
-  background: #eef2f7;
-  filter: none;
-}
-
-/* =========================================================
-   Subtle Separator Between Strikes
-   ========================================================= */
-
-table.oi tbody tr td {
-  border-bottom-color: var(--border);
-}
-
-html[data-theme="dark"] table.oi tbody tr td {
-  border-bottom: 1px solid #2a3a52;
-}
-
-html[data-theme="dark"] table.oi th {
-  border-bottom: 1px solid #475569;
-}
-
-/* =========================================================
-   أعلى رقم في عمود Call / Put
-   ========================================================= */
-
-table.oi td.max-oi {
-  background: #c7d2fe !important;
-  color: #1e1b4b !important;
-  font-weight: 700;
-}
-
-html[data-theme="dark"] table.oi td.max-oi {
-  background: #3730a3 !important;
-  color: #e0e7ff !important;
-  font-weight: 700;
-}
-
-/* =========================================================
-   Responsive
-   ========================================================= */
-
-@media (max-width: 900px) {
-
-  .app {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .brand-sign {
-    font-size: 25px;
-  }
-}
+<!DOCTYPE html>
+<html lang="ar" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Oi | By Gee</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- خط التوقيع -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- ExcelJS -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js">
+  </script>
+
+  <!-- FileSaver -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js">
+  </script>
+</head>
+
+<body data-data-base="../data">
+
+  <div class="app">
+
+    <!-- =========================
+         SIDEBAR
+    ========================== -->
+    <aside class="sidebar">
+
+      <div class="brand">
+
+        <div class="logo">
+          Oi
+        </div>
+
+        <div class="brand-text">
+
+          <div class="brand-title">
+
+            <h1>Oi</h1>
+
+            <span class="brand-sep">|</span>
+
+            <span class="brand-sign">
+              By Gee
+            </span>
+
+          </div>
+
+          <p>
+            Open Interest
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <!-- Sidebar bottom -->
+      <div class="meta">
+
+        <div id="updatedAt">
+          —
+        </div>
+
+        <div class="theme-row">
+
+          <span>☀</span>
+
+          <button
+            id="themeSwitch"
+            class="switch"
+            type="button"
+            aria-label="theme">
+            <i></i>
+          </button>
+
+          <span>🌙</span>
+
+        </div>
+
+        <p style="margin-top:10px;font-size:11px">
+          عرض مشترك — يتحدث تلقائيًا ~7 ص
+        </p>
+
+      </div>
+
+    </aside>
+
+
+    <!-- =========================
+         MAIN
+    ========================== -->
+    <main class="main">
+
+      <div class="top">
+
+        <div style="width:120px"></div>
+
+        <div>
+          <h2>
+            المؤشرات
+          </h2>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+
+          <button
+            id="reloadBtn"
+            class="btn btn-primary"
+            type="button">
+            تحديث العرض
+          </button>
+
+          <button
+            id="exportBtn"
+            class="btn btn-teal"
+            type="button">
+            تصدير Excel
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- Tickers -->
+      <div
+        id="tickers"
+        class="tickers">
+      </div>
+
+
+      <!-- Controls -->
+      <div class="controls">
+
+        <div class="select">
+
+          <label for="expSelect">
+            الانتهاء
+          </label>
+
+          <select id="expSelect">
+          </select>
+
+        </div>
+
+
+        <label>
+          Days
+        </label>
+
+        <div
+          id="daysRow"
+          class="chip-row">
+        </div>
+
+
+        <label>
+          Strikes
+        </label>
+
+        <div
+          id="strikesRow"
+          class="chip-row">
+        </div>
+
+
+        <button
+          id="deltaBtn"
+          class="delta-btn"
+          type="button"
+          title="التزايد">
+          Δ
+        </button>
+
+      </div>
+
+
+      <!-- Table -->
+      <div class="panel">
+
+        <div id="tableHost">
+        </div>
+
+        <div
+          id="status"
+          class="status">
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+
+  <script src="app.js"></script>
+
+</body>
+</html>
