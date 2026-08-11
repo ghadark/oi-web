@@ -24,6 +24,9 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 
+# حذف أيام أقدم من هذا الحد (حماية حجم المستودع)
+RETENTION_DAYS = 60
+
 TICKER_URLS = {
     "SPY": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=spy",
     "QQQ": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=qqq",
@@ -146,6 +149,40 @@ def merge_day(hist: dict[str, Any], pull_date: str, rows: list[dict[str, Any]]) 
             "call_oi": rec["call_oi"],
             "put_oi": rec["put_oi"],
         }
+
+
+
+def prune_old_days(hist: dict[str, Any], keep_days: int = RETENTION_DAYS) -> int:
+    """يحذف أيام السحب الأقدم من keep_days يومًا (تقويمية من اليوم)."""
+    days = hist.get("days") or {}
+    if not days:
+        return 0
+    today = date.today()
+    year = today.year
+    removed = 0
+    for key in list(days.keys()):
+        try:
+            d_s, m_s = key.split("-")
+            d, m = int(d_s), int(m_s)
+            y = year
+            # عبر رأس السنة: إذا الشهر المستقبلي جدًا نسبة لليوم الحالي ننسب للسنة السابقة
+            cand = date(y, m, d)
+            if cand > today + __import__("datetime").timedelta(days=30):
+                cand = date(y - 1, m, d)
+            age = (today - cand).days
+            if age > keep_days:
+                del days[key]
+                removed += 1
+        except Exception:
+            continue
+    # نظّف closes المرتبطة
+    closes = hist.get("closes") or {}
+    for key in list(closes.keys()):
+        if key not in days:
+            closes.pop(key, None)
+    hist["days"] = days
+    hist["closes"] = closes
+    return removed
 
 
 def sort_pull_dates(dates: list[str], year: int | None = None) -> list[str]:
@@ -271,6 +308,9 @@ def main() -> int:
             print(f"[warn] {ticker}: zero rows", file=sys.stderr)
         else:
             merge_day(hist, pull_date, rows)
+        pruned = prune_old_days(hist)
+        if pruned:
+            print(f"[prune] {ticker}: removed {pruned} day(s) older than {RETENTION_DAYS}d")
 
         close = get_close(ticker)
         if close is not None:
