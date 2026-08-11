@@ -241,3 +241,115 @@ html[data-theme="dark"] table.oi td.max-oi {
   color: #e0e7ff !important;
   font-weight: 700;
 }
+
+
+
+
+
+/* توقيع By Gee — يتلوّن مع الثيم */
+.brand-sign-wrap {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+.brand-sign-svg {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+html[data-theme="light"] .brand-sign-wrap {
+  color: #1e3a5f; /* كحلي هادئ على خلفية فاتحة */
+}
+html[data-theme="dark"] .brand-sign-wrap {
+  color: #e8eef8; /* أبيض سكري مائل للأزرق على الليلي */
+}
+
+
+.brand-sign-img {
+  height: 22px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+  opacity: 0.95;
+}
+.theme-row { display: none !important; }
+
+
+.btn-map {
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-map:hover { filter: brightness(1.08); }
+
+.map-modal {
+  position: fixed; inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 16px;
+}
+.map-modal.hidden { display: none; }
+.map-panel {
+  width: min(1100px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  background: #0b1220;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 16px 18px 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+}
+.map-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; margin-bottom: 12px;
+}
+.map-head h3 { margin: 0; font-size: 18px; color: #f1f5f9; }
+.map-sub { margin: 4px 0 0; font-size: 12px; color: #94a3b8; }
+.map-body { display: grid; gap: 14px; }
+.map-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 900px) {
+  .map-grid { grid-template-columns: 200px 1fr 200px; }
+}
+.map-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 12px;
+}
+.map-card h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.map-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; padding: 6px 0;
+  border-bottom: 1px solid #1f2937;
+  color: #e2e8f0;
+}
+.map-row:last-child { border-bottom: none; }
+.map-row .tag-sup { color: #5eead4; }
+.map-row .tag-res { color: #c4b5fd; }
+.map-chart-wrap {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 10px;
+  min-height: 280px;
+}
+.map-chart-wrap svg { width: 100%; height: auto; display: block; }
+.map-legend {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  font-size: 11px; color: #94a3b8; margin-top: 8px;
+}
+.map-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 4px; }
