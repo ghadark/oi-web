@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" data-theme="light">
+<html lang="ar" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -27,11 +27,6 @@
       </div>
       <div class="meta">
         <div id="updatedAt">—</div>
-        <div class="theme-row">
-          <span>☀</span>
-          <button id="themeSwitch" class="switch" type="button" aria-label="theme"><i></i></button>
-          <span>🌙</span>
-        </div>
       </div>
     </aside>
     <main class="main">
@@ -43,6 +38,7 @@
         <div style="display:flex;gap:8px;align-items:center">
           <button id="reloadBtn" class="btn btn-primary" type="button">تحديث العرض</button>
           <button id="exportBtn" class="btn btn-teal" type="button">تصدير Excel</button>
+          <button id="mapBtn" class="btn btn-map" type="button">Map</button>
         </div>
       </div>
       <div id="tickers" class="tickers"></div>
@@ -62,6 +58,18 @@
         <div id="status" class="status"></div>
       </div>
     </main>
+  </div>
+  <div id="mapModal" class="map-modal hidden" role="dialog" aria-modal="true">
+    <div class="map-panel">
+      <div class="map-head">
+        <div>
+          <h3 id="mapTitle">Levels Map</h3>
+          <p id="mapSub" class="map-sub">—</p>
+        </div>
+        <button id="mapClose" class="btn" type="button">إغلاق</button>
+      </div>
+      <div id="mapBody" class="map-body"></div>
+    </div>
   </div>
   <script src="app.js"></script>
 </body>
