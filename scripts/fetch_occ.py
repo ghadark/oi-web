@@ -362,8 +362,12 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
     avail = sorted(available)
 
     daily_exp = pick_expiration(avail, today)
-    tomorrow = next_session_day(today)
-    tomorrow_exp = pick_expiration(avail, tomorrow)
+    # بكرا = اليوم التالي بالتقويم (11 → 12). إن وقع عطلة/ويكند نأخذ أول جلسة بعده للانتهاء فقط
+    tomorrow_cal = today + timedelta(days=1)
+    tomorrow_session = tomorrow_cal
+    while tomorrow_session.weekday() >= 5 or tomorrow_session in US_MARKET_HOLIDAYS:
+        tomorrow_session += timedelta(days=1)
+    tomorrow_exp = pick_expiration(avail, tomorrow_session)
     weekly_exp = pick_expiration(avail, next_friday_on_or_after(today))
     opx_date = third_friday(today.year, today.month)
     if opx_date < today:
@@ -408,7 +412,8 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         "next_opx": safe_levels(next_opx_exp),
         "meta": {
             "today": today.isoformat(),
-            "tomorrow": tomorrow.isoformat(),
+            "tomorrow_cal": tomorrow_cal.isoformat(),
+            "tomorrow_session": tomorrow_session.isoformat(),
         },
         "path": path[-30:],
     }
