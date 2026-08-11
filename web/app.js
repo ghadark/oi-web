@@ -649,7 +649,7 @@ function init() {
   if ($("#mapModal")) $("#mapModal").addEventListener("click", function (e) {
     if (e.target.id === "mapModal") closeMap();
   });
-  $("#reloadBtn").onclick = function () {
+  if ($("#reloadBtn")) $("#reloadBtn").onclick = function () {
     delete state.cache[state.ticker];
     levelsCache = null;
     refresh();
@@ -871,58 +871,39 @@ function buildMapSvg(L) {
   return svg;
 }
 
+
 function renderMapPanel(L) {
   const price = L.close;
-  const left =
-    '<div class="map-card"><h4>القيعان (Put max OI)</h4>' +
-    ["daily", "weekly", "opx", "next_opx"]
-      .map(function (k) {
-        const b = L[k] || {};
-        return (
-          '<div class="map-row"><span>' +
-          k +
-          '</span><span class="tag-sup">' +
-          fmtNum(b.support, 0) +
-          "</span></div>"
-        );
-      })
-      .join("") +
-    "</div>";
-  const right =
-    '<div class="map-card"><h4>القمم (Call max OI)</h4>' +
-    ["daily", "weekly", "opx", "next_opx"]
-      .map(function (k) {
-        const b = L[k] || {};
-        return (
-          '<div class="map-row"><span>' +
-          k +
-          '</span><span class="tag-res">' +
-          fmtNum(b.resistance, 0) +
-          "</span></div>"
-        );
-      })
-      .join("") +
-    '<div class="map-row" style="margin-top:8px"><span>السعر</span><strong>' +
-    fmtNum(price, 2) +
-    "</strong></div></div>";
-
-  const center =
-    '<div class="map-card map-chart-wrap">' +
-    buildMapSvg(L) +
-    '<div class="map-legend">' +
-    '<span><span class="map-dot" style="background:#a78bfa"></span> قمة Call</span>' +
-    '<span><span class="map-dot" style="background:#2dd4bf"></span> قاع Put</span>' +
-    '<span><span class="map-dot" style="background:#38bdf8"></span> مسار الإغلاق</span>' +
-    "</div></div>";
-
+  const bands = [
+    { key: "daily", label: "اليوم" },
+    { key: "tomorrow", label: "بكرا" },
+    { key: "weekly", label: "الأسبوع" },
+    { key: "opx", label: "OPX" },
+    { key: "next_opx", label: "OPX القادم" },
+  ];
+  let rows = "";
+  bands.forEach(function (b) {
+    const block = L[b.key] || {};
+    const s = block.support;
+    const r = block.resistance;
+    const ds = distInfo(price, s);
+    const dr = distInfo(price, r);
+    const exp = block.exp ? String(block.exp).slice(5) : "";
+    rows +=
+      '<div class="map-band">' +
+      '<div class="name">' + b.label +
+      (exp ? '<div style="font-size:10px;color:#64748b;font-weight:400;margin-top:2px">' + exp + "</div>" : "") +
+      "</div>" +
+      '<div class="cell res"><b>' + fmtNum(r, 0) + "</b><span>قمة · " + dr.txt + "</span></div>" +
+      '<div class="cell sup"><b>' + fmtNum(s, 0) + "</b><span>قاع · " + ds.txt + "</span></div>" +
+      "</div>";
+  });
   return (
-    '<div class="map-grid">' +
-    left +
-    center +
-    right +
-    "</div>" +
-    '<div class="map-card"><h4>المسافات من إغلاق أمس</h4>' +
-    levelRowsHtml(L, price) +
+    '<div class="map-simple">' +
+    '<div class="map-price"><div class="n">' + fmtNum(price, 2) + '</div>' +
+    '<div class="l">إغلاق أمس · المرجع للمسافات</div></div>' +
+    rows +
+    '<p class="map-hint">قاع = أعلى Put OI · قمة = أعلى Call OI · يتحدث مع التحديث الصباحي</p>' +
     "</div>"
   );
 }
