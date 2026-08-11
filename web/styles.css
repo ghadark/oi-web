@@ -276,13 +276,14 @@ html[data-theme="dark"] .brand-sign-wrap {
 
 
 .btn-map {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
   color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: 10px;
+  padding: 8px 16px;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
 }
 .btn-map:hover { filter: brightness(1.08); }
 
@@ -353,3 +354,50 @@ html[data-theme="dark"] .brand-sign-wrap {
   font-size: 11px; color: #94a3b8; margin-top: 8px;
 }
 .map-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 4px; }
+
+
+.map-simple { display: grid; gap: 10px; }
+.map-price {
+  text-align: center;
+  padding: 14px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+}
+.map-price .n {
+  font-size: 28px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+.map-price .l { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+.map-band {
+  display: grid;
+  grid-template-columns: 110px 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+}
+.map-band .name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+.map-band .cell {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #0b1220;
+}
+.map-band .cell b { display: block; font-size: 15px; margin-bottom: 2px; }
+.map-band .cell.sup b { color: #5eead4; }
+.map-band .cell.res b { color: #c4b5fd; }
+.map-band .cell span { color: #94a3b8; font-size: 11px; }
+.map-hint {
+  font-size: 11px;
+  color: #64748b;
+  text-align: center;
+  margin-top: 4px;
+}
