@@ -36,7 +36,7 @@ html, body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   background: var(--bg); color: var(--text); min-height: 100%;
 }
-.app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.app { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
 .sidebar {
   background: var(--sidebar); border-right: 1px solid var(--border);
   padding: 20px 16px; display: flex; flex-direction: column; gap: 16px;
@@ -385,67 +385,90 @@ html[data-theme="dark"] .brand-sign-wrap {
 
 
 
-.logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: #2563eb;
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-family: "Montserrat", system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  flex-shrink: 0;
+
+
+
+
+
+
+
+
+
+
+
+/* === Brand row (horizontal, compact) === */
+.app {
+  grid-template-columns: 280px 1fr !important;
 }
 .brand {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap;
-}
-.brand-left {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  width: 100%;
   min-width: 0;
 }
-.brand-oi {
-  font-family: "Montserrat", system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 18px;
-  line-height: 1.1;
-  color: #f8fafc;
-  letter-spacing: -0.02em;
-}
-.brand-sub {
-  font-family: "Montserrat", system-ui, sans-serif;
-  font-weight: 400;
-  font-size: 10px;
-  color: #94a3b8;
-  white-space: nowrap;
+.logo {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  background: #2563eb !important;
+  color: #fff !important;
+  display: grid !important;
+  place-items: center !important;
+  font-family: "Montserrat", system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+  flex: 0 0 auto !important;
 }
 .brand-divider {
-  width: 1px;
-  height: 32px;
-  flex-shrink: 0;
-  display: block;
+  width: 1px !important;
+  height: 28px !important;
+  flex: 0 0 auto !important;
+  display: block !important;
+  align-self: center !important;
 }
 .brand-divider-light {
-  background: rgba(248, 250, 252, 0.35);
+  background: rgba(248, 250, 252, 0.4) !important;
 }
 .brand-divider-gray {
-  background: #475569;
+  background: #475569 !important;
+}
+.brand-left {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  flex: 0 0 auto !important;
+  line-height: 1.15 !important;
+}
+.brand-oi {
+  font-family: "Montserrat", system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  color: #f8fafc !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.02em !important;
+}
+.brand-sub {
+  font-family: "Montserrat", system-ui, sans-serif !important;
+  font-weight: 400 !important;
+  font-size: 9px !important;
+  color: #94a3b8 !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
 }
 .brand-sign {
-  font-family: "Montserrat", system-ui, sans-serif;
-  font-weight: 500;
-  font-size: 11px;
-  letter-spacing: 0.38em;
-  text-transform: uppercase;
-  color: #6B8CFF;
-  white-space: nowrap;
-  border-bottom: none !important;
-  padding-inline-end: 0.38em;
+  font-family: "Montserrat", system-ui, sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 9px !important;
+  letter-spacing: 0.28em !important;
+  text-transform: uppercase !important;
+  color: #6B8CFF !important;
+  white-space: nowrap !important;
+  border: none !important;
+  flex: 0 0 auto !important;
+  padding-inline-end: 0.28em !important;
 }
