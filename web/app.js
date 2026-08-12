@@ -903,6 +903,69 @@ function buildMapSvg(L) {
 }
 
 
+/* ===== Map helpers: arrows + zoom ===== */
+var mapZoom = 1; // 1 = full range, higher = tighter around price
+var mapDragY = null;
+var mapDragZoom = null;
+
+function levelArrow(curr, prev) {
+  if (curr == null || prev == null || isNaN(Number(curr)) || isNaN(Number(prev))) return "";
+  var c = Number(curr), p = Number(prev);
+  if (c > p) return '<span class="lvl-arrow up" title="تم الرفع من ' + p + '">↑</span>';
+  if (c < p) return '<span class="lvl-arrow down" title="تم التنزيل من ' + p + '">↓</span>';
+  return '<span class="lvl-arrow flat" title="بدون تغيير">·</span>';
+}
+
+function readPrevLevels(ticker) {
+  try {
+    var raw = localStorage.getItem("oi-levels-prev-" + ticker);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+function savePrevLevels(ticker, L) {
+  try {
+    var snap = { as_of: L.as_of || L.updated_at || "", bands: {} };
+    ["daily", "tomorrow", "weekly", "opx", "next_opx"].forEach(function (k) {
+      var b = L[k] || {};
+      snap.bands[k] = { support: b.support, resistance: b.resistance };
+    });
+    // only overwrite when as_of changed (new day data)
+    var old = readPrevLevels(ticker);
+    if (!old || (snap.as_of && old.as_of && snap.as_of !== old.as_of)) {
+      // move current stored → stays as prev only if we had older; store "last seen before this as_of"
+      // Strategy: keep two keys
+      var curKey = "oi-levels-cur-" + ticker;
+      var prevKey = "oi-levels-prev-" + ticker;
+      var cur = null;
+      try { cur = JSON.parse(localStorage.getItem(curKey) || "null"); } catch (e) {}
+      if (cur && cur.as_of && snap.as_of && cur.as_of !== snap.as_of) {
+        localStorage.setItem(prevKey, JSON.stringify(cur));
+      } else if (!cur) {
+        // first visit: no arrows yet
+      }
+      localStorage.setItem(curKey, JSON.stringify(snap));
+    }
+  } catch (e) {}
+}
+
+function getCompareBands(ticker, L) {
+  // Prefer server-provided prev_* fields; else localStorage
+  var prev = readPrevLevels(ticker);
+  var out = {};
+  ["daily", "tomorrow", "weekly", "opx", "next_opx"].forEach(function (k) {
+    var b = L[k] || {};
+    var ps = b.prev_support, pr = b.prev_resistance;
+    if ((ps == null || pr == null) && prev && prev.bands && prev.bands[k]) {
+      ps = prev.bands[k].support;
+      pr = prev.bands[k].resistance;
+    }
+    // if still same as current (first load same day), no arrow
+    out[k] = { prev_support: ps, prev_resistance: pr };
+  });
+  return out;
+}
+
 function renderMapPanel(L) {
   const price = L.close;
   const bands = [
@@ -913,7 +976,9 @@ function renderMapPanel(L) {
     { key: "next_opx", label: "OPX+" },
   ];
 
-  // gather unique levels
+  savePrevLevels(state.ticker, L);
+  const cmp = getCompareBands(state.ticker, L);
+
   const byPrice = {};
   function add(v, kind, lab) {
     if (v == null || isNaN(Number(v))) return;
@@ -928,19 +993,20 @@ function renderMapPanel(L) {
     add(block.support, "sup", b.label);
     add(block.resistance, "res", b.label);
   });
-  if (price != null && !isNaN(Number(price))) {
-    // ensure price in scale
-  }
+
   const nums = Object.keys(byPrice).map(Number);
   if (price != null && !isNaN(Number(price))) nums.push(Number(price));
   if (!nums.length) {
     return '<div class="map-h1"><p style="color:#94a3b8;text-align:center;padding:20px">لا مستويات متاحة</p></div>';
   }
-  const minV = Math.min.apply(null, nums);
-  const maxV = Math.max.apply(null, nums);
-  const pad = (maxV - minV) * 0.08 || 5;
-  const lo = minV - pad;
-  const hi = maxV + pad;
+
+  const minV0 = Math.min.apply(null, nums);
+  const maxV0 = Math.max.apply(null, nums);
+  const mid = price != null && !isNaN(Number(price)) ? Number(price) : (minV0 + maxV0) / 2;
+  const half0 = Math.max((maxV0 - minV0) / 2, 5);
+  const half = half0 / Math.max(mapZoom, 0.4);
+  const lo = mid - half;
+  const hi = mid + half;
   const span = hi - lo || 1;
   function pct(v) {
     return ((Number(v) - lo) / span) * 100;
@@ -954,6 +1020,8 @@ function renderMapPanel(L) {
       const info = byPrice[strike];
       const isDual = info.sup && info.res;
       const cls = isDual ? "dual" : info.res ? "res" : "sup";
+      // hide if outside zoom window
+      if (strike < lo || strike > hi) return;
       const label = isDual ? strike + " قاع+قمة" : String(strike);
       levelsHtml +=
         '<div class="level ' + cls + '" style="bottom:' + pct(strike).toFixed(2) + '%">' +
@@ -973,18 +1041,24 @@ function renderMapPanel(L) {
     const block = L[b.key] || {};
     const peak = block.resistance;
     const floor = block.support;
+    const c = cmp[b.key] || {};
+    const aR = levelArrow(peak, c.prev_resistance);
+    const aS = levelArrow(floor, c.prev_support);
     cards +=
       '<div class="card"><div class="t">' + b.label + "</div>" +
-      '<div class="r res"><span>قمة</span><b>' + (peak != null ? fmtNum(peak, 0) : "—") + "</b></div>" +
-      '<div class="r sup"><span>قاع</span><b>' + (floor != null ? fmtNum(floor, 0) : "—") + "</b></div></div>";
+      '<div class="r res"><span>قمة ' + aR + "</span><b>" + (peak != null ? fmtNum(peak, 0) : "—") + "</b></div>" +
+      '<div class="r sup"><span>قاع ' + aS + "</span><b>" + (floor != null ? fmtNum(floor, 0) : "—") + "</b></div></div>";
   });
 
   return (
     '<div class="map-h1">' +
     '<div class="price-card"><b>' + (price != null ? fmtNum(price, 2) : "—") +
-    "</b><p>أين نقف بين القمة والقاع؟</p></div>" +
+    "</b><p>أين نقف بين القمة والقاع؟</p>" +
+    '<div class="zoom-hint">مرّر العجلة أو اسحب الشريط للتكبير/التصغير · ' + mapZoom.toFixed(1) + "×</div></div>" +
     '<div class="grid-wrap">' +
-    '<div class="stage"><div class="track"></div>' +
+    '<div class="stage" id="mapStage">' +
+    '<div class="zoom-rail" id="mapZoomRail" title="اسحب للتكبير"></div>' +
+    '<div class="track"></div>' +
     levelsHtml +
     pxHtml +
     "</div>" +
@@ -993,6 +1067,66 @@ function renderMapPanel(L) {
     "</div></div></div>"
   );
 }
+
+function bindMapZoom(L) {
+  var stage = document.getElementById("mapStage");
+  var rail = document.getElementById("mapZoomRail");
+  if (!stage) return;
+
+  function redraw() {
+    var body = $("#mapBody");
+    if (body) mapZoom = 1;
+    body.innerHTML = renderMapPanel(L);
+    bindMapZoom(L);
+    bindMapZoom(L);
+  }
+
+  stage.onwheel = function (e) {
+    e.preventDefault();
+    var dir = e.deltaY > 0 ? -0.12 : 0.12;
+    mapZoom = Math.min(4, Math.max(0.5, mapZoom + dir));
+    redraw();
+  };
+
+  function startDrag(y) {
+    mapDragY = y;
+    mapDragZoom = mapZoom;
+  }
+  function moveDrag(y) {
+    if (mapDragY == null) return;
+    var dy = mapDragY - y;
+    mapZoom = Math.min(4, Math.max(0.5, mapDragZoom + dy / 120));
+    redraw();
+  }
+  function endDrag() {
+    mapDragY = null;
+  }
+
+  if (rail) {
+    rail.onmousedown = function (e) {
+      e.preventDefault();
+      startDrag(e.clientY);
+      window.onmousemove = function (ev) { moveDrag(ev.clientY); };
+      window.onmouseup = function () {
+        endDrag();
+        window.onmousemove = null;
+        window.onmouseup = null;
+      };
+    };
+    rail.ontouchstart = function (e) {
+      if (!e.touches || !e.touches[0]) return;
+      startDrag(e.touches[0].clientY);
+    };
+    rail.ontouchmove = function (e) {
+      if (!e.touches || !e.touches[0]) return;
+      e.preventDefault();
+      moveDrag(e.touches[0].clientY);
+    };
+    rail.ontouchend = endDrag;
+  }
+}
+
+
 
 
 

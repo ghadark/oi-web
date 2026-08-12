@@ -244,6 +244,24 @@ html[data-theme="dark"] .brand-sign-wrap {
 .theme-row { display: none !important; }
 
 
+
+/* Excel button — gradient + glow */
+.btn-excel {
+  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 0 16px !important;
+  height: 36px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 0 0 1px rgba(45,212,191,0.25), 0 4px 14px rgba(13,148,136,0.35) !important;
+}
+.btn-excel:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px rgba(45,212,191,0.4), 0 6px 18px rgba(13,148,136,0.45) !important;
+}
 .btn-map {
   background: linear-gradient(135deg, #0ea5e9, #6366f1);
   color: #fff;
@@ -391,15 +409,14 @@ html[data-theme="dark"] .brand-sign-wrap {
 
 
 
-/* ========== Brand (stable) ========== */
 
-
+/* ========== Brand (stable) — restored layout ========== */
 .brand {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
-  gap: 8px !important;
+  gap: 10px !important;
 }
 .logo {
   width: 36px !important;
@@ -425,25 +442,12 @@ html[data-theme="dark"] .brand-sign-wrap {
   height: 28px !important;
   background: rgba(248, 250, 252, 0.35) !important;
 }
-.brand-divider-mid {
-  height: 18px !important;
-  width: 1px !important;
-  background: #cbd5e1 !important;
-  opacity: 1 !important;
-  margin: 0 6px !important;
-}
 .brand-left {
   display: flex !important;
   flex-direction: column !important;
   gap: 1px !important;
   min-width: 0 !important;
-}
-.brand-top {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-wrap: nowrap !important;
+  flex: 0 0 auto !important;
 }
 .brand-oi {
   font-family: "Montserrat", system-ui, sans-serif !important;
@@ -451,6 +455,12 @@ html[data-theme="dark"] .brand-sign-wrap {
   font-size: 15px !important;
   color: #f8fafc !important;
   line-height: 1.1 !important;
+}
+.brand-sub {
+  font-size: 10px !important;
+  color: #94a3b8 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
 }
 .brand-sign {
   font-family: "Montserrat", system-ui, sans-serif !important;
@@ -461,180 +471,8 @@ html[data-theme="dark"] .brand-sign-wrap {
   color: #6B8CFF !important;
   white-space: nowrap !important;
   border: none !important;
-  padding-inline-end: 0.28em !important;
-}
-.brand-sub {
-  font-family: "Montserrat", system-ui, sans-serif !important;
-  font-weight: 400 !important;
-  font-size: 9px !important;
-  color: #94a3b8 !important;
-  white-space: nowrap !important;
-}
-
-
-/* ========== جوال = نفس سطح المكتب (سايدبار جانبي) ========== */
-@media (max-width: 900px) {
-  .app {
-    display: grid !important;
-    grid-template-columns: 152px minmax(0, 1fr) !important;
-    min-height: 100vh !important;
-    min-height: 100dvh !important;
-  }
-  .sidebar {
-    width: 152px !important;
-    min-width: 152px !important;
-    max-width: 152px !important;
-    border-right: 1px solid var(--border) !important;
-    border-bottom: none !important;
-    padding: 12px 10px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 12px !important;
-  }
-  .sidebar .meta {
-    margin-top: auto !important;
-    padding-top: 10px !important;
-    border-top: 1px solid var(--border) !important;
-    font-size: 10px !important;
-    line-height: 1.35;
-    word-break: break-word;
-  }
-  /* اللوقو داخل السايدبار الضيق: عمودي مرتب */
-  .brand {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 8px !important;
-    flex-wrap: nowrap !important;
-  }
-  .brand .logo {
-    width: 36px !important;
-    height: 36px !important;
-  }
-  .brand-divider {
-    display: none !important; /* الخطوط الأفقية ما تناسب العرض الضيق */
-  }
-  .brand-left {
-    gap: 2px !important;
-  }
-  .brand-oi {
-    font-size: 16px !important;
-  }
-  .brand-sub {
-    font-size: 9px !important;
-  }
-  .brand-sign {
-    font-size: 8px !important;
-    letter-spacing: 0.28em !important;
-    margin-top: 2px;
-  }
-  .main {
-    padding: 12px 10px 20px !important;
-    min-width: 0 !important;
-    overflow-x: auto !important;
-  }
-  .top {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-  }
-  .top h2 {
-    font-size: 18px !important;
-    text-align: center !important;
-    flex: 1 1 auto !important;
-  }
-  /* مؤشرات أفقية مثل اللابتوب */
-  .tickers {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    overflow: visible !important;
-  }
-  .tcard {
-    flex: 0 0 auto !important;
-    width: 118px !important;
-    min-width: 118px !important;
-    max-width: 118px !important;
-    padding: 8px 10px !important;
-  }
-  .tcard b { font-size: 12px !important; }
-  .tcard span { font-size: 9px !important; }
-  .controls {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    gap: 8px !important;
-  }
-  .panel {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-  table.oi { font-size: 11px; }
-  .map-panel {
-    width: min(96vw, 640px);
-    max-height: 90vh;
-  }
-}
-
-@media (max-width: 480px) {
-  .app {
-    grid-template-columns: 132px minmax(0, 1fr) !important;
-  }
-  .sidebar {
-    width: 132px !important;
-    min-width: 132px !important;
-    max-width: 132px !important;
-    padding: 10px 8px !important;
-  }
-  .tcard {
-    width: 100px !important;
-    min-width: 100px !important;
-    max-width: 100px !important;
-  }
-  .dot {
-    width: 24px !important;
-    height: 24px !important;
-    font-size: 8px !important;
-  }
-}
-
-
-/* Excel button — gradient + glow like Map */
-.btn-excel {
-  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%) !important;
-  color: #fff !important;
-  border: none !important;
-  border-radius: 10px !important;
-  padding: 0 16px !important;
-  height: 36px !important;
-  font-weight: 700 !important;
-  font-size: 13px !important;
-  letter-spacing: 0.02em !important;
-  box-shadow: 0 0 0 1px rgba(45,212,191,0.25), 0 4px 14px rgba(13,148,136,0.35) !important;
-}
-.btn-excel:hover {
-  filter: brightness(1.08);
-  box-shadow: 0 0 0 1px rgba(45,212,191,0.4), 0 6px 18px rgba(13,148,136,0.45) !important;
-}
-.btn-map {
-  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 55%, #7c3aed 100%) !important;
-  color: #fff !important;
-  border: none !important;
-  border-radius: 10px !important;
-  padding: 0 16px !important;
-  height: 36px !important;
-  font-weight: 700 !important;
-  box-shadow: 0 0 0 1px rgba(99,102,241,0.3), 0 4px 14px rgba(37,99,235,0.35) !important;
-}
-.btn-map:hover {
-  filter: brightness(1.08);
-  box-shadow: 0 0 0 1px rgba(99,102,241,0.45), 0 6px 18px rgba(37,99,235,0.45) !important;
+  margin-left: 14px !important; /* مسافة فخمة قبل BY GEE بدون خط */
+  flex: 0 0 auto !important;
 }
 
 /* ===== Levels Map H1 ===== */
@@ -793,3 +631,35 @@ html[data-theme="dark"] .brand-sign-wrap {
   .map-h1 .cards { flex-direction: row; flex-wrap: wrap; }
   .map-h1 .card { flex: 1 1 120px; }
 }
+
+
+/* level change arrows */
+.lvl-arrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-inline-start: 4px;
+  vertical-align: middle;
+}
+.lvl-arrow.up { color: #34d399; }
+.lvl-arrow.down { color: #f87171; }
+.lvl-arrow.flat { color: #64748b; }
+
+.map-h1 .zoom-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
+}
+.map-h1 .zoom-rail {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 14px;
+  cursor: ns-resize;
+  z-index: 6;
+  background: linear-gradient(90deg, transparent, rgba(148,163,184,0.12));
+  border-left: 1px solid rgba(51,65,85,0.6);
+}
+.map-h1 .zoom-rail:hover {
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.18));
+}
+.map-h1 .stage { touch-action: none; }
