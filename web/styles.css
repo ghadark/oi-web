@@ -513,21 +513,36 @@ html[data-theme="dark"] .brand-sign-wrap {
     gap: 10px;
     justify-content: space-between;
   }
+  .top {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
   .top h2 {
-    width: 100%;
-    text-align: center;
+    font-size: 18px;
+    margin: 0;
+    flex: 1 1 auto;
+    text-align: right;
   }
   .tickers {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
     gap: 8px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    margin-bottom: 12px !important;
   }
   .tcard {
-    flex: 1 1 calc(50% - 10px);
-    min-width: 140px;
-    max-width: 180px;
+    flex: 0 0 auto !important;
+    min-width: 120px !important;
+    max-width: 150px !important;
+    width: auto !important;
   }
   .controls {
     flex-wrap: wrap;
