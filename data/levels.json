@@ -1,55 +1,55 @@
 {
-  "updated_at": "2026-08-11T20:43:31.285263Z",
+  "updated_at": "2026-08-12T05:37:43.921966Z",
   "tickers": {
     "SPY": {
       "ticker": "SPY",
       "close": 770.5599975585938,
-      "as_of": "11-8",
-      "updated_at": "2026-08-11T20:43:25Z",
+      "as_of": "12-8",
+      "updated_at": "2026-08-12T05:37:33Z",
       "daily": {
-        "exp": "2026-08-11",
-        "pull_date": "11-8",
-        "support": 745.0,
-        "resistance": 796.0,
-        "support_oi": 20565,
-        "resistance_oi": 47996
+        "exp": "2026-08-12",
+        "pull_date": "12-8",
+        "support": 765.0,
+        "resistance": 780.0,
+        "support_oi": 19238,
+        "resistance_oi": 12006
       },
       "tomorrow": {
-        "exp": "2026-08-12",
-        "pull_date": "11-8",
-        "support": 760.0,
-        "resistance": 780.0,
-        "support_oi": 9031,
-        "resistance_oi": 5202
+        "exp": "2026-08-13",
+        "pull_date": "12-8",
+        "support": 706.0,
+        "resistance": 782.0,
+        "support_oi": 4799,
+        "resistance_oi": 5347
       },
       "weekly": {
         "exp": "2026-08-14",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 770.0,
         "resistance": 780.0,
-        "support_oi": 42418,
-        "resistance_oi": 147806
+        "support_oi": 43399,
+        "resistance_oi": 154315
       },
       "opx": {
         "exp": "2026-08-21",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 520.0,
         "resistance": 785.0,
         "support_oi": 239045,
-        "resistance_oi": 81835
+        "resistance_oi": 81419
       },
       "next_opx": {
         "exp": "2026-09-18",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 520.0,
         "resistance": 790.0,
-        "support_oi": 210092,
-        "resistance_oi": 39991
+        "support_oi": 210138,
+        "resistance_oi": 40154
       },
       "meta": {
-        "today": "2026-08-11",
-        "tomorrow_cal": "2026-08-12",
-        "tomorrow_session": "2026-08-12"
+        "today": "2026-08-12",
+        "tomorrow_cal": "2026-08-13",
+        "tomorrow_session": "2026-08-13"
       },
       "path": [
         {
@@ -59,58 +59,62 @@
         {
           "date": "11-8",
           "close": 770.5599975585938
+        },
+        {
+          "date": "12-8",
+          "close": 770.5599975585938
         }
       ]
     },
     "QQQ": {
       "ticker": "QQQ",
       "close": 718.4500122070312,
-      "as_of": "11-8",
-      "updated_at": "2026-08-11T20:43:25Z",
+      "as_of": "12-8",
+      "updated_at": "2026-08-12T05:37:33Z",
       "daily": {
-        "exp": "2026-08-11",
-        "pull_date": "11-8",
-        "support": 600.0,
+        "exp": "2026-08-12",
+        "pull_date": "12-8",
+        "support": 510.0,
         "resistance": 730.0,
-        "support_oi": 10783,
-        "resistance_oi": 8366
+        "support_oi": 10003,
+        "resistance_oi": 10310
       },
       "tomorrow": {
-        "exp": "2026-08-12",
-        "pull_date": "11-8",
-        "support": 510.0,
-        "resistance": 739.0,
-        "support_oi": 10003,
-        "resistance_oi": 4963
+        "exp": "2026-08-13",
+        "pull_date": "12-8",
+        "support": 520.0,
+        "resistance": 730.0,
+        "support_oi": 9095,
+        "resistance_oi": 8352
       },
       "weekly": {
         "exp": "2026-08-14",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 685.0,
-        "resistance": 735.0,
-        "support_oi": 21845,
-        "resistance_oi": 15154
+        "resistance": 730.0,
+        "support_oi": 22165,
+        "resistance_oi": 16218
       },
       "opx": {
         "exp": "2026-08-21",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 680.0,
         "resistance": 700.0,
-        "support_oi": 70473,
-        "resistance_oi": 44332
+        "support_oi": 70169,
+        "resistance_oi": 44266
       },
       "next_opx": {
         "exp": "2026-09-18",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 570.0,
         "resistance": 800.0,
-        "support_oi": 73263,
-        "resistance_oi": 45770
+        "support_oi": 73275,
+        "resistance_oi": 45731
       },
       "meta": {
-        "today": "2026-08-11",
-        "tomorrow_cal": "2026-08-12",
-        "tomorrow_session": "2026-08-12"
+        "today": "2026-08-12",
+        "tomorrow_cal": "2026-08-13",
+        "tomorrow_session": "2026-08-13"
       },
       "path": [
         {
@@ -120,58 +124,62 @@
         {
           "date": "11-8",
           "close": 718.4500122070312
+        },
+        {
+          "date": "12-8",
+          "close": 718.4500122070312
         }
       ]
     },
     "IWM": {
       "ticker": "IWM",
       "close": 300.989990234375,
-      "as_of": "11-8",
-      "updated_at": "2026-08-11T20:43:25Z",
+      "as_of": "12-8",
+      "updated_at": "2026-08-12T05:37:33Z",
       "daily": {
-        "exp": "2026-08-11",
-        "pull_date": "11-8",
-        "support": 295.0,
+        "exp": "2026-08-12",
+        "pull_date": "12-8",
+        "support": 298.0,
         "resistance": 302.0,
-        "support_oi": 5783,
-        "resistance_oi": 3706
+        "support_oi": 8149,
+        "resistance_oi": 8628
       },
       "tomorrow": {
-        "exp": "2026-08-12",
-        "pull_date": "11-8",
-        "support": 290.0,
-        "resistance": 295.0,
-        "support_oi": 5586,
-        "resistance_oi": 5739
+        "exp": "2026-08-13",
+        "pull_date": "12-8",
+        "support": 298.0,
+        "resistance": 307.0,
+        "support_oi": 2655,
+        "resistance_oi": 10893
       },
       "weekly": {
         "exp": "2026-08-14",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 285.0,
-        "resistance": 315.0,
-        "support_oi": 13706,
-        "resistance_oi": 9048
+        "resistance": 304.0,
+        "support_oi": 13721,
+        "resistance_oi": 17437
       },
       "opx": {
         "exp": "2026-08-21",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 285.0,
         "resistance": 300.0,
-        "support_oi": 136169,
-        "resistance_oi": 38469
+        "support_oi": 133888,
+        "resistance_oi": 38610
       },
       "next_opx": {
         "exp": "2026-09-18",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 280.0,
         "resistance": 315.0,
-        "support_oi": 72569,
-        "resistance_oi": 46236
+        "support_oi": 72618,
+        "resistance_oi": 46326
       },
       "meta": {
-        "today": "2026-08-11",
-        "tomorrow_cal": "2026-08-12",
-        "tomorrow_session": "2026-08-12"
+        "today": "2026-08-12",
+        "tomorrow_cal": "2026-08-13",
+        "tomorrow_session": "2026-08-13"
       },
       "path": [
         {
@@ -181,58 +189,62 @@
         {
           "date": "11-8",
           "close": 300.989990234375
+        },
+        {
+          "date": "12-8",
+          "close": 300.989990234375
         }
       ]
     },
     "GLD": {
       "ticker": "GLD",
       "close": 400.9599914550781,
-      "as_of": "11-8",
-      "updated_at": "2026-08-11T20:43:25Z",
+      "as_of": "12-8",
+      "updated_at": "2026-08-12T05:37:33Z",
       "daily": {
         "exp": "2026-08-12",
-        "pull_date": "11-8",
-        "support": 357.0,
+        "pull_date": "12-8",
+        "support": 395.0,
         "resistance": 409.0,
-        "support_oi": 1554,
-        "resistance_oi": 2691
+        "support_oi": 3757,
+        "resistance_oi": 5281
       },
       "tomorrow": {
-        "exp": "2026-08-12",
-        "pull_date": "11-8",
-        "support": 357.0,
-        "resistance": 409.0,
-        "support_oi": 1554,
-        "resistance_oi": 2691
+        "exp": "2026-08-14",
+        "pull_date": "12-8",
+        "support": 380.0,
+        "resistance": 400.0,
+        "support_oi": 3669,
+        "resistance_oi": 8065
       },
       "weekly": {
         "exp": "2026-08-14",
-        "pull_date": "11-8",
-        "support": 351.0,
+        "pull_date": "12-8",
+        "support": 380.0,
         "resistance": 400.0,
-        "support_oi": 3270,
-        "resistance_oi": 7712
+        "support_oi": 3669,
+        "resistance_oi": 8065
       },
       "opx": {
         "exp": "2026-08-21",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 370.0,
         "resistance": 400.0,
-        "support_oi": 14661,
-        "resistance_oi": 14970
+        "support_oi": 14638,
+        "resistance_oi": 14810
       },
       "next_opx": {
         "exp": "2026-09-18",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 350.0,
         "resistance": 420.0,
-        "support_oi": 40674,
-        "resistance_oi": 129705
+        "support_oi": 40637,
+        "resistance_oi": 129760
       },
       "meta": {
-        "today": "2026-08-11",
-        "tomorrow_cal": "2026-08-12",
-        "tomorrow_session": "2026-08-12"
+        "today": "2026-08-12",
+        "tomorrow_cal": "2026-08-13",
+        "tomorrow_session": "2026-08-13"
       },
       "path": [
         {
@@ -242,33 +254,37 @@
         {
           "date": "11-8",
           "close": 400.9599914550781
+        },
+        {
+          "date": "12-8",
+          "close": 400.9599914550781
         }
       ]
     },
     "SPX": {
       "ticker": "SPX",
       "close": 7728.2001953125,
-      "as_of": "11-8",
-      "updated_at": "2026-08-11T20:43:25Z",
+      "as_of": "12-8",
+      "updated_at": "2026-08-12T05:37:33Z",
       "daily": {
-        "exp": "2026-08-11",
-        "pull_date": "11-8",
+        "exp": "2026-08-12",
+        "pull_date": "12-8",
         "support": 7575.0,
         "resistance": 8000.0,
-        "support_oi": 10195,
-        "resistance_oi": 7577
+        "support_oi": 7585,
+        "resistance_oi": 8170
       },
       "tomorrow": {
-        "exp": "2026-08-12",
-        "pull_date": "11-8",
-        "support": 7520.0,
-        "resistance": 7925.0,
-        "support_oi": 6890,
-        "resistance_oi": 7592
+        "exp": "2026-08-13",
+        "pull_date": "12-8",
+        "support": 7550.0,
+        "resistance": 7530.0,
+        "support_oi": 8946,
+        "resistance_oi": 3186
       },
       "weekly": {
         "exp": "2026-08-14",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 6050.0,
         "resistance": 8400.0,
         "support_oi": 51518,
@@ -276,24 +292,24 @@
       },
       "opx": {
         "exp": "2026-08-21",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 6125.0,
         "resistance": 8200.0,
         "support_oi": 52101,
-        "resistance_oi": 7278
+        "resistance_oi": 7171
       },
       "next_opx": {
         "exp": "2026-09-18",
-        "pull_date": "11-8",
+        "pull_date": "12-8",
         "support": 800.0,
-        "resistance": 8525.0,
+        "resistance": 7650.0,
         "support_oi": 42518,
-        "resistance_oi": 4611
+        "resistance_oi": 5295
       },
       "meta": {
-        "today": "2026-08-11",
-        "tomorrow_cal": "2026-08-12",
-        "tomorrow_session": "2026-08-12"
+        "today": "2026-08-12",
+        "tomorrow_cal": "2026-08-13",
+        "tomorrow_session": "2026-08-13"
       },
       "path": [
         {
@@ -302,6 +318,10 @@
         },
         {
           "date": "11-8",
+          "close": 7728.2001953125
+        },
+        {
+          "date": "12-8",
           "close": 7728.2001953125
         }
       ]
