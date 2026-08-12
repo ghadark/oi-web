@@ -426,11 +426,10 @@ html[data-theme="dark"] .brand-sign-wrap {
   background: rgba(248, 250, 252, 0.35) !important;
 }
 .brand-divider-mid {
-  height: 18px !important;
+  height: 16px !important;
   width: 1px !important;
-  background: #cbd5e1 !important;
+  background: #94a3b8 !important;
   opacity: 1 !important;
-  margin: 0 6px !important;
 }
 .brand-left {
   display: flex !important;
