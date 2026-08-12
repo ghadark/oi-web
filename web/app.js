@@ -1,10 +1,28 @@
-const TICKERS = [
+const INDEX_TICKERS = [
   { symbol: "SPY", name: "SPDR S&P 500", color: "#0D9488" },
   { symbol: "QQQ", name: "Invesco QQQ", color: "#2563EB" },
   { symbol: "IWM", name: "iShares Russell", color: "#0F172A" },
   { symbol: "GLD", name: "SPDR Gold", color: "#D97706" },
   { symbol: "SPX", name: "S&P 500 Index", color: "#7C3AED" },
 ];
+
+const STOCKS_TICKERS = [
+  { symbol: "AAPL", name: "Apple", color: "#A2AAAD" },
+  { symbol: "MSFT", name: "Microsoft", color: "#00A4EF" },
+  { symbol: "NVDA", name: "NVIDIA", color: "#76B900" },
+  { symbol: "TSLA", name: "Tesla", color: "#E31937" },
+  { symbol: "AMZN", name: "Amazon", color: "#FF9900" },
+  { symbol: "META", name: "Meta", color: "#0668E1" },
+  { symbol: "GOOGL", name: "Alphabet", color: "#4285F4" },
+  { symbol: "AVGO", name: "Broadcom", color: "#E31937" },
+  { symbol: "MSTR", name: "MicroStrategy", color: "#F7931A" },
+  { symbol: "AMD", name: "AMD", color: "#ED1C24" },
+  { symbol: "MU", name: "Micron", color: "#111827" },
+  { symbol: "COHR", name: "Coherent", color: "#00A3E0" },
+];
+
+/** كل الرموز للبحث/العرض */
+const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
@@ -85,10 +103,17 @@ function applyTheme() {
   try { localStorage.setItem("oi-theme", state.dark ? "dark" : "light"); } catch (e) {}
 }
 
+function isIndexTicker(sym) {
+  return INDEX_TICKERS.some(function (t) { return t.symbol === sym; });
+}
+
 function renderTickers() {
   const box = $("#tickers");
+  if (!box) return;
   box.innerHTML = "";
-  TICKERS.forEach(function (t) {
+
+  // بطاقات المؤشرات الخمسة فقط
+  INDEX_TICKERS.forEach(function (t) {
     const el = document.createElement("div");
     el.className = "tcard" + (t.symbol === state.ticker ? " active" : "");
     el.innerHTML =
@@ -98,12 +123,53 @@ function renderTickers() {
       state.ticker = t.symbol;
       state.expiration = null;
       state.livePrice = null;
+      const dd = $("#stocksSelect");
+      if (dd) dd.value = "";
       renderTickers();
       refresh();
       refreshLivePrice();
     };
     box.appendChild(el);
   });
+
+  renderStocksDropdown();
+}
+
+function renderStocksDropdown() {
+  const host = $("#stocksRow");
+  if (!host) return;
+  const cur = isIndexTicker(state.ticker) ? "" : state.ticker;
+  let opts = '<option value="">STOCKS — أسهم الشركات</option>';
+  STOCKS_TICKERS.forEach(function (t) {
+    opts +=
+      '<option value="' +
+      t.symbol +
+      '"' +
+      (t.symbol === cur ? " selected" : "") +
+      ">" +
+      t.symbol +
+      " — " +
+      t.name +
+      "</option>";
+  });
+  host.innerHTML =
+    '<label class="stocks-label" for="stocksSelect">STOCKS</label>' +
+    '<select id="stocksSelect" class="stocks-select">' +
+    opts +
+    "</select>";
+
+  const dd = $("#stocksSelect");
+  if (!dd) return;
+  dd.onchange = function () {
+    const v = dd.value;
+    if (!v) return;
+    state.ticker = v;
+    state.expiration = null;
+    state.livePrice = null;
+    renderTickers();
+    refresh();
+    refreshLivePrice();
+  };
 }
 
 function renderChips(rowId, options, key) {

@@ -813,3 +813,36 @@ html[data-theme="dark"] .brand-sign-wrap {
   pointer-events: none;
   direction: ltr;
 }
+
+
+/* STOCKS dropdown under index cards */
+.stocks-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  flex-wrap: wrap;
+}
+.stocks-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+}
+.stocks-select {
+  min-width: 220px;
+  max-width: 320px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.stocks-select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
