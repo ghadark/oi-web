@@ -36,7 +36,7 @@ html, body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   background: var(--bg); color: var(--text); min-height: 100%;
 }
-.app { display: grid; grid-template-columns: 200px 1fr; min-height: 100vh; }
+.app { display: grid; grid-template-columns: 168px minmax(0, 1fr); min-height: 100vh; }
 .sidebar {
   background: var(--sidebar); border-right: 1px solid var(--border);
   padding: 20px 16px; display: flex; flex-direction: column; gap: 16px;
