@@ -1089,67 +1089,107 @@ function bindMapZoom(L) {
   var axis = document.getElementById("mapPriceAxis");
   if (!stage) return;
 
-  function redraw() {
+  function fullRedraw() {
     var body = document.getElementById("mapBody");
-    if (!body) return;
-    mapZoom = 1;
-    body.innerHTML = renderMapPanel(L);
-    bindMapZoom(L);
-    bindMapZoom(L);
+    if (!body || !mapLastL) return;
+    body.innerHTML = renderMapPanel(mapLastL);
+    bindMapZoom(mapLastL);
   }
 
-  // wheel on stage = zoom around price (spread / compress levels)
-  stage.onwheel = function (e) {
+  function setZoom(next) {
+    if (next < 0.5) next = 0.5;
+    if (next > 8) next = 8;
+    next = Math.round(next * 20) / 20;
+    if (next === mapZoom) return false;
+    mapZoom = next;
+    return true;
+  }
+
+  // Wheel → zoom (spread/compress levels around price)
+  function onWheel(e) {
     e.preventDefault();
     e.stopPropagation();
-    var dir = e.deltaY > 0 ? -0.15 : 0.15;
-    mapZoom = Math.min(6, Math.max(0.4, +(mapZoom + dir).toFixed(2)));
-    redraw();
-  };
+    if (setZoom(mapZoom + (e.deltaY > 0 ? -0.3 : 0.3))) fullRedraw();
+  }
+  stage.addEventListener("wheel", onWheel, { passive: false });
+  if (axis) axis.addEventListener("wheel", onWheel, { passive: false });
 
-  function onStart(y) {
-    mapDragY = y;
-    mapDragZoom = mapZoom;
+  // Drag on price axis (window-level move so redraw won't kill drag)
+  var dragTarget = axis || stage;
+  var dragging = false;
+  var startY = 0;
+  var startZoom = 1;
+
+  function onWinMove(e) {
+    if (!dragging) return;
+    var clientY = e.clientY != null ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+    if (clientY == null) return;
+    var dy = startY - clientY;
+    var next = startZoom + dy / 60;
+    if (!setZoom(next)) return;
+    // re-render chart while keeping window listeners
+    var body = document.getElementById("mapBody");
+    if (!body) return;
+    body.innerHTML = renderMapPanel(mapLastL);
+    // re-get elements (listeners stay on window)
+    stage = document.getElementById("mapStage");
+    axis = document.getElementById("mapPriceAxis");
+    if (stage) stage.addEventListener("wheel", onWheel, { passive: false });
+    if (axis) {
+      axis.addEventListener("wheel", onWheel, { passive: false });
+      axis.style.cursor = "ns-resize";
+    }
   }
-  function onMove(y) {
-    if (mapDragY == null) return;
-    // drag up = zoom in (spread levels), drag down = zoom out
-    var dy = mapDragY - y;
-    mapZoom = Math.min(6, Math.max(0.4, +(mapDragZoom + dy / 90).toFixed(2)));
-    redraw();
-  }
-  function onEnd() {
-    mapDragY = null;
+  function onWinUp() {
+    if (!dragging) return;
+    dragging = false;
+    window.removeEventListener("pointermove", onWinMove);
+    window.removeEventListener("pointerup", onWinUp);
+    window.removeEventListener("pointercancel", onWinUp);
+    window.removeEventListener("mousemove", onWinMove);
+    window.removeEventListener("mouseup", onWinUp);
+    window.removeEventListener("touchmove", onWinMove);
+    window.removeEventListener("touchend", onWinUp);
+    fullRedraw();
   }
 
-  var target = axis || stage;
-  target.onmousedown = function (e) {
-    e.preventDefault();
-    onStart(e.clientY);
-    window.onmousemove = function (ev) { onMove(ev.clientY); };
-    window.onmouseup = function () {
-      onEnd();
-      window.onmousemove = null;
-      window.onmouseup = null;
+  function startDrag(clientY) {
+    dragging = true;
+    startY = clientY;
+    startZoom = mapZoom;
+    window.addEventListener("pointermove", onWinMove);
+    window.addEventListener("pointerup", onWinUp);
+    window.addEventListener("pointercancel", onWinUp);
+    window.addEventListener("mousemove", onWinMove);
+    window.addEventListener("mouseup", onWinUp);
+    window.addEventListener("touchmove", onWinMove, { passive: false });
+    window.addEventListener("touchend", onWinUp);
+  }
+
+  if (dragTarget) {
+    dragTarget.style.cursor = "ns-resize";
+    dragTarget.onpointerdown = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      startDrag(e.clientY);
     };
-  };
-  target.ontouchstart = function (e) {
-    if (!e.touches || !e.touches[0]) return;
-    onStart(e.touches[0].clientY);
-  };
-  target.ontouchmove = function (e) {
-    if (!e.touches || !e.touches[0]) return;
-    e.preventDefault();
-    onMove(e.touches[0].clientY);
-  };
-  target.ontouchend = onEnd;
-
-  // double-click axis = reset zoom
-  target.ondblclick = function () {
-    mapZoom = 1;
-    redraw();
-  };
+    dragTarget.onmousedown = function (e) {
+      e.preventDefault();
+      startDrag(e.clientY);
+    };
+    dragTarget.ontouchstart = function (e) {
+      if (!e.touches || !e.touches[0]) return;
+      startDrag(e.touches[0].clientY);
+    };
+    dragTarget.ondblclick = function (e) {
+      e.preventDefault();
+      mapZoom = 1;
+      fullRedraw();
+    };
+  }
 }
+
+
 
 async function openMap() {
   const modal = $("#mapModal");
@@ -1166,7 +1206,9 @@ async function openMap() {
     title.textContent = "Levels Map — " + state.ticker;
     sub.textContent = (L.as_of ? ("as of " + L.as_of) : "") +
       (L.close != null ? (" · " + fmtNum(L.close, 2)) : "");
+    mapZoom = 1;
     body.innerHTML = renderMapPanel(L);
+    bindMapZoom(L);
   } catch (e) {
     body.innerHTML =
       '<p style="color:#f87171">' + (e.message || e) + "</p>" +

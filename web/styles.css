@@ -717,12 +717,99 @@ html[data-theme="dark"] .brand-sign-wrap {
 }
 
 /* modal body: avoid page-like scroll; chart handles scale */
-#mapModal .map-body,
-#mapBody {
-  overflow: auto;
-  max-height: min(78vh, 720px);
-}
 .map-h1 .stage {
   min-height: 420px;
   height: 420px;
+}
+
+
+/* Map modal: no outer scrollbar — chart zooms instead */
+.map-modal {
+  overflow: hidden !important;
+}
+.map-modal .map-panel {
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.map-modal .map-body,
+#mapBody {
+  overflow: hidden !important;
+  max-height: none !important;
+  flex: 1;
+}
+.map-h1 {
+  height: 100%;
+}
+.map-h1 .grid-wrap {
+  min-height: 0;
+}
+.map-h1 .stage {
+  min-height: 380px;
+  height: min(58vh, 460px) !important;
+  overflow: hidden;
+  padding-right: 56px;
+  touch-action: none;
+}
+.map-h1 .price-axis {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 56px;
+  z-index: 20;
+  cursor: ns-resize !important;
+  touch-action: none;
+  background: linear-gradient(90deg, transparent 0%, rgba(15,23,42,0.5) 25%, rgba(15,23,42,0.95) 100%);
+  border-left: 1px solid #475569;
+  user-select: none;
+}
+.map-h1 .price-axis:hover,
+.map-h1 .price-axis:active {
+  border-left-color: #38bdf8;
+  background: linear-gradient(90deg, transparent 0%, rgba(15,23,42,0.35) 20%, rgba(30,41,59,0.98) 100%);
+}
+.map-h1 .axis-tick {
+  position: absolute;
+  right: 0; left: 0;
+  height: 0;
+  border-top: 1px solid rgba(71,85,105,0.9);
+  pointer-events: none;
+}
+.map-h1 .axis-tick span {
+  position: absolute;
+  right: 6px;
+  top: -8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+}
+.map-h1 .axis-grip {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  width: 5px;
+  height: 48px;
+  margin-top: -24px;
+  border-radius: 4px;
+  background: #64748b;
+}
+.map-h1 .price-axis:hover .axis-grip {
+  background: #38bdf8;
+}
+.map-h1 .zoom-badge {
+  position: absolute;
+  top: 8px;
+  right: 64px;
+  z-index: 21;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e2e8f0;
+  background: rgba(15,23,42,0.9);
+  border: 1px solid #38bdf8;
+  border-radius: 8px;
+  padding: 3px 10px;
+  pointer-events: none;
+  direction: ltr;
 }
