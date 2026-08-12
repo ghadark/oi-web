@@ -426,10 +426,11 @@ html[data-theme="dark"] .brand-sign-wrap {
   background: rgba(248, 250, 252, 0.35) !important;
 }
 .brand-divider-mid {
-  height: 16px !important;
+  height: 18px !important;
   width: 1px !important;
-  background: #94a3b8 !important;
+  background: #cbd5e1 !important;
   opacity: 1 !important;
+  margin: 0 6px !important;
 }
 .brand-left {
   display: flex !important;
@@ -588,3 +589,207 @@ html[data-theme="dark"] .brand-sign-wrap {
   .sidebar {
     width: 132px !important;
     min-width: 132px !important;
+    max-width: 132px !important;
+    padding: 10px 8px !important;
+  }
+  .tcard {
+    width: 100px !important;
+    min-width: 100px !important;
+    max-width: 100px !important;
+  }
+  .dot {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 8px !important;
+  }
+}
+
+
+/* Excel button — gradient + glow like Map */
+.btn-excel {
+  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 0 16px !important;
+  height: 36px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 0 0 1px rgba(45,212,191,0.25), 0 4px 14px rgba(13,148,136,0.35) !important;
+}
+.btn-excel:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px rgba(45,212,191,0.4), 0 6px 18px rgba(13,148,136,0.45) !important;
+}
+.btn-map {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 55%, #7c3aed 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 0 16px !important;
+  height: 36px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.3), 0 4px 14px rgba(37,99,235,0.35) !important;
+}
+.btn-map:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.45), 0 6px 18px rgba(37,99,235,0.45) !important;
+}
+
+/* ===== Levels Map H1 ===== */
+.map-h1 { direction: ltr; }
+.map-h1 .price-card {
+  text-align: center;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.map-h1 .price-card b {
+  font-size: 30px;
+  font-weight: 700;
+  color: #f8fafc;
+  display: block;
+}
+.map-h1 .price-card p {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+.map-h1 .grid-wrap {
+  display: grid;
+  grid-template-columns: 1fr 168px;
+  gap: 12px;
+}
+.map-h1 .stage {
+  position: relative;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  min-height: 400px;
+  overflow: hidden;
+}
+.map-h1 .stage::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: linear-gradient(#1e293b 1px, transparent 1px),
+                    linear-gradient(90deg, #1e293b 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+.map-h1 .track {
+  position: absolute;
+  left: 50%; top: 24px; bottom: 24px;
+  width: 1.5px;
+  background: #334155;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+.map-h1 .level {
+  position: absolute;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 0;
+}
+/* قمم يسار خط السعر */
+.map-h1 .level.res {
+  flex-direction: row-reverse;
+  transform: translate(-100%, 50%);
+}
+/* قيعان يمين خط السعر */
+.map-h1 .level.sup {
+  flex-direction: row;
+  transform: translate(0%, 50%);
+}
+.map-h1 .level.dual {
+  flex-direction: row;
+  transform: translate(0%, 50%);
+}
+.map-h1 .level .line {
+  height: 1px;
+  width: 140px;
+  flex-shrink: 0;
+}
+.map-h1 .level.res .line { background: #a78bfa; }
+.map-h1 .level.sup .line { background: #2dd4bf; }
+.map-h1 .level.dual .line {
+  height: 1.5px;
+  width: 140px;
+  background: linear-gradient(90deg, #2dd4bf, #94a3b8, #a78bfa);
+}
+.map-h1 .level .end {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.map-h1 .level.res .end { background: #a78bfa; box-shadow: 0 0 6px rgba(167,139,250,.55); }
+.map-h1 .level.sup .end { background: #2dd4bf; box-shadow: 0 0 6px rgba(45,212,191,.55); }
+.map-h1 .level.dual .end { background: #94a3b8; box-shadow: 0 0 6px rgba(148,163,184,.5); }
+.map-h1 .level .num {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.map-h1 .level.res .num { color: #c4b5fd; }
+.map-h1 .level.sup .num { color: #5eead4; }
+.map-h1 .level.dual .num { color: #e2e8f0; }
+.map-h1 .px {
+  position: absolute;
+  left: 50%;
+  z-index: 5;
+  transform: translate(-50%, 50%);
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #22d3ee;
+  border: 2.5px solid #f8fafc;
+  box-shadow: 0 0 0 4px rgba(34,211,238,.22), 0 0 20px #22d3ee;
+}
+.map-h1 .px span {
+  position: absolute;
+  top: -26px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px; font-weight: 700;
+  color: #f8fafc;
+  background: #0f172a;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  white-space: nowrap;
+}
+.map-h1 .cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  direction: rtl;
+}
+.map-h1 .card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.map-h1 .card .t {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.map-h1 .card .r {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin: 3px 0;
+}
+.map-h1 .card .res { color: #c4b5fd; }
+.map-h1 .card .sup { color: #5eead4; }
+@media (max-width: 700px) {
+  .map-h1 .grid-wrap { grid-template-columns: 1fr; }
+  .map-h1 .cards { flex-direction: row; flex-wrap: wrap; }
+  .map-h1 .card { flex: 1 1 120px; }
+}

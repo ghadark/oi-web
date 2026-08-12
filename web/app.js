@@ -360,11 +360,12 @@ function exportExcel() {
   const maxFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC7D2FE" } };
 
   // بناء الترتيب البصري أولاً (يسار→يمين على الشاشة):
-  // Δ | Call 10→11→… | STRIKE | Put 10→11→… | Δ
+  // visual LTR: Δc | Call 12←11←10 | STRIKE | Put 10→11→12 | Δp  → after reverse, both oldest next to strike
   // مع rightToLeft: true عمود B يظهر يمينًا؛ لذلك نعكس المصفوفة عند الكتابة.
   const visual = [];
   if (canDelta) visual.push({ kind: "deltaCall" });
-  for (let j = 0; j < n; j++) visual.push({ kind: "call", idx: j, label: pullDates[j] });
+  // Call: reverse so after RTL reverse, oldest is next to STRIKE (same as Put)
+  for (let j = n - 1; j >= 0; j--) visual.push({ kind: "call", idx: j, label: pullDates[j] });
   visual.push({ kind: "strike" });
   for (let j = 0; j < n; j++) visual.push({ kind: "put", idx: j, label: pullDates[j] });
   if (canDelta) visual.push({ kind: "deltaPut" });
@@ -909,43 +910,91 @@ function renderMapPanel(L) {
     { key: "tomorrow", label: "بكرا" },
     { key: "weekly", label: "الأسبوع" },
     { key: "opx", label: "OPX" },
-    { key: "next_opx", label: "OPX القادم" },
+    { key: "next_opx", label: "OPX+" },
   ];
 
-  let rows = "";
+  // gather unique levels
+  const byPrice = {};
+  function add(v, kind, lab) {
+    if (v == null || isNaN(Number(v))) return;
+    const k = Math.round(Number(v));
+    if (!byPrice[k]) byPrice[k] = { sup: false, res: false, labels: [] };
+    if (kind === "sup") byPrice[k].sup = true;
+    if (kind === "res") byPrice[k].res = true;
+    if (lab && byPrice[k].labels.indexOf(lab) < 0) byPrice[k].labels.push(lab);
+  }
   bands.forEach(function (b) {
     const block = L[b.key] || {};
-    const s = block.support;
-    const r = block.resistance;
-    const ds = distInfo(price, s);
-    const dr = distInfo(price, r);
-    const exp = block.exp ? String(block.exp) : "";
-    rows +=
-      '<div class="map-band">' +
-      '<div class="name">' + b.label +
-      (exp ? '<div style="font-size:10px;color:#64748b;font-weight:400;margin-top:2px">' + exp + "</div>" : "") +
-      "</div>" +
-      '<div class="cell res"><b>' + fmtNum(r, 0) + "</b><span>قمة · " + dr.txt + "</span></div>" +
-      '<div class="cell sup"><b>' + fmtNum(s, 0) + "</b><span>قاع · " + ds.txt + "</span></div>" +
-      "</div>";
+    add(block.support, "sup", b.label);
+    add(block.resistance, "res", b.label);
+  });
+  if (price != null && !isNaN(Number(price))) {
+    // ensure price in scale
+  }
+  const nums = Object.keys(byPrice).map(Number);
+  if (price != null && !isNaN(Number(price))) nums.push(Number(price));
+  if (!nums.length) {
+    return '<div class="map-h1"><p style="color:#94a3b8;text-align:center;padding:20px">لا مستويات متاحة</p></div>';
+  }
+  const minV = Math.min.apply(null, nums);
+  const maxV = Math.max.apply(null, nums);
+  const pad = (maxV - minV) * 0.08 || 5;
+  const lo = minV - pad;
+  const hi = maxV + pad;
+  const span = hi - lo || 1;
+  function pct(v) {
+    return ((Number(v) - lo) / span) * 100;
+  }
+
+  let levelsHtml = "";
+  Object.keys(byPrice)
+    .map(Number)
+    .sort(function (a, b) { return a - b; })
+    .forEach(function (strike) {
+      const info = byPrice[strike];
+      const isDual = info.sup && info.res;
+      const cls = isDual ? "dual" : info.res ? "res" : "sup";
+      const label = isDual ? strike + " قاع+قمة" : String(strike);
+      levelsHtml +=
+        '<div class="level ' + cls + '" style="bottom:' + pct(strike).toFixed(2) + '%">' +
+        '<div class="line"></div><div class="end"></div><div class="num">' + label + "</div></div>";
+    });
+
+  let pxHtml = "";
+  if (price != null && !isNaN(Number(price))) {
+    pxHtml =
+      '<div class="px" style="bottom:' + pct(price).toFixed(2) + '%"><span>' +
+      fmtNum(price, 2) +
+      "</span></div>";
+  }
+
+  let cards = "";
+  bands.forEach(function (b) {
+    const block = L[b.key] || {};
+    const peak = block.resistance;
+    const floor = block.support;
+    cards +=
+      '<div class="card"><div class="t">' + b.label + "</div>" +
+      '<div class="r res"><span>قمة</span><b>' + (peak != null ? fmtNum(peak, 0) : "—") + "</b></div>" +
+      '<div class="r sup"><span>قاع</span><b>' + (floor != null ? fmtNum(floor, 0) : "—") + "</b></div></div>";
   });
 
   return (
-    '<div class="map-simple">' +
-    '<div class="map-price"><div class="n">' + fmtNum(price, 2) + "</div>" +
-    '<div class="l">إغلاق أمس</div></div>' +
-    '<div class="map-card map-chart-wrap">' +
-    buildMapSvg(L) +
-    '<div class="map-legend">' +
-    '<span><span class="map-dot" style="background:#a78bfa"></span> قمة</span>' +
-    '<span><span class="map-dot" style="background:#2dd4bf"></span> قاع</span>' +
-    '<span><span class="map-dot" style="background:#94a3b8"></span> قمة وقاع معًا</span>' +
-    '<span><span class="map-dot" style="background:#22d3ee"></span> إغلاق أمس</span>' +
-    "</div></div>" +
-    rows +
-    "</div>"
+    '<div class="map-h1">' +
+    '<div class="price-card"><b>' + (price != null ? fmtNum(price, 2) : "—") +
+    "</b><p>أين نقف بين القمة والقاع؟</p></div>" +
+    '<div class="grid-wrap">' +
+    '<div class="stage"><div class="track"></div>' +
+    levelsHtml +
+    pxHtml +
+    "</div>" +
+    '<div class="cards">' +
+    cards +
+    "</div></div></div>"
   );
 }
+
+
 
 async function openMap() {
   const modal = $("#mapModal");
@@ -960,12 +1009,8 @@ async function openMap() {
     const L = (all.tickers || {})[state.ticker];
     if (!L) throw new Error("لا مستويات لـ " + state.ticker);
     title.textContent = "Levels Map — " + state.ticker;
-    sub.textContent =
-      "as of " +
-      (L.as_of || "—") +
-      " · close " +
-      fmtNum(L.close, 2) +
-      " · Put max=قاع · Call max=قمة";
+    sub.textContent = (L.as_of ? ("as of " + L.as_of) : "") +
+      (L.close != null ? (" · " + fmtNum(L.close, 2)) : "");
     body.innerHTML = renderMapPanel(L);
   } catch (e) {
     body.innerHTML =
