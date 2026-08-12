@@ -540,9 +540,9 @@ html[data-theme="dark"] .brand-sign-wrap {
   }
   .tcard {
     flex: 0 0 auto !important;
-    min-width: 120px !important;
-    max-width: 150px !important;
-    width: auto !important;
+    width: 130px !important;
+    min-width: 130px !important;
+    max-width: 130px !important;
   }
   .controls {
     flex-wrap: wrap;
@@ -574,8 +574,18 @@ html[data-theme="dark"] .brand-sign-wrap {
     height: 32px !important;
     font-size: 11px !important;
   }
+  .tickers {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px !important;
+  }
   .tcard {
-    flex: 1 1 100%;
-    max-width: none;
+    flex: 0 0 auto !important;
+    width: 128px !important;
+    min-width: 128px !important;
+    max-width: 128px !important;
   }
 }
