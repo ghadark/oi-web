@@ -474,11 +474,26 @@ html[data-theme="dark"] .brand-sign-wrap {
 }
 
 
+
+.brand-divider-gray { display: none !important; }
+
+
 .brand-top {
   display: flex !important;
   flex-direction: row !important;
-  align-items: baseline !important;
+  align-items: center !important;
   gap: 10px !important;
   flex-wrap: nowrap !important;
 }
-.brand-divider-gray { display: none !important; }
+.brand-divider-mid {
+  width: 1px !important;
+  height: 14px !important;
+  background: #64748b !important;
+  opacity: 0.7 !important;
+  flex: 0 0 auto !important;
+  display: block !important;
+  align-self: center !important;
+}
+.brand-sign {
+  margin-inline-start: 2px !important;
+}
