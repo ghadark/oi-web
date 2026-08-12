@@ -36,7 +36,7 @@ html, body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   background: var(--bg); color: var(--text); min-height: 100%;
 }
-.app { display: grid; grid-template-columns: 200px minmax(0, 1fr); min-height: 100vh; }
+.app { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
 .sidebar {
   background: var(--sidebar); border-right: 1px solid var(--border);
   padding: 16px 12px; display: flex; flex-direction: column; gap: 16px;
@@ -196,10 +196,7 @@ html[data-theme="dark"] table.oi th {
   border-bottom: 1px solid #475569;
 }
 
-@media (max-width: 900px) {
-  .app { grid-template-columns: 1fr; }
-  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
-}
+
 
 
 /* أعلى رقم في عمود Call/Put */
@@ -391,23 +388,12 @@ html[data-theme="dark"] .brand-sign-wrap {
 
 
 
-.app {
-  grid-template-columns: 200px 1fr !important;
-}
-.sidebar {
-  padding: 16px 12px !important;
-}
+
+
 
 /* ========== Brand (stable) ========== */
-.app {
-  grid-template-columns: 200px minmax(0, 1fr) !important;
-}
-.sidebar {
-  width: 200px !important;
-  max-width: 200px !important;
-  min-width: 200px !important;
-  overflow: visible !important;
-}
+
+
 .brand {
   display: flex !important;
   flex-direction: row !important;
@@ -481,4 +467,100 @@ html[data-theme="dark"] .brand-sign-wrap {
   font-size: 9px !important;
   color: #94a3b8 !important;
   white-space: nowrap !important;
+}
+
+
+/* ========== Mobile: نفس ترتيب اللابتوب لكن عمود واحد ========== */
+@media (max-width: 900px) {
+  .app {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    min-height: 100vh;
+  }
+  .sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 14px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+  }
+  .sidebar .meta {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: none !important;
+    font-size: 11px;
+  }
+  .brand {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .brand-sign {
+    letter-spacing: 0.22em !important;
+    font-size: 8px !important;
+  }
+  .main {
+    width: 100%;
+    padding: 12px 12px 24px !important;
+  }
+  .top {
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+  }
+  .top h2 {
+    width: 100%;
+    text-align: center;
+  }
+  .tickers {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+  .tcard {
+    flex: 1 1 calc(50% - 10px);
+    min-width: 140px;
+    max-width: 180px;
+  }
+  .controls {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+  .panel {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table.oi {
+    font-size: 11px;
+  }
+  .map-panel {
+    width: min(100%, 560px);
+    max-height: 92vh;
+    margin: 8px;
+  }
+  .map-band {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-oi { font-size: 14px !important; }
+  .brand-sub { font-size: 8px !important; }
+  .logo {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 11px !important;
+  }
+  .tcard {
+    flex: 1 1 100%;
+    max-width: none;
+  }
 }
