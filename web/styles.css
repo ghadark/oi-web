@@ -472,3 +472,13 @@ html[data-theme="dark"] .brand-sign-wrap {
   flex: 0 0 auto !important;
   padding-inline-end: 0.28em !important;
 }
+
+
+.brand-top {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: baseline !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+}
+.brand-divider-gray { display: none !important; }
