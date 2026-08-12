@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Oi Web — morning OCC fetch
-Pulls open interest for SPY, QQQ, IWM, GLD, SPX and writes JSON snapshots
+Pulls open interest for index + mega stocks and writes JSON snapshots
 for static hosting (GitHub Pages / Cloudflare Pages).
 """
 
@@ -33,6 +33,18 @@ TICKER_URLS = {
     "IWM": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=iwm",
     "GLD": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=gld",
     "SPX": "https://marketdata.theocc.com/series-search?symbolType=U&symbol=spx",
+    "AAPL": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=aapl",
+    "MSFT": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=msft",
+    "NVDA": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=nvda",
+    "TSLA": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=tsla",
+    "AMZN": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=amzn",
+    "META": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=meta",
+    "GOOGL": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=googl",
+    "AVGO": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=avgo",
+    "MSTR": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=mstr",
+    "AMD": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=amd",
+    "MU": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=mu",
+    "COHR": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=cohr",
 }
 
 HEADERS = {
@@ -65,7 +77,12 @@ def session_pull_date(today: date | None = None) -> tuple[str, date]:
 
 
 def get_close(ticker: str) -> float | None:
-    symbol_map = {"SPY": "SPY", "QQQ": "QQQ", "IWM": "IWM", "GLD": "GLD", "SPX": "^GSPC"}
+    symbol_map = {
+        "SPY": "SPY", "QQQ": "QQQ", "IWM": "IWM", "GLD": "GLD", "SPX": "^GSPC",
+        "AAPL": "AAPL", "MSFT": "MSFT", "NVDA": "NVDA", "TSLA": "TSLA",
+        "AMZN": "AMZN", "META": "META", "GOOGL": "GOOGL", "AVGO": "AVGO",
+        "MSTR": "MSTR", "AMD": "AMD", "MU": "MU", "COHR": "COHR",
+    }
     symbol = symbol_map.get(ticker, ticker)
     try:
         import yfinance as yf
@@ -468,18 +485,6 @@ def main() -> int:
             json.dump(snap, f, ensure_ascii=False, separators=(",", ":"))
 
         levels_all[ticker] = build_levels_for_ticker(hist, ticker, pull_date, close)
-        try:
-            old_path = DATA_DIR / "levels.json"
-            if old_path.exists():
-                old = json.loads(old_path.read_text(encoding="utf-8"))
-                old_t = (old.get("tickers") or {}).get(ticker) or {}
-                for _band in ("daily", "tomorrow", "weekly", "opx", "next_opx"):
-                    ob = old_t.get(_band) or {}
-                    if _band in levels_all[ticker]:
-                        levels_all[ticker][_band]["prev_support"] = ob.get("support")
-                        levels_all[ticker][_band]["prev_resistance"] = ob.get("resistance")
-        except Exception as _e:
-            print(f"[warn] prev levels {ticker}: {_e}")
         index["tickers"].append(ticker)
         print(f"[saved] {pub_path.name} days={len(snap['pull_dates'])} exps={len(snap['expirations'])}")
 
