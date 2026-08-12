@@ -903,10 +903,12 @@ function buildMapSvg(L) {
 }
 
 
-/* ===== Map helpers: arrows + zoom ===== */
-var mapZoom = 1; // 1 = full range, higher = tighter around price
+
+/* ===== Map helpers: arrows + internal chart zoom (TradingView-style) ===== */
+var mapZoom = 1;
 var mapDragY = null;
 var mapDragZoom = null;
+var mapLastL = null;
 
 function levelArrow(curr, prev) {
   if (curr == null || prev == null || isNaN(Number(curr)) || isNaN(Number(prev))) return "";
@@ -930,27 +932,18 @@ function savePrevLevels(ticker, L) {
       var b = L[k] || {};
       snap.bands[k] = { support: b.support, resistance: b.resistance };
     });
-    // only overwrite when as_of changed (new day data)
-    var old = readPrevLevels(ticker);
-    if (!old || (snap.as_of && old.as_of && snap.as_of !== old.as_of)) {
-      // move current stored → stays as prev only if we had older; store "last seen before this as_of"
-      // Strategy: keep two keys
-      var curKey = "oi-levels-cur-" + ticker;
-      var prevKey = "oi-levels-prev-" + ticker;
-      var cur = null;
-      try { cur = JSON.parse(localStorage.getItem(curKey) || "null"); } catch (e) {}
-      if (cur && cur.as_of && snap.as_of && cur.as_of !== snap.as_of) {
-        localStorage.setItem(prevKey, JSON.stringify(cur));
-      } else if (!cur) {
-        // first visit: no arrows yet
-      }
-      localStorage.setItem(curKey, JSON.stringify(snap));
+    var curKey = "oi-levels-cur-" + ticker;
+    var prevKey = "oi-levels-prev-" + ticker;
+    var cur = null;
+    try { cur = JSON.parse(localStorage.getItem(curKey) || "null"); } catch (e) {}
+    if (cur && cur.as_of && snap.as_of && cur.as_of !== snap.as_of) {
+      localStorage.setItem(prevKey, JSON.stringify(cur));
     }
+    localStorage.setItem(curKey, JSON.stringify(snap));
   } catch (e) {}
 }
 
 function getCompareBands(ticker, L) {
-  // Prefer server-provided prev_* fields; else localStorage
   var prev = readPrevLevels(ticker);
   var out = {};
   ["daily", "tomorrow", "weekly", "opx", "next_opx"].forEach(function (k) {
@@ -960,13 +953,32 @@ function getCompareBands(ticker, L) {
       ps = prev.bands[k].support;
       pr = prev.bands[k].resistance;
     }
-    // if still same as current (first load same day), no arrow
     out[k] = { prev_support: ps, prev_resistance: pr };
   });
   return out;
 }
 
+function mapScale(L) {
+  var bands = ["daily", "tomorrow", "weekly", "opx", "next_opx"];
+  var nums = [];
+  bands.forEach(function (k) {
+    var b = L[k] || {};
+    if (b.support != null) nums.push(Number(b.support));
+    if (b.resistance != null) nums.push(Number(b.resistance));
+  });
+  var price = L.close;
+  if (price != null && !isNaN(Number(price))) nums.push(Number(price));
+  if (!nums.length) return null;
+  var minV0 = Math.min.apply(null, nums);
+  var maxV0 = Math.max.apply(null, nums);
+  var mid = price != null && !isNaN(Number(price)) ? Number(price) : (minV0 + maxV0) / 2;
+  var half0 = Math.max((maxV0 - minV0) / 2, 2);
+  var half = half0 / Math.max(mapZoom, 0.35);
+  return { lo: mid - half, hi: mid + half, mid: mid, minV0: minV0, maxV0: maxV0, price: price };
+}
+
 function renderMapPanel(L) {
+  mapLastL = L;
   const price = L.close;
   const bands = [
     { key: "daily", label: "اليوم" },
@@ -994,22 +1006,24 @@ function renderMapPanel(L) {
     add(block.resistance, "res", b.label);
   });
 
-  const nums = Object.keys(byPrice).map(Number);
-  if (price != null && !isNaN(Number(price))) nums.push(Number(price));
-  if (!nums.length) {
+  const sc = mapScale(L);
+  if (!sc) {
     return '<div class="map-h1"><p style="color:#94a3b8;text-align:center;padding:20px">لا مستويات متاحة</p></div>';
   }
-
-  const minV0 = Math.min.apply(null, nums);
-  const maxV0 = Math.max.apply(null, nums);
-  const mid = price != null && !isNaN(Number(price)) ? Number(price) : (minV0 + maxV0) / 2;
-  const half0 = Math.max((maxV0 - minV0) / 2, 5);
-  const half = half0 / Math.max(mapZoom, 0.4);
-  const lo = mid - half;
-  const hi = mid + half;
-  const span = hi - lo || 1;
+  const lo = sc.lo, hi = sc.hi, span = hi - lo || 1;
   function pct(v) {
     return ((Number(v) - lo) / span) * 100;
+  }
+
+  // axis ticks inside chart (TradingView-style)
+  var tickCount = 8;
+  var ticksHtml = "";
+  for (var ti = 0; ti <= tickCount; ti++) {
+    var tv = lo + (span * ti) / tickCount;
+    var tPct = (ti / tickCount) * 100;
+    ticksHtml +=
+      '<div class="axis-tick" style="bottom:' + tPct.toFixed(2) + '%">' +
+      '<span>' + (Math.round(tv * 100) / 100) + "</span></div>";
   }
 
   let levelsHtml = "";
@@ -1017,11 +1031,10 @@ function renderMapPanel(L) {
     .map(Number)
     .sort(function (a, b) { return a - b; })
     .forEach(function (strike) {
+      if (strike < lo || strike > hi) return;
       const info = byPrice[strike];
       const isDual = info.sup && info.res;
       const cls = isDual ? "dual" : info.res ? "res" : "sup";
-      // hide if outside zoom window
-      if (strike < lo || strike > hi) return;
       const label = isDual ? strike + " قاع+قمة" : String(strike);
       levelsHtml +=
         '<div class="level ' + cls + '" style="bottom:' + pct(strike).toFixed(2) + '%">' +
@@ -1029,7 +1042,7 @@ function renderMapPanel(L) {
     });
 
   let pxHtml = "";
-  if (price != null && !isNaN(Number(price))) {
+  if (price != null && !isNaN(Number(price)) && Number(price) >= lo && Number(price) <= hi) {
     pxHtml =
       '<div class="px" style="bottom:' + pct(price).toFixed(2) + '%"><span>' +
       fmtNum(price, 2) +
@@ -1053,82 +1066,90 @@ function renderMapPanel(L) {
   return (
     '<div class="map-h1">' +
     '<div class="price-card"><b>' + (price != null ? fmtNum(price, 2) : "—") +
-    "</b><p>أين نقف بين القمة والقاع؟</p>" +
-    '<div class="zoom-hint">مرّر العجلة أو اسحب الشريط للتكبير/التصغير · ' + mapZoom.toFixed(1) + "×</div></div>" +
+    "</b><p>أين نقف بين القمة والقاع؟</p></div>" +
     '<div class="grid-wrap">' +
     '<div class="stage" id="mapStage">' +
-    '<div class="zoom-rail" id="mapZoomRail" title="اسحب للتكبير"></div>' +
     '<div class="track"></div>' +
     levelsHtml +
     pxHtml +
+    '<div class="price-axis" id="mapPriceAxis" title="اسحب للتكبير أو التصغير">' +
+    ticksHtml +
+    '<div class="axis-grip"></div>' +
     "</div>" +
-    '<div class="cards">' +
-    cards +
-    "</div></div></div>"
+    '<div class="zoom-badge" id="mapZoomBadge">' + mapZoom.toFixed(1) + "×</div>" +
+    "</div>" +
+    '<div class="cards">' + cards + "</div>" +
+    "</div></div>"
   );
 }
 
 function bindMapZoom(L) {
+  mapLastL = L;
   var stage = document.getElementById("mapStage");
-  var rail = document.getElementById("mapZoomRail");
+  var axis = document.getElementById("mapPriceAxis");
   if (!stage) return;
 
   function redraw() {
-    var body = $("#mapBody");
-    if (body) mapZoom = 1;
+    var body = document.getElementById("mapBody");
+    if (!body) return;
+    mapZoom = 1;
     body.innerHTML = renderMapPanel(L);
     bindMapZoom(L);
     bindMapZoom(L);
   }
 
+  // wheel on stage = zoom around price (spread / compress levels)
   stage.onwheel = function (e) {
     e.preventDefault();
-    var dir = e.deltaY > 0 ? -0.12 : 0.12;
-    mapZoom = Math.min(4, Math.max(0.5, mapZoom + dir));
+    e.stopPropagation();
+    var dir = e.deltaY > 0 ? -0.15 : 0.15;
+    mapZoom = Math.min(6, Math.max(0.4, +(mapZoom + dir).toFixed(2)));
     redraw();
   };
 
-  function startDrag(y) {
+  function onStart(y) {
     mapDragY = y;
     mapDragZoom = mapZoom;
   }
-  function moveDrag(y) {
+  function onMove(y) {
     if (mapDragY == null) return;
+    // drag up = zoom in (spread levels), drag down = zoom out
     var dy = mapDragY - y;
-    mapZoom = Math.min(4, Math.max(0.5, mapDragZoom + dy / 120));
+    mapZoom = Math.min(6, Math.max(0.4, +(mapDragZoom + dy / 90).toFixed(2)));
     redraw();
   }
-  function endDrag() {
+  function onEnd() {
     mapDragY = null;
   }
 
-  if (rail) {
-    rail.onmousedown = function (e) {
-      e.preventDefault();
-      startDrag(e.clientY);
-      window.onmousemove = function (ev) { moveDrag(ev.clientY); };
-      window.onmouseup = function () {
-        endDrag();
-        window.onmousemove = null;
-        window.onmouseup = null;
-      };
+  var target = axis || stage;
+  target.onmousedown = function (e) {
+    e.preventDefault();
+    onStart(e.clientY);
+    window.onmousemove = function (ev) { onMove(ev.clientY); };
+    window.onmouseup = function () {
+      onEnd();
+      window.onmousemove = null;
+      window.onmouseup = null;
     };
-    rail.ontouchstart = function (e) {
-      if (!e.touches || !e.touches[0]) return;
-      startDrag(e.touches[0].clientY);
-    };
-    rail.ontouchmove = function (e) {
-      if (!e.touches || !e.touches[0]) return;
-      e.preventDefault();
-      moveDrag(e.touches[0].clientY);
-    };
-    rail.ontouchend = endDrag;
-  }
+  };
+  target.ontouchstart = function (e) {
+    if (!e.touches || !e.touches[0]) return;
+    onStart(e.touches[0].clientY);
+  };
+  target.ontouchmove = function (e) {
+    if (!e.touches || !e.touches[0]) return;
+    e.preventDefault();
+    onMove(e.touches[0].clientY);
+  };
+  target.ontouchend = onEnd;
+
+  // double-click axis = reset zoom
+  target.ondblclick = function () {
+    mapZoom = 1;
+    redraw();
+  };
 }
-
-
-
-
 
 async function openMap() {
   const modal = $("#mapModal");

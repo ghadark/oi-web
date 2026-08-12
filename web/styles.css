@@ -633,6 +633,9 @@ html[data-theme="dark"] .brand-sign-wrap {
 }
 
 
+
+
+
 /* level change arrows */
 .lvl-arrow {
   display: inline-block;
@@ -645,21 +648,81 @@ html[data-theme="dark"] .brand-sign-wrap {
 .lvl-arrow.down { color: #f87171; }
 .lvl-arrow.flat { color: #64748b; }
 
-.map-h1 .zoom-hint {
-  margin-top: 8px;
-  font-size: 11px;
-  color: #64748b;
+/* TradingView-style price axis INSIDE the chart */
+.map-h1 .stage {
+  touch-action: none;
+  overflow: hidden;
+  padding-right: 52px; /* room for axis */
 }
-.map-h1 .zoom-rail {
+.map-h1 .price-axis {
   position: absolute;
-  right: 0; top: 0; bottom: 0;
-  width: 14px;
+  top: 0; right: 0; bottom: 0;
+  width: 52px;
+  z-index: 8;
   cursor: ns-resize;
-  z-index: 6;
-  background: linear-gradient(90deg, transparent, rgba(148,163,184,0.12));
-  border-left: 1px solid rgba(51,65,85,0.6);
+  background: linear-gradient(90deg, transparent 0%, rgba(15,23,42,0.55) 30%, rgba(15,23,42,0.92) 100%);
+  border-left: 1px solid #334155;
+  user-select: none;
 }
-.map-h1 .zoom-rail:hover {
-  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.18));
+.map-h1 .price-axis:hover {
+  background: linear-gradient(90deg, transparent 0%, rgba(15,23,42,0.4) 20%, rgba(30,41,59,0.95) 100%);
+  border-left-color: #38bdf8;
 }
-.map-h1 .stage { touch-action: none; }
+.map-h1 .axis-tick {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 0;
+  border-top: 1px solid rgba(51,65,85,0.85);
+  pointer-events: none;
+}
+.map-h1 .axis-tick span {
+  position: absolute;
+  right: 6px;
+  top: -8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+.map-h1 .axis-grip {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  width: 4px;
+  height: 36px;
+  margin-top: -18px;
+  border-radius: 3px;
+  background: #475569;
+  opacity: 0.7;
+}
+.map-h1 .price-axis:hover .axis-grip {
+  background: #38bdf8;
+  opacity: 1;
+}
+.map-h1 .zoom-badge {
+  position: absolute;
+  top: 8px;
+  right: 60px;
+  z-index: 9;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  background: rgba(15,23,42,0.85);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 2px 8px;
+  pointer-events: none;
+  direction: ltr;
+}
+
+/* modal body: avoid page-like scroll; chart handles scale */
+#mapModal .map-body,
+#mapBody {
+  overflow: auto;
+  max-height: min(78vh, 720px);
+}
+.map-h1 .stage {
+  min-height: 420px;
+  height: 420px;
+}
