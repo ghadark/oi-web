@@ -426,9 +426,10 @@ html[data-theme="dark"] .brand-sign-wrap {
   background: rgba(248, 250, 252, 0.35) !important;
 }
 .brand-divider-mid {
-  height: 12px !important;
-  background: #64748b !important;
-  opacity: 0.75 !important;
+  height: 16px !important;
+  width: 1px !important;
+  background: #94a3b8 !important;
+  opacity: 1 !important;
 }
 .brand-left {
   display: flex !important;
@@ -471,121 +472,3 @@ html[data-theme="dark"] .brand-sign-wrap {
 
 
 /* ========== جوال = نفس سطح المكتب (سايدبار جانبي) ========== */
-@media (max-width: 900px) {
-  .app {
-    display: grid !important;
-    grid-template-columns: 152px minmax(0, 1fr) !important;
-    min-height: 100vh !important;
-    min-height: 100dvh !important;
-  }
-  .sidebar {
-    width: 152px !important;
-    min-width: 152px !important;
-    max-width: 152px !important;
-    border-right: 1px solid var(--border) !important;
-    border-bottom: none !important;
-    padding: 12px 10px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 12px !important;
-  }
-  .sidebar .meta {
-    margin-top: auto !important;
-    padding-top: 10px !important;
-    border-top: 1px solid var(--border) !important;
-    font-size: 10px !important;
-    line-height: 1.35;
-    word-break: break-word;
-  }
-  /* اللوقو داخل السايدبار الضيق: عمودي مرتب */
-  .brand {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 8px !important;
-    flex-wrap: nowrap !important;
-  }
-  .brand .logo {
-    width: 36px !important;
-    height: 36px !important;
-  }
-  .brand-divider {
-    display: none !important; /* الخطوط الأفقية ما تناسب العرض الضيق */
-  }
-  .brand-left {
-    gap: 2px !important;
-  }
-  .brand-oi {
-    font-size: 16px !important;
-  }
-  .brand-sub {
-    font-size: 9px !important;
-  }
-  .brand-sign {
-    font-size: 8px !important;
-    letter-spacing: 0.28em !important;
-    margin-top: 2px;
-  }
-  .main {
-    padding: 12px 10px 20px !important;
-    min-width: 0 !important;
-    overflow-x: auto !important;
-  }
-  .top {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-  }
-  .top h2 {
-    font-size: 18px !important;
-    text-align: center !important;
-    flex: 1 1 auto !important;
-  }
-  /* مؤشرات أفقية مثل اللابتوب */
-  .tickers {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    overflow: visible !important;
-  }
-  .tcard {
-    flex: 0 0 auto !important;
-    width: 118px !important;
-    min-width: 118px !important;
-    max-width: 118px !important;
-    padding: 8px 10px !important;
-  }
-  .tcard b { font-size: 12px !important; }
-  .tcard span { font-size: 9px !important; }
-  .controls {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    gap: 8px !important;
-  }
-  .panel {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-  table.oi { font-size: 11px; }
-  .map-panel {
-    width: min(96vw, 640px);
-    max-height: 90vh;
-  }
-}
-
-@media (max-width: 480px) {
-  .app {
-    grid-template-columns: 132px minmax(0, 1fr) !important;
-  }
-  .sidebar {
-    width: 132px !important;
-    min-width: 132px !important;
-    max-width: 132px !important;
-    padding: 10px 8px !important;
