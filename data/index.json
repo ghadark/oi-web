@@ -1,11 +1,23 @@
 {
-  "generated_at": "2026-08-12T05:37:33Z",
+  "generated_at": "2026-08-12T23:12:07Z",
   "session_pull_date": "12-8",
   "tickers": [
     "SPY",
     "QQQ",
     "IWM",
     "GLD",
-    "SPX"
+    "SPX",
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "TSLA",
+    "AMZN",
+    "META",
+    "GOOGL",
+    "AVGO",
+    "MSTR",
+    "AMD",
+    "MU",
+    "COHR"
   ]
 }
