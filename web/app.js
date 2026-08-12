@@ -139,7 +139,7 @@ function renderStocksDropdown() {
   const host = $("#stocksRow");
   if (!host) return;
   const cur = isIndexTicker(state.ticker) ? "" : state.ticker;
-  let opts = '<option value="">STOCKS — أسهم الشركات</option>';
+  let opts = '<option value="">STOCKS</option>';
   STOCKS_TICKERS.forEach(function (t) {
     opts +=
       '<option value="' +
@@ -148,8 +148,6 @@ function renderStocksDropdown() {
       (t.symbol === cur ? " selected" : "") +
       ">" +
       t.symbol +
-      " — " +
-      t.name +
       "</option>";
   });
   host.innerHTML =
