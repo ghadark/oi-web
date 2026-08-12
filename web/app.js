@@ -742,6 +742,20 @@ function fmtNum(v, d) {
   return Number(v).toLocaleString(undefined, { maximumFractionDigits: d == null ? 2 : d });
 }
 
+/** يحافظ على نصف السترايك (212.5) بدون تقريب لعدد صحيح */
+function fmtStrike(v) {
+  if (v == null || isNaN(Number(v))) return "—";
+  var n = Number(v);
+  var r2 = Math.round(n * 100) / 100;
+  if (Math.abs(r2 - Math.round(r2)) < 1e-9) return String(Math.round(r2));
+  return String(r2);
+}
+
+function strikeKey(v) {
+  // مفتاح تجميع بدقة 0.01 (يدعم 212.5)
+  return Math.round(Number(v) * 100) / 100;
+}
+
 function distInfo(price, level) {
   if (price == null || level == null) return { pts: null, pct: null, txt: "—" };
   const pts = level - price;
@@ -772,7 +786,7 @@ function levelRowsHtml(L, price) {
       '<div class="map-row"><span>' +
       b.label +
       '</span><span class="tag-res">قمة ' +
-      fmtNum(r, 0) +
+      fmtStrike(r) +
       "</span></div>";
     html +=
       '<div class="map-row"><span style="opacity:.7;font-size:11px">→ للقمة</span><span>' +
@@ -782,7 +796,7 @@ function levelRowsHtml(L, price) {
       '<div class="map-row"><span>' +
       b.label +
       '</span><span class="tag-sup">قاع ' +
-      fmtNum(s, 0) +
+      fmtStrike(s) +
       "</span></div>";
     html +=
       '<div class="map-row"><span style="opacity:.7;font-size:11px">→ للقاع</span><span>' +
@@ -1041,6 +1055,28 @@ function mapScale(L) {
   return { lo: mid - half, hi: mid + half, mid: mid, minV0: minV0, maxV0: maxV0, price: price };
 }
 
+
+/** بكرا يوافق الجمعة/نفس انتهاء الأسبوع → نكتفي ببطاقة الأسبوع */
+function shouldSkipTomorrow(L) {
+  if (!L) return false;
+  if (L.meta && L.meta.tomorrow_merged_weekly) return true;
+  var t = L.tomorrow || {};
+  var w = L.weekly || {};
+  if (t.merged_into === "weekly") return true;
+  if (t.exp && w.exp && t.exp === w.exp) return true;
+  if (t.support == null && t.resistance == null && !t.exp) return true;
+  // احتياط: إذا نفس القمة والقاع ونفس الانتهاء
+  if (
+    t.exp &&
+    w.exp &&
+    t.exp === w.exp &&
+    t.support === w.support &&
+    t.resistance === w.resistance
+  )
+    return true;
+  return false;
+}
+
 function renderMapPanel(L) {
   mapLastL = L;
   const price = L.close;
@@ -1058,13 +1094,15 @@ function renderMapPanel(L) {
   const byPrice = {};
   function add(v, kind, lab) {
     if (v == null || isNaN(Number(v))) return;
-    const k = Math.round(Number(v));
+    const k = strikeKey(v);
     if (!byPrice[k]) byPrice[k] = { sup: false, res: false, labels: [] };
     if (kind === "sup") byPrice[k].sup = true;
     if (kind === "res") byPrice[k].res = true;
     if (lab && byPrice[k].labels.indexOf(lab) < 0) byPrice[k].labels.push(lab);
   }
   bands.forEach(function (b) {
+    // تخطي بكرا إذا اندمجت مع الأسبوع
+    if (b.key === "tomorrow" && shouldSkipTomorrow(L)) return;
     const block = L[b.key] || {};
     add(block.support, "sup", b.label);
     add(block.resistance, "res", b.label);
@@ -1099,7 +1137,7 @@ function renderMapPanel(L) {
       const info = byPrice[strike];
       const isDual = info.sup && info.res;
       const cls = isDual ? "dual" : info.res ? "res" : "sup";
-      const label = isDual ? strike + " قاع+قمة" : String(strike);
+      const label = isDual ? fmtStrike(strike) + " قاع+قمة" : fmtStrike(strike);
       levelsHtml +=
         '<div class="level ' + cls + '" style="bottom:' + pct(strike).toFixed(2) + '%">' +
         '<div class="line"></div><div class="end"></div><div class="num">' + label + "</div></div>";
@@ -1115,16 +1153,19 @@ function renderMapPanel(L) {
 
   let cards = "";
   bands.forEach(function (b) {
+    if (b.key === "tomorrow" && shouldSkipTomorrow(L)) return;
     const block = L[b.key] || {};
     const peak = block.resistance;
     const floor = block.support;
+    // إخفاء بطاقة بلا بيانات
+    if (peak == null && floor == null && !block.exp) return;
     const c = cmp[b.key] || {};
     const aR = levelArrow(peak, c.prev_resistance);
     const aS = levelArrow(floor, c.prev_support);
     cards +=
       '<div class="card"><div class="t">' + b.label + "</div>" +
-      '<div class="r res"><span>قمة ' + aR + "</span><b>" + (peak != null ? fmtNum(peak, 0) : "—") + "</b></div>" +
-      '<div class="r sup"><span>قاع ' + aS + "</span><b>" + (floor != null ? fmtNum(floor, 0) : "—") + "</b></div></div>";
+      '<div class="r res"><span>قمة ' + aR + "</span><b>" + (peak != null ? fmtStrike(peak) : "—") + "</b></div>" +
+      '<div class="r sup"><span>قاع ' + aS + "</span><b>" + (floor != null ? fmtStrike(floor) : "—") + "</b></div></div>";
   });
 
   return (
