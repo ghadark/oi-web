@@ -468,6 +468,18 @@ def main() -> int:
             json.dump(snap, f, ensure_ascii=False, separators=(",", ":"))
 
         levels_all[ticker] = build_levels_for_ticker(hist, ticker, pull_date, close)
+        try:
+            old_path = DATA_DIR / "levels.json"
+            if old_path.exists():
+                old = json.loads(old_path.read_text(encoding="utf-8"))
+                old_t = (old.get("tickers") or {}).get(ticker) or {}
+                for _band in ("daily", "tomorrow", "weekly", "opx", "next_opx"):
+                    ob = old_t.get(_band) or {}
+                    if _band in levels_all[ticker]:
+                        levels_all[ticker][_band]["prev_support"] = ob.get("support")
+                        levels_all[ticker][_band]["prev_resistance"] = ob.get("resistance")
+        except Exception as _e:
+            print(f"[warn] prev levels {ticker}: {_e}")
         index["tickers"].append(ticker)
         print(f"[saved] {pub_path.name} days={len(snap['pull_dates'])} exps={len(snap['expirations'])}")
 
