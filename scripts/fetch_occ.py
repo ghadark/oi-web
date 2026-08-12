@@ -423,7 +423,13 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         "as_of": pull_date,
         "updated_at": hist.get("updated_at"),
         "daily": safe_levels(daily_exp),
-        "tomorrow": safe_levels(tomorrow_exp),
+        # إذا بكرا = نفس انتهاء الأسبوع → لا بطاقة بكرا (نكتفي بالأسبوع)
+        "tomorrow": (
+            {"exp": None, "support": None, "resistance": None, "merged_into": "weekly"}
+            if (tomorrow_exp and weekly_exp and tomorrow_exp == weekly_exp)
+            or (tomorrow_session == next_friday_on_or_after(today))
+            else safe_levels(tomorrow_exp)
+        ),
         "weekly": safe_levels(weekly_exp),
         "opx": safe_levels(opx_exp),
         "next_opx": safe_levels(next_opx_exp),
@@ -431,6 +437,10 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
             "today": today.isoformat(),
             "tomorrow_cal": tomorrow_cal.isoformat(),
             "tomorrow_session": tomorrow_session.isoformat(),
+            "tomorrow_merged_weekly": bool(
+                (tomorrow_exp and weekly_exp and tomorrow_exp == weekly_exp)
+                or (tomorrow_session == next_friday_on_or_after(today))
+            ),
         },
         "path": path[-30:],
     }
