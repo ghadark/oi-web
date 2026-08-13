@@ -1712,7 +1712,7 @@ function closeMap() {
 
 // —— تعليقات خاصة (Web3Forms) ——
 // ضعي مفتاحك من https://web3forms.com بعد التسجيل (Access Key)
-const FEEDBACK_ACCESS_KEY = ""; // ← الصقي المفتاح هنا
+const FEEDBACK_ACCESS_KEY = "53716803-35b4-4c15-a27e-0cde07f2e555";
 
 function openFeedback() {
   const modal = $("#feedbackModal");
