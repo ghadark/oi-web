@@ -335,6 +335,19 @@ def pick_expiration(available: list[str], target: date) -> str | None:
     return parsed[0][1]
 
 
+
+def previous_pull_date(hist: dict, pull_date: str) -> str | None:
+    """أحدث pull_date أقدم من الحالي في التاريخ التراكمي."""
+    ordered = sort_pull_dates(list((hist.get("days") or {}).keys()))
+    if not ordered:
+        return None
+    if pull_date in ordered:
+        idx = ordered.index(pull_date)
+        return ordered[idx - 1] if idx > 0 else None
+    # إن كان اليوم الجديد لم يُدرج بعد في المقارنة الداخلية
+    return ordered[-1]
+
+
 def max_oi_levels_for_exp(hist: dict[str, Any], exp: str, pull_date: str) -> dict[str, Any]:
     """Highest put_oi strike = support, highest call_oi strike = resistance for one expiration."""
     block = (hist.get("days") or {}).get(pull_date, {}).get(exp) or {}
@@ -403,10 +416,23 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
     next_opx_date = third_friday(y2, m2)
     next_opx_exp = pick_expiration(avail, next_opx_date)
 
+    prev_pd = previous_pull_date(hist, pull_date)
+
     def safe_levels(exp):
         if not exp:
-            return {"exp": None, "support": None, "resistance": None}
-        return max_oi_levels_for_exp(hist, exp, pull_date)
+            return {
+                "exp": None, "support": None, "resistance": None,
+                "prev_support": None, "prev_resistance": None,
+            }
+        cur = max_oi_levels_for_exp(hist, exp, pull_date)
+        if prev_pd:
+            old = max_oi_levels_for_exp(hist, exp, prev_pd)
+            cur["prev_support"] = old.get("support")
+            cur["prev_resistance"] = old.get("resistance")
+        else:
+            cur["prev_support"] = None
+            cur["prev_resistance"] = None
+        return cur
 
     # price path from closes (phase 3)
     closes = hist.get("closes") or {}
@@ -423,11 +449,12 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         "as_of": pull_date,
         "updated_at": hist.get("updated_at"),
         "daily": safe_levels(daily_exp),
-        # إذا بكرا = نفس انتهاء الأسبوع → لا بطاقة بكرا (نكتفي بالأسبوع)
+        # بكرا يندمج مع الأسبوع فقط إذا بكرا = جمعة الأسبوع (مثل الخميس→الجمعة)
+        # يوم الجمعة: بكرا = الإثنين التالي — يظهر ولا يُدمج
         "tomorrow": (
-            {"exp": None, "support": None, "resistance": None, "merged_into": "weekly"}
-            if (tomorrow_exp and weekly_exp and tomorrow_exp == weekly_exp)
-            or (tomorrow_session == next_friday_on_or_after(today))
+            {"exp": None, "support": None, "resistance": None, "merged_into": "weekly",
+             "prev_support": None, "prev_resistance": None}
+            if (tomorrow_session == next_friday_on_or_after(today))
             else safe_levels(tomorrow_exp)
         ),
         "weekly": safe_levels(weekly_exp),
@@ -437,10 +464,9 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
             "today": today.isoformat(),
             "tomorrow_cal": tomorrow_cal.isoformat(),
             "tomorrow_session": tomorrow_session.isoformat(),
-            "tomorrow_merged_weekly": bool(
-                (tomorrow_exp and weekly_exp and tomorrow_exp == weekly_exp)
-                or (tomorrow_session == next_friday_on_or_after(today))
-            ),
+            "weekly_friday": next_friday_on_or_after(today).isoformat(),
+            "today_is_weekly": (today == next_friday_on_or_after(today)),
+            "tomorrow_merged_weekly": (tomorrow_session == next_friday_on_or_after(today)),
         },
         "path": path[-30:],
     }
