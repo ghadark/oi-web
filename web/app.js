@@ -455,163 +455,221 @@ function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
   return { pullDates: pullDates, rows: rows, close: data.close, expiration: expiration };
 }
 
-/** يكتب جدول انتهاء واحد في ورقة ExcelJS بدءًا من (startRow, startCol) — يعيد lastCol */
+
+/** يكتب جدول انتهاء بنفس تنسيق الديسكتوب (B2، pad=2، تواريخ 13-8، هيدر ناعم) */
 function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
-  const pullDates = view.pullDates;
+  const arabicMonths = {
+    1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل",
+    5: "مايو", 6: "يونيو", 7: "يوليو", 8: "أغسطس",
+    9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر",
+  };
+  const pullDates = view.pullDates.slice();
   const rows = view.rows;
   const n = pullDates.length;
-  const canDelta = showDelta && n >= 2;
+  const hasDelta = !!(showDelta && n >= 2);
   const lastI = n - 1;
   const prevI = n - 2;
+  const pad = 2;
 
-  const callMaxX = [];
-  const putMaxX = [];
-  for (let i = 0; i < n; i++) {
-    let mc = 0, mp = 0;
-    rows.forEach(function (r) {
-      if ((r.calls[i] || 0) > mc) mc = r.calls[i] || 0;
-      if ((r.puts[i] || 0) > mp) mp = r.puts[i] || 0;
-    });
-    callMaxX.push(mc);
-    putMaxX.push(mp);
-  }
-  const maxFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC7D2FE" } };
-  const fontHeader = { name: "Calibri", size: 11, bold: true };
-  const fontBody = { name: "Calibri", size: 11 };
+  const fillTicker = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE7E6E6" } };
+  const fillPutCall = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } };
+  const fillRow3 = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
+  const fillRow4 = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDD9C4" } };
+  const fillDelta = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
+  const fillMax = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
+  const fontB = { name: "Calibri", size: 11, bold: true, color: { argb: "FF000000" } };
+  const fontN = { name: "Calibri", size: 11, color: { argb: "FF000000" } };
   const alignC = { horizontal: "center", vertical: "middle" };
   const border = {
-    top: { style: "thin", color: { argb: "FFCBD5E1" } },
-    bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
-    left: { style: "thin", color: { argb: "FFCBD5E1" } },
-    right: { style: "thin", color: { argb: "FFCBD5E1" } },
+    top: { style: "thin", color: { argb: "FFD9D9D9" } },
+    bottom: { style: "thin", color: { argb: "FFD9D9D9" } },
+    left: { style: "thin", color: { argb: "FFD9D9D9" } },
+    right: { style: "thin", color: { argb: "FFD9D9D9" } },
   };
-  // ألوان هيدر مطابقة للديسكتوب
-  const fillTitle = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE7E6E6" } };
-  const fillSec = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } };
-  const fillDates = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
-  const fillExp = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDD9C4" } };
-  const fillDelta = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
-  const fontTitle = { name: "Calibri", size: 12, bold: true, color: { argb: "FF0F172A" } };
 
-  const visual = [];
-  if (canDelta) visual.push({ kind: "deltaCall" });
-  for (let j = n - 1; j >= 0; j--) visual.push({ kind: "call", idx: j, label: pullDates[j] });
-  visual.push({ kind: "strike" });
-  for (let j = 0; j < n; j++) visual.push({ kind: "put", idx: j, label: pullDates[j] });
-  if (canDelta) visual.push({ kind: "deltaPut" });
-  const colDefs = visual.slice().reverse();
-  const total = colDefs.length;
-  const strikeCol = startCol + colDefs.findIndex(function (d) { return d.kind === "strike"; });
+  let headerDate = view.expiration || "";
+  try {
+    const p = String(view.expiration).split("-").map(Number);
+    if (p.length >= 3) headerDate = p[2] + "-" + (arabicMonths[p[1]] || "");
+  } catch (e) {}
 
-  function styleRange(r, c1, c2, opts) {
-    for (let c = c1; c <= c2; c++) {
-      const cell = ws.getCell(r, c);
-      if (opts.font) cell.font = opts.font;
-      if (opts.fill) cell.fill = opts.fill;
-      if (opts.align) cell.alignment = opts.align;
-      if (opts.border) cell.border = opts.border;
-    }
+  const rTitle = startRow;
+  const rSection = startRow + 1;
+  const rDates = startRow + 2;
+  const rExp = startRow + 3;
+  const dataStart = startRow + 4;
+
+  let col = startCol + pad;
+  let putDeltaCol = null;
+  if (hasDelta) {
+    putDeltaCol = col;
+    col += 1;
   }
-  const endCol = startCol + total - 1;
-  const r0 = startRow;
+  const putDateCols = [];
+  for (let j = n - 1; j >= 0; j--) {
+    putDateCols.push({ c: col, idx: j, d: pullDates[j] });
+    col += 1;
+  }
+  const strikeCol = col;
+  col += 1;
+  const callDateCols = [];
+  for (let j = 0; j < n; j++) {
+    callDateCols.push({ c: col, idx: j, d: pullDates[j] });
+    col += 1;
+  }
+  let callDeltaCol = null;
+  if (hasDelta) {
+    callDeltaCol = col;
+    col += 1;
+  }
+  const contentEnd = col - 1;
+  const headerEnd = contentEnd + pad;
 
-  ws.mergeCells(r0, startCol, r0, endCol);
-  ws.getCell(r0, startCol).value = ticker + "  |  " + view.expiration;
-  styleRange(r0, startCol, endCol, { font: fontTitle, fill: fillTitle, align: alignC });
+  for (let c = startCol; c <= headerEnd; c++) {
+    for (const r of [rTitle, rSection, rDates, rExp]) {
+      const cell = ws.getCell(r, c);
+      cell.border = border;
+      cell.alignment = alignC;
+      cell.font = fontB;
+    }
+    ws.getCell(rTitle, c).fill = fillTicker;
+    ws.getCell(rSection, c).fill = fillPutCall;
+    ws.getCell(rDates, c).fill = fillRow3;
+    ws.getCell(rExp, c).fill = fillRow4;
+  }
 
-  // row 2: PUT | CALL labels simplified
-  colDefs.forEach(function (def, i) {
-    const c = startCol + i;
-    const cell = ws.getCell(r0 + 1, c);
+  // Title = ticker only on strike column (rest soft gray)
+  ws.getCell(rTitle, strikeCol).value = ticker;
+
+  // Section labels Put / Strike / Call
+  const putCols = (putDeltaCol ? [putDeltaCol] : []).concat(putDateCols.map(function (x) { return x.c; }));
+  const callCols = callDateCols.map(function (x) { return x.c; }).concat(callDeltaCol ? [callDeltaCol] : []);
+  if (putCols.length) {
+    ws.mergeCells(rSection, Math.min.apply(null, putCols), rSection, Math.max.apply(null, putCols));
+    const cell = ws.getCell(rSection, Math.min.apply(null, putCols));
+    cell.value = "Put";
+    cell.fill = fillPutCall;
+    cell.font = fontB;
     cell.alignment = alignC;
-    cell.font = fontHeader;
-    cell.fill = fillSec;
-    cell.border = border;
-    if (def.kind === "strike") cell.value = "STRIKE";
-    else if (def.kind === "call" || def.kind === "deltaCall") cell.value = "CALL";
-    else if (def.kind === "put" || def.kind === "deltaPut") cell.value = "PUT";
+  }
+  if (callCols.length) {
+    ws.mergeCells(rSection, Math.min.apply(null, callCols), rSection, Math.max.apply(null, callCols));
+    const cell = ws.getCell(rSection, Math.min.apply(null, callCols));
+    cell.value = "Call";
+    cell.fill = fillPutCall;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  }
+  try {
+    ws.mergeCells(rSection, strikeCol, rDates, strikeCol);
+  } catch (e) {}
+  const strikeHdr = ws.getCell(rSection, strikeCol);
+  strikeHdr.value = "Strike";
+  strikeHdr.fill = fillRow3;
+  strikeHdr.font = fontB;
+  strikeHdr.alignment = alignC;
+
+  // Dates row: 10-8 style (pull_date as stored)
+  putDateCols.forEach(function (x) {
+    const cell = ws.getCell(rDates, x.c);
+    cell.value = x.d;
+    cell.fill = fillRow3;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  });
+  callDateCols.forEach(function (x) {
+    const cell = ws.getCell(rDates, x.c);
+    cell.value = x.d;
+    cell.fill = fillRow3;
+    cell.font = fontB;
+    cell.alignment = alignC;
   });
 
-  // row 3 weekdays
-  colDefs.forEach(function (def, i) {
-    const c = startCol + i;
-    const cell = ws.getCell(r0 + 2, c);
-    cell.alignment = alignC;
-    cell.font = fontBody;
-    cell.fill = fillDates;
-    cell.border = border;
-    if (def.kind === "call" || def.kind === "put") {
-      try {
-        const p = def.label.split("-").map(Number);
-        const dt = new Date(new Date().getFullYear(), p[1] - 1, p[0]);
-        cell.value = dt.toLocaleString("en", { weekday: "short" });
-      } catch (e) {
-        cell.value = "";
-      }
-    } else if (def.kind === "deltaCall" || def.kind === "deltaPut") cell.value = "Δ";
-    else cell.value = "";
-  });
+  // Exp row: Arabic date under strike
+  ws.getCell(rExp, strikeCol).value = headerDate;
+  ws.getCell(rExp, strikeCol).font = fontB;
+  ws.getCell(rExp, strikeCol).alignment = alignC;
 
-  // row 4 dates
-  colDefs.forEach(function (def, i) {
-    const c = startCol + i;
-    const cell = ws.getCell(r0 + 3, c);
-    cell.alignment = alignC;
-    cell.font = fontHeader;
-    cell.fill = fillExp;
-    cell.border = border;
-    if (def.kind === "call" || def.kind === "put") {
-      const f = formatPullDate(def.label);
-      cell.value = f.top || def.label;
-    } else if (def.kind === "strike") cell.value = view.expiration;
-    else if (def.kind === "deltaCall" || def.kind === "deltaPut") cell.value = "Δ";
+  // Max per column
+  const putMax = {};
+  const callMax = {};
+  putDateCols.forEach(function (x) {
+    let m = 0;
+    rows.forEach(function (r) {
+      const v = r.puts[x.idx] || 0;
+      if (v > m) m = v;
+    });
+    putMax[x.c] = m;
+  });
+  callDateCols.forEach(function (x) {
+    let m = 0;
+    rows.forEach(function (r) {
+      const v = r.calls[x.idx] || 0;
+      if (v > m) m = v;
+    });
+    callMax[x.c] = m;
   });
 
   rows.forEach(function (r, ri) {
-    const rowIdx = r0 + 4 + ri;
-    colDefs.forEach(function (def, i) {
-      const cell = ws.getCell(rowIdx, startCol + i);
+    const rowIdx = dataStart + ri;
+    if (hasDelta && putDeltaCol) {
+      const dlt = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      const cell = ws.getCell(rowIdx, putDeltaCol);
+      cell.value = dlt != null ? dlt : "";
+      cell.numFmt = "#,##0";
+      cell.font = fontN;
       cell.alignment = alignC;
-      cell.font = fontBody;
       cell.border = border;
-      if (def.kind === "strike") {
-        const s = Number(r.strike);
-        // عدد صحيح بلا نقطة · نصف سترايك إن وُجد بدون أصفار زائدة
-        if (Math.abs(s - Math.round(s)) < 1e-9) {
-          cell.value = Math.round(s);
-          cell.numFmt = "0";
-        } else {
-          cell.value = Math.round(s * 100) / 100;
-          cell.numFmt = "0.0";
-        }
-        cell.font = { name: "Calibri", size: 11, bold: true };
-      } else if (def.kind === "call") {
-        const cv = r.calls[def.idx] || 0;
-        cell.value = cv;
-        cell.numFmt = "#,##0";
-        if (callMaxX[def.idx] > 0 && cv === callMaxX[def.idx]) cell.fill = maxFill;
-      } else if (def.kind === "put") {
-        const pv = r.puts[def.idx] || 0;
-        cell.value = pv;
-        cell.numFmt = "#,##0";
-        if (putMaxX[def.idx] > 0 && pv === putMaxX[def.idx]) cell.fill = maxFill;
-      } else if (def.kind === "deltaCall") {
-        const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
-        cell.value = d != null ? d : "";
-        cell.numFmt = "#,##0";
-        cell.fill = fillDelta;
-      } else if (def.kind === "deltaPut") {
-        const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
-        cell.value = d != null ? d : "";
-        cell.numFmt = "#,##0";
-        cell.fill = fillDelta;
-      }
+      cell.fill = fillDelta;
+    }
+    putDateCols.forEach(function (x) {
+      const val = r.puts[x.idx] || 0;
+      const cell = ws.getCell(rowIdx, x.c);
+      cell.value = val;
+      cell.numFmt = "#,##0";
+      cell.font = fontN;
+      cell.alignment = alignC;
+      cell.border = border;
+      if (putMax[x.c] > 0 && val === putMax[x.c]) cell.fill = fillMax;
     });
+    const sc = ws.getCell(rowIdx, strikeCol);
+    const s = Number(r.strike);
+    if (Math.abs(s - Math.round(s)) < 1e-9) {
+      sc.value = Math.round(s);
+      sc.numFmt = "0";
+    } else {
+      sc.value = Math.round(s * 100) / 100;
+      sc.numFmt = "0.0";
+    }
+    sc.font = fontB;
+    sc.alignment = alignC;
+    sc.border = border;
+    callDateCols.forEach(function (x) {
+      const val = r.calls[x.idx] || 0;
+      const cell = ws.getCell(rowIdx, x.c);
+      cell.value = val;
+      cell.numFmt = "#,##0";
+      cell.font = fontN;
+      cell.alignment = alignC;
+      cell.border = border;
+      if (callMax[x.c] > 0 && val === callMax[x.c]) cell.fill = fillMax;
+    });
+    if (hasDelta && callDeltaCol) {
+      const dlt = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      const cell = ws.getCell(rowIdx, callDeltaCol);
+      cell.value = dlt != null ? dlt : "";
+      cell.numFmt = "#,##0";
+      cell.font = fontN;
+      cell.alignment = alignC;
+      cell.border = border;
+      cell.fill = fillDelta;
+    }
   });
 
-  for (let i = 0; i < total; i++) ws.getColumn(startCol + i).width = 11;
-  ws.getColumn(strikeCol).width = 12;
-  return endCol;
+  for (let c = startCol; c <= headerEnd; c++) {
+    ws.getColumn(c).width = c === strikeCol ? 12 : 9;
+  }
+  return headerEnd;
 }
 
 function openExportDialog() {
@@ -755,19 +813,19 @@ function runExportFromDialog(emode, edays, estrikes) {
         const view = getViewRowsFor(data, exp, edays, estrikes);
         if (!view) return;
         const ws = wb.addWorksheet(String(exp).slice(0, 31), {
-          views: [{ rightToLeft: true, state: "frozen", ySplit: 4 }],
+          views: [{ rightToLeft: true, state: "frozen", ySplit: 5 }],
         });
-        writeOiTableToSheet(ws, 1, 2, view, state.ticker, showDelta);
+        writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta);
       });
     } else {
       const ws = wb.addWorksheet("Export", {
-        views: [{ rightToLeft: true, state: "frozen", ySplit: 4 }],
+        views: [{ rightToLeft: true, state: "frozen", ySplit: 5 }],
       });
       let col = 2;
       chosen.forEach(function (exp) {
         const view = getViewRowsFor(data, exp, edays, estrikes);
         if (!view) return;
-        const last = writeOiTableToSheet(ws, 1, col, view, state.ticker, showDelta);
+        const last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta);
         col = last + 1 + GAP;
       });
     }
