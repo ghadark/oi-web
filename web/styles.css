@@ -913,3 +913,37 @@ html[data-theme="dark"] .brand-sign-wrap {
   line-height: 1.35;
   max-width: 280px;
 }
+
+
+.stocks-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: 8px;
+}
+.stocks-inline .stocks-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gray);
+}
+.stocks-inline .stocks-select {
+  min-width: 110px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.map-range-intro {
+  margin: 8px auto 6px;
+  font-size: 11px;
+  color: var(--gray);
+  text-align: center;
+  line-height: 1.45;
+  max-width: 360px;
+}
+#mapSub:empty { display: none !important; }

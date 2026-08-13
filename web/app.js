@@ -181,7 +181,7 @@ function renderStocksDropdown() {
   const host = $("#stocksRow");
   if (!host) return;
   const cur = isIndexTicker(state.ticker) ? "" : state.ticker;
-  let opts = '<option value=""></option>';
+  let opts = '<option value="">----</option>';
   STOCKS_TICKERS.forEach(function (t) {
     opts +=
       '<option value="' +
@@ -1240,6 +1240,7 @@ function renderMapPanel(L) {
     '<div class="price-card">' +
     '<div class="close-label">الإغلاق</div>' +
     '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
+    '<p class="map-range-intro">القمة والقاع ضمن نطاق السترايك حول السعر · ALL للنطاق الكامل</p>' +
     '<div class="map-range-row">' +
       mapRangeChip("50", state.mapRange) +
       mapRangeChip("100", state.mapRange) +
@@ -1458,9 +1459,9 @@ function mapRangeChip(val, cur) {
 }
 
 function mapRangeHint(range) {
-  if (range === "50") return "قريب من الإغلاق: 50 تحت + 50 فوق";
-  if (range === "100") return "متوسط: 100 تحت + 100 فوق";
-  return "عام: كل السترايكات";
+  if (range === "50") return "50 سترايك تحت الإغلاق + 50 فوق";
+  if (range === "100") return "100 سترايك تحت الإغلاق + 100 فوق";
+  return "ALL — القاع والقمة على كل السترايكات";
 }
 
 async function openMap() {
@@ -1478,10 +1479,11 @@ async function openMap() {
     mapZoom = 1;
     mapRawL = raw;
     const L = await levelsForMapRange(raw, state.mapRange || "ALL");
-    title.textContent = "Levels Map — " + state.ticker;
-    sub.textContent =
-      (raw.as_of ? ("as of " + raw.as_of) : "") +
-      (raw.close != null ? (" · إغلاق " + fmtNum(raw.close, 2)) : "");
+    title.textContent = state.ticker;
+    if (sub) {
+      sub.textContent = "";
+      sub.style.display = "none";
+    }
     body.innerHTML = renderMapPanel(L);
     bindMapZoom(L);
   } catch (e) {
