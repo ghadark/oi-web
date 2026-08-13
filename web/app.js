@@ -33,13 +33,17 @@ const $ = (sel) => document.querySelector(sel);
 
 function formatUpdatedAt(s) {
   try {
-    // ISO أو شبيه: 2026-08-13T05:40:45Z
     var d = new Date(s);
     if (isNaN(d.getTime())) return String(s);
-    return d.toLocaleString("ar-SA", {
+    // ميلادي دائمًا + أرقام لاتينية (وليس هجري)
+    return d.toLocaleString("en-GB", {
       timeZone: "Asia/Riyadh",
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
     });
   } catch (e) {
     return String(s);
@@ -430,27 +434,35 @@ function renderTable() {
   host.innerHTML = html;
 }
 
-function exportExcel() {
-  const data = state.cache[state.ticker];
-  if (!data || !state.expiration) {
-    setStatus("لا بيانات للتصدير", "err");
-    return;
-  }
-  if (typeof ExcelJS === "undefined") {
-    setStatus("مكتبة Excel لم تُحمّل — تحقق من الإنترنت", "err");
-    return;
-  }
-  const view = getViewRows(data);
-  if (!view) {
-    setStatus("لا صفوف للتصدير", "err");
-    return;
-  }
+
+function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
+  if (!data || !expiration) return null;
+  const block = data.by_expiration[expiration];
+  if (!block) return null;
+  const pullDates = lastN(data.pull_dates || [], daysLimit);
+  if (!pullDates.length) return null;
+  const fullDates = data.pull_dates || [];
+  const idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
+  let rows = (block.rows || []).map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idx.map(function (i) { return i >= 0 ? r.calls[i] : 0; }),
+      puts: idx.map(function (i) { return i >= 0 ? r.puts[i] : 0; }),
+    };
+  });
+  rows = filterStrikes(rows, data.close, strikesLimit);
+  if (!rows.length) return null;
+  return { pullDates: pullDates, rows: rows, close: data.close, expiration: expiration };
+}
+
+/** يكتب جدول انتهاء واحد في ورقة ExcelJS بدءًا من (startRow, startCol) — يعيد lastCol */
+function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   const pullDates = view.pullDates;
   const rows = view.rows;
-  const canDelta = state.showDelta && pullDates.length >= 2;
-  const lastI = pullDates.length - 1;
-  const prevI = pullDates.length - 2;
   const n = pullDates.length;
+  const canDelta = showDelta && n >= 2;
+  const lastI = n - 1;
+  const prevI = n - 2;
 
   const callMaxX = [];
   const putMaxX = [];
@@ -464,28 +476,6 @@ function exportExcel() {
     putMaxX.push(mp);
   }
   const maxFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC7D2FE" } };
-
-  // بناء الترتيب البصري أولاً (يسار→يمين على الشاشة):
-  // visual LTR: Δc | Call 12←11←10 | STRIKE | Put 10→11→12 | Δp  → after reverse, both oldest next to strike
-  // مع rightToLeft: true عمود B يظهر يمينًا؛ لذلك نعكس المصفوفة عند الكتابة.
-  const visual = [];
-  if (canDelta) visual.push({ kind: "deltaCall" });
-  // Call: reverse so after RTL reverse, oldest is next to STRIKE (same as Put)
-  for (let j = n - 1; j >= 0; j--) visual.push({ kind: "call", idx: j, label: pullDates[j] });
-  visual.push({ kind: "strike" });
-  for (let j = 0; j < n; j++) visual.push({ kind: "put", idx: j, label: pullDates[j] });
-  if (canDelta) visual.push({ kind: "deltaPut" });
-
-  const colDefs = visual.slice().reverse();
-  const total = colDefs.length;
-  const startCol = 2; // column B
-  const strikeCol = startCol + colDefs.findIndex(function (d) { return d.kind === "strike"; });
-
-  const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet("OI", {
-    views: [{ rightToLeft: true, state: "frozen", ySplit: 4 }],
-  });
-
   const fontHeader = { name: "Calibri", size: 11, bold: true };
   const fontBody = { name: "Calibri", size: 11 };
   const alignC = { horizontal: "center", vertical: "middle" };
@@ -501,6 +491,16 @@ function exportExcel() {
   const fillDelta = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
   const fontWhite = { name: "Calibri", size: 12, bold: true, color: { argb: "FFFFFFFF" } };
 
+  const visual = [];
+  if (canDelta) visual.push({ kind: "deltaCall" });
+  for (let j = n - 1; j >= 0; j--) visual.push({ kind: "call", idx: j, label: pullDates[j] });
+  visual.push({ kind: "strike" });
+  for (let j = 0; j < n; j++) visual.push({ kind: "put", idx: j, label: pullDates[j] });
+  if (canDelta) visual.push({ kind: "deltaPut" });
+  const colDefs = visual.slice().reverse();
+  const total = colDefs.length;
+  const strikeCol = startCol + colDefs.findIndex(function (d) { return d.kind === "strike"; });
+
   function styleRange(r, c1, c2, opts) {
     for (let c = c1; c <= c2; c++) {
       const cell = ws.getCell(r, c);
@@ -510,82 +510,72 @@ function exportExcel() {
       if (opts.border) cell.border = opts.border;
     }
   }
-
   const endCol = startCol + total - 1;
+  const r0 = startRow;
 
-  // Row 1: title
-  ws.mergeCells(1, startCol, 1, endCol);
-  ws.getCell(1, startCol).value = state.ticker + "  |  Open Interest";
-  styleRange(1, startCol, endCol, { font: fontWhite, fill: fillTitle, align: alignC });
-  ws.getRow(1).height = 22;
+  ws.mergeCells(r0, startCol, r0, endCol);
+  ws.getCell(r0, startCol).value = ticker + "  |  " + view.expiration;
+  styleRange(r0, startCol, endCol, { font: fontWhite, fill: fillTitle, align: alignC });
 
-  // Row 2 labels حسب مواقع colDefs الفعلية
-  function spanKind(kindPrefix) {
-    let a = -1, b = -1;
-    colDefs.forEach(function (d, i) {
-      if (d.kind === kindPrefix || (kindPrefix === "call" && d.kind === "call") || (kindPrefix === "put" && d.kind === "put")) {
-        if (a < 0) a = i;
-        b = i;
-      }
-    });
-    return a < 0 ? null : { a: startCol + a, b: startCol + b };
-  }
-  const putSpan = spanKind("put");
-  const callSpan = spanKind("call");
-  if (putSpan) {
-    ws.getCell(2, putSpan.a).value = "Put";
-    if (putSpan.b > putSpan.a) ws.mergeCells(2, putSpan.a, 2, putSpan.b);
-  }
-  ws.getCell(2, strikeCol).value = "Strike";
-  if (callSpan) {
-    ws.getCell(2, callSpan.a).value = "Call";
-    if (callSpan.b > callSpan.a) ws.mergeCells(2, callSpan.a, 2, callSpan.b);
-  }
-  colDefs.forEach(function (d, i) {
-    if (d.kind === "deltaCall" || d.kind === "deltaPut") {
-      ws.getCell(2, startCol + i).value = "Δ";
-    }
-  });
-  styleRange(2, startCol, endCol, { font: fontHeader, fill: fillSec, align: alignC, border: border });
-  ws.getRow(2).height = 18;
-
-  // Row 3: dates
-  for (let i = 0; i < total; i++) {
-    const def = colDefs[i];
-    let v = "";
-    if (def.kind === "call" || def.kind === "put") v = def.label;
-    else if (def.kind === "strike") v = "STRIKE";
-    else if (def.kind === "deltaCall" || def.kind === "deltaPut") v = "Δ";
-    const cell = ws.getCell(3, startCol + i);
-    cell.value = v;
-    cell.font = fontHeader;
+  // row 2: PUT | CALL labels simplified
+  colDefs.forEach(function (def, i) {
+    const c = startCol + i;
+    const cell = ws.getCell(r0 + 1, c);
     cell.alignment = alignC;
+    cell.font = fontHeader;
+    cell.fill = fillSec;
     cell.border = border;
-    cell.fill = def.kind.indexOf("delta") === 0 ? fillDelta : fillDates;
-  }
-  ws.getRow(3).height = 18;
+    if (def.kind === "strike") cell.value = "STRIKE";
+    else if (def.kind === "call" || def.kind === "deltaCall") cell.value = "CALL";
+    else if (def.kind === "put" || def.kind === "deltaPut") cell.value = "PUT";
+  });
 
-  // Row 4: expiration only (no close)
-  for (let c = startCol; c <= endCol; c++) {
-    ws.getCell(4, c).border = border;
-    ws.getCell(4, c).alignment = alignC;
-    ws.getCell(4, c).font = fontBody;
-    ws.getCell(4, c).fill = fillDates;
-  }
-  ws.getCell(4, strikeCol).value = state.expiration;
-  ws.getRow(4).height = 18;
+  // row 3 weekdays
+  colDefs.forEach(function (def, i) {
+    const c = startCol + i;
+    const cell = ws.getCell(r0 + 2, c);
+    cell.alignment = alignC;
+    cell.font = fontBody;
+    cell.fill = fillDates;
+    cell.border = border;
+    if (def.kind === "call" || def.kind === "put") {
+      try {
+        const p = def.label.split("-").map(Number);
+        const dt = new Date(new Date().getFullYear(), p[1] - 1, p[0]);
+        cell.value = dt.toLocaleString("en", { weekday: "short" });
+      } catch (e) {
+        cell.value = "";
+      }
+    } else if (def.kind === "deltaCall" || def.kind === "deltaPut") cell.value = "Δ";
+    else cell.value = "";
+  });
 
-  // Data
+  // row 4 dates
+  colDefs.forEach(function (def, i) {
+    const c = startCol + i;
+    const cell = ws.getCell(r0 + 3, c);
+    cell.alignment = alignC;
+    cell.font = fontHeader;
+    cell.fill = fillDates;
+    cell.border = border;
+    if (def.kind === "call" || def.kind === "put") {
+      const f = formatPullDate(def.label);
+      cell.value = f.top || def.label;
+    } else if (def.kind === "strike") cell.value = view.expiration;
+    else if (def.kind === "deltaCall" || def.kind === "deltaPut") cell.value = "Δ";
+  });
+
   rows.forEach(function (r, ri) {
-    const rowIdx = 5 + ri;
+    const rowIdx = r0 + 4 + ri;
     colDefs.forEach(function (def, i) {
       const cell = ws.getCell(rowIdx, startCol + i);
       cell.alignment = alignC;
       cell.font = fontBody;
       cell.border = border;
       if (def.kind === "strike") {
-        cell.value = Math.round(Number(r.strike));
-        cell.numFmt = "0";
+        const s = Number(r.strike);
+        cell.value = Math.abs(s - Math.round(s)) < 1e-9 ? Math.round(s) : Math.round(s * 100) / 100;
+        cell.numFmt = "0.##";
         cell.font = { name: "Calibri", size: 11, bold: true };
       } else if (def.kind === "call") {
         const cv = r.calls[def.idx] || 0;
@@ -611,34 +601,210 @@ function exportExcel() {
     });
   });
 
-  ws.getColumn(1).width = 3;
-  for (let i = 0; i < total; i++) {
-    ws.getColumn(startCol + i).width = 11;
-  }
+  for (let i = 0; i < total; i++) ws.getColumn(startCol + i).width = 11;
   ws.getColumn(strikeCol).width = 12;
-
-  const fname =
-    state.ticker + "_" + state.expiration + "_D" + state.days + "_S" + state.strikes + ".xlsx";
-
-  wb.xlsx.writeBuffer().then(function (buffer) {
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    if (typeof saveAs === "function") {
-      saveAs(blob, fname);
-    } else {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = fname;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    }
-    setStatus("تم تنزيل ملف Excel (.xlsx) بتنسيق كامل", "ok");
-  }).catch(function (err) {
-    setStatus("خطأ تصدير: " + (err && err.message ? err.message : err), "err");
-  });
+  return endCol;
 }
 
+function openExportDialog() {
+  const data = state.cache[state.ticker];
+  if (!data) {
+    setStatus("لا بيانات — اختر مؤشرًا وحدّث العرض", "err");
+    return;
+  }
+  if (typeof ExcelJS === "undefined") {
+    setStatus("مكتبة Excel لم تُحمّل — تحقق من الإنترنت", "err");
+    return;
+  }
+  const modal = $("#exportModal");
+  const body = $("#exportBody");
+  if (!modal || !body) {
+    setStatus("نافذة التصدير غير متوفرة", "err");
+    return;
+  }
+  const exps = Object.keys(data.by_expiration || {}).sort();
+  if (!exps.length) {
+    setStatus("لا تواريخ انتهاء للتصدير", "err");
+    return;
+  }
+  const curExp = state.expiration;
+  let html = "";
+  html += '<div class="exp-export-block">';
+  html += '<div class="exp-export-head"><b>تواريخ الانتهاء</b>';
+  html += '<button type="button" class="btn btn-sm" id="expSelectAll">تحديد الكل</button></div>';
+  html += '<div class="exp-checks">';
+  exps.forEach(function (exp) {
+    const chk = exp === curExp ? " checked" : "";
+    html +=
+      '<label class="exp-check"><input type="checkbox" data-exp="' +
+      exp +
+      '"' +
+      chk +
+      "/> " +
+      exp +
+      "</label>";
+  });
+  html += "</div></div>";
+  html += '<div class="exp-export-row"><span>الوضع</span>';
+  html += '<button type="button" class="chip on" data-emode="single">صفحة واحدة</button>';
+  html += '<button type="button" class="chip" data-emode="multi">صفحات متعددة</button></div>';
+  html += '<div class="exp-export-row"><span>Days</span>';
+  ["2", "3", "5", "10", "ALL"].forEach(function (d) {
+    const on = String(state.days) === d ? " on" : "";
+    html += '<button type="button" class="chip' + on + '" data-edays="' + d + '">' + d + "</button>";
+  });
+  html += "</div>";
+  html += '<div class="exp-export-row"><span>Strikes</span>';
+  ["30", "50", "ALL"].forEach(function (s) {
+    const on = String(state.strikes) === s ? " on" : "";
+    html += '<button type="button" class="chip' + on + '" data-estrikes="' + s + '">' + s + "</button>";
+  });
+  html += "</div>";
+  html += '<p class="exp-export-note">صفحة واحدة = الجداول جنب بعض · متعددة = كل انتهاء في ورقة</p>';
+  html += '<div class="exp-export-actions">';
+  html += '<button type="button" class="btn btn-teal" id="expDoBtn">تصدير Excel</button>';
+  html += '<button type="button" class="btn" id="expCancelBtn">إلغاء</button></div>';
+  html += '<p id="expStatus" class="exp-status"></p>';
+  body.innerHTML = html;
+  modal.classList.remove("hidden");
+
+  let emode = "single";
+  let edays = String(state.days || "2");
+  let estrikes = String(state.strikes || "30");
+
+  body.querySelectorAll("[data-emode]").forEach(function (btn) {
+    btn.onclick = function () {
+      emode = btn.getAttribute("data-emode");
+      body.querySelectorAll("[data-emode]").forEach(function (b) {
+        b.classList.toggle("on", b === btn);
+      });
+    };
+  });
+  body.querySelectorAll("[data-edays]").forEach(function (btn) {
+    btn.onclick = function () {
+      edays = btn.getAttribute("data-edays");
+      body.querySelectorAll("[data-edays]").forEach(function (b) {
+        b.classList.toggle("on", b === btn);
+      });
+    };
+  });
+  body.querySelectorAll("[data-estrikes]").forEach(function (btn) {
+    btn.onclick = function () {
+      estrikes = btn.getAttribute("data-estrikes");
+      body.querySelectorAll("[data-estrikes]").forEach(function (b) {
+        b.classList.toggle("on", b === btn);
+      });
+    };
+  });
+  const selAll = $("#expSelectAll");
+  if (selAll) {
+    selAll.onclick = function () {
+      body.querySelectorAll("input[data-exp]").forEach(function (cb) {
+        cb.checked = true;
+      });
+    };
+  }
+  const cancel = $("#expCancelBtn");
+  if (cancel) cancel.onclick = closeExportDialog;
+  const doBtn = $("#expDoBtn");
+  if (doBtn) {
+    doBtn.onclick = function () {
+      runExportFromDialog(emode, edays, estrikes);
+    };
+  }
+}
+
+function closeExportDialog() {
+  const modal = $("#exportModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function runExportFromDialog(emode, edays, estrikes) {
+  const data = state.cache[state.ticker];
+  const body = $("#exportBody");
+  const st = $("#expStatus");
+  const chosen = [];
+  if (body) {
+    body.querySelectorAll("input[data-exp]:checked").forEach(function (cb) {
+      chosen.push(cb.getAttribute("data-exp"));
+    });
+  }
+  if (!chosen.length) {
+    if (st) st.textContent = "اختر تاريخ انتهاء واحدًا على الأقل";
+    return;
+  }
+  if (st) st.textContent = "جاري إنشاء الملف…";
+
+  try {
+    const wb = new ExcelJS.Workbook();
+    const GAP = 4;
+    const showDelta = !!state.showDelta;
+
+    if (emode === "multi") {
+      chosen.forEach(function (exp, i) {
+        const view = getViewRowsFor(data, exp, edays, estrikes);
+        if (!view) return;
+        const ws = wb.addWorksheet(String(exp).slice(0, 31), {
+          views: [{ rightToLeft: true, state: "frozen", ySplit: 4 }],
+        });
+        writeOiTableToSheet(ws, 1, 2, view, state.ticker, showDelta);
+      });
+    } else {
+      const ws = wb.addWorksheet("Export", {
+        views: [{ rightToLeft: true, state: "frozen", ySplit: 4 }],
+      });
+      let col = 2;
+      chosen.forEach(function (exp) {
+        const view = getViewRowsFor(data, exp, edays, estrikes);
+        if (!view) return;
+        const last = writeOiTableToSheet(ws, 1, col, view, state.ticker, showDelta);
+        col = last + 1 + GAP;
+      });
+    }
+
+    if (wb.worksheets.length === 0) {
+      if (st) st.textContent = "لا بيانات للجداول المختارة";
+      return;
+    }
+
+    const fname =
+      state.ticker +
+      "_Exp_D" +
+      edays +
+      "_S" +
+      estrikes +
+      "_" +
+      new Date().toISOString().slice(0, 10) +
+      ".xlsx";
+
+    wb.xlsx.writeBuffer().then(function (buffer) {
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      if (typeof saveAs === "function") {
+        saveAs(blob, fname);
+      } else {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = fname;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+      if (st) st.textContent = "✅ تم التصدير: " + fname;
+      setStatus("✅ تم التصدير: " + fname, "ok");
+    }).catch(function (err) {
+      if (st) st.textContent = "خطأ: " + (err && err.message ? err.message : err);
+      setStatus("خطأ تصدير: " + (err && err.message ? err.message : err), "err");
+    });
+  } catch (err) {
+    if (st) st.textContent = "خطأ: " + (err && err.message ? err.message : err);
+  }
+}
+
+
+function exportExcel() {
+  openExportDialog();
+}
 
 // —— سعر مباشر للشريط الأخضر (ويب فقط، مع قيود الاستضافة الثابتة) ——
 const YAHOO_MAP = { SPY: "SPY", QQQ: "QQQ", IWM: "IWM", GLD: "GLD", SPX: "^GSPC" };
@@ -753,6 +919,10 @@ function init() {
   if ($("#themeSwitch")) $("#themeSwitch").onclick = toggleTheme;
   if ($("#mapBtn")) $("#mapBtn").onclick = function () { openMap(); };
   if ($("#mapClose")) $("#mapClose").onclick = closeMap;
+  if ($("#exportClose")) $("#exportClose").onclick = closeExportDialog;
+  if ($("#exportModal")) $("#exportModal").addEventListener("click", function (e) {
+    if (e.target.id === "exportModal") closeExportDialog();
+  });
   if ($("#mapModal")) $("#mapModal").addEventListener("click", function (e) {
     if (e.target.id === "mapModal") closeMap();
   });
@@ -1240,7 +1410,7 @@ function renderMapPanel(L) {
     '<div class="price-card">' +
     '<div class="close-label">الإغلاق</div>' +
     '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
-    '<p class="map-range-intro">القمة والقاع ضمن نطاق السترايك حول السعر · ALL للنطاق الكامل</p>' +
+    '<p class="map-range-intro">تُحدد القمم والقيعان بناءً على نطاق السترايكات المُختار (حيث ALL يمثل النطاق العام)</p>' +
     '<div class="map-range-row">' +
       mapRangeChip("50", state.mapRange) +
       mapRangeChip("100", state.mapRange) +

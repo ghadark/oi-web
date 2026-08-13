@@ -947,3 +947,43 @@ html[data-theme="dark"] .brand-sign-wrap {
   max-width: 360px;
 }
 #mapSub:empty { display: none !important; }
+
+
+.export-panel { max-width: 720px; width: min(720px, 96vw); }
+.export-body { padding: 8px 4px 16px; }
+.exp-export-block { margin-bottom: 12px; }
+.exp-export-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; gap: 8px;
+}
+.exp-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px 10px;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+.exp-check {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text); cursor: pointer;
+}
+.exp-export-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 10px 0; font-size: 12px; color: var(--gray);
+}
+.exp-export-row .chip {
+  border: 1px solid var(--border); background: var(--chip);
+  color: var(--text); border-radius: 8px; padding: 4px 10px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.exp-export-row .chip.on {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.exp-export-note { font-size: 11px; color: var(--gray); margin: 4px 0 10px; }
+.exp-export-actions { display: flex; gap: 8px; align-items: center; }
+.exp-status { margin-top: 10px; font-size: 13px; font-weight: 600; color: #16a34a; }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
