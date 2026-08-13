@@ -26,7 +26,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
-  expiration: null, showDelta: false, dark: false, cache: {}, livePrice: null,
+  expiration: null, showDelta: false, dark: false, cache: {}, livePrice: null, mapRange: "ALL",
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -61,12 +61,38 @@ async function loadTicker(ticker) {
   return json;
 }
 
+/** قبل 7 ص الرياض يُبقى انتهاء أمس للمراجعة الليلية؛ بعد 7 ص يُحذف */
+function expirationCutoffDate() {
+  try {
+    var parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Riyadh",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", hour12: false,
+    }).formatToParts(new Date());
+    var get = function (t) {
+      for (var i = 0; i < parts.length; i++) if (parts[i].type === t) return parts[i].value;
+      return "0";
+    };
+    var y = parseInt(get("year"), 10);
+    var m = parseInt(get("month"), 10);
+    var d = parseInt(get("day"), 10);
+    var h = parseInt(get("hour"), 10);
+    var cutoff = new Date(y, m - 1, d);
+    cutoff.setHours(0, 0, 0, 0);
+    if (h < 7) cutoff.setDate(cutoff.getDate() - 1);
+    return cutoff;
+  } catch (e) {
+    var t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }
+}
+
 function futureExpirations(list) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const cutoff = expirationCutoffDate();
   return (list || []).filter(function (exp) {
     const d = new Date(String(exp) + "T00:00:00");
-    return !isNaN(d.getTime()) && d >= today;
+    return !isNaN(d.getTime()) && d >= cutoff;
   });
 }
 
@@ -743,6 +769,7 @@ function init() {
 
 // ========== Levels Map (3 phases) ==========
 let levelsCache = null;
+let mapRawL = null;
 
 async function loadLevels() {
   if (levelsCache) return levelsCache;
@@ -1125,13 +1152,7 @@ function shouldSkipTomorrow(L) {
 function renderMapPanel(L) {
   mapLastL = L;
   const price = L.close;
-  const bands = [
-    { key: "daily", label: "اليوم" },
-    { key: "tomorrow", label: "بكرا" },
-    { key: "weekly", label: "الأسبوع" },
-    { key: "opx", label: "OPX" },
-    { key: "next_opx", label: "OPX+" },
-  ];
+  const bands = getMapBandDefs(L);
 
   // قارن أولًا ثم احفظ — حتى لا تُستبدل لقطة الأمس قبل المقارنة
   const cmp = getCompareBands(state.ticker, L);
@@ -1219,6 +1240,12 @@ function renderMapPanel(L) {
     '<div class="price-card">' +
     '<div class="close-label">الإغلاق</div>' +
     '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
+    '<div class="map-range-row">' +
+      mapRangeChip("50", state.mapRange) +
+      mapRangeChip("100", state.mapRange) +
+      mapRangeChip("ALL", state.mapRange) +
+    "</div>" +
+    '<p class="map-range-hint">' + mapRangeHint(state.mapRange || "ALL") + "</p>" +
     "</div>" +
     '<div class="grid-wrap">' +
     '<div class="stage" id="mapStage">' +
@@ -1236,7 +1263,19 @@ function renderMapPanel(L) {
   );
 }
 
+function bindMapRangeChips() {
+  document.querySelectorAll("[data-map-range]").forEach(function (btn) {
+    btn.onclick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setMapRange(btn.getAttribute("data-map-range"));
+    };
+  });
+}
+
 function bindMapZoom(L) {
+  bindMapRangeChips();
+
   mapLastL = L;
   var stage = document.getElementById("mapStage");
   var axis = document.getElementById("mapPriceAxis");
@@ -1344,6 +1383,86 @@ function bindMapZoom(L) {
 
 
 
+
+function mapRangeN(range) {
+  if (range === "50") return 50;
+  if (range === "100") return 100;
+  return null;
+}
+
+function maxOiNearClose(data, exp, close, nEach, dateIdx) {
+  var block = data && data.by_expiration && data.by_expiration[exp];
+  if (!block || !block.rows || !block.rows.length || dateIdx < 0) {
+    return { support: null, resistance: null };
+  }
+  var rows = block.rows.map(function (r) {
+    return {
+      strike: Number(r.strike),
+      call: Number((r.calls && r.calls[dateIdx]) || 0),
+      put: Number((r.puts && r.puts[dateIdx]) || 0),
+    };
+  });
+  rows.sort(function (a, b) { return a.strike - b.strike; });
+  if (close != null && !isNaN(Number(close)) && nEach != null) {
+    var c = Number(close);
+    var below = rows.filter(function (r) { return r.strike <= c; }).slice(-nEach);
+    var above = rows.filter(function (r) { return r.strike >= c; }).slice(0, nEach);
+    var keep = {};
+    below.concat(above).forEach(function (r) { keep[r.strike] = true; });
+    rows = rows.filter(function (r) { return keep[r.strike]; });
+  }
+  var maxPut = -1, maxCall = -1, sup = null, res = null;
+  rows.forEach(function (r) {
+    if (r.put > maxPut) { maxPut = r.put; sup = r.strike; }
+    if (r.call > maxCall) { maxCall = r.call; res = r.strike; }
+  });
+  return { support: sup, resistance: res };
+}
+
+async function levelsForMapRange(baseL, range) {
+  if (!baseL) return baseL;
+  if (!range || range === "ALL") return baseL;
+  var data;
+  try { data = await loadTicker(state.ticker); } catch (e) { return baseL; }
+  var nEach = mapRangeN(range);
+  var close = baseL.close != null ? baseL.close : data.close;
+  var pullDates = data.pull_dates || [];
+  var lastIdx = pullDates.length - 1;
+  var prevIdx = pullDates.length > 1 ? pullDates.length - 2 : -1;
+  var L2 = JSON.parse(JSON.stringify(baseL));
+  L2.mapRange = range;
+  L2.close = close;
+  ["daily", "tomorrow", "weekly", "opx", "next_opx"].forEach(function (key) {
+    var band = L2[key] || {};
+    var exp = band.exp;
+    if (!exp) return;
+    var cur = maxOiNearClose(data, exp, close, nEach, lastIdx);
+    var old = prevIdx >= 0 ? maxOiNearClose(data, exp, close, nEach, prevIdx) : {};
+    L2[key] = Object.assign({}, band, {
+      support: cur.support,
+      resistance: cur.resistance,
+      prev_support: old.support != null ? old.support : null,
+      prev_resistance: old.resistance != null ? old.resistance : null,
+      range: range,
+    });
+  });
+  return L2;
+}
+
+function mapRangeChip(val, cur) {
+  var active = (cur || "ALL") === val ? " active" : "";
+  return (
+    '<button type="button" class="map-range-chip' + active + '" data-map-range="' + val + '">' +
+    val + "</button>"
+  );
+}
+
+function mapRangeHint(range) {
+  if (range === "50") return "قريب من الإغلاق: 50 تحت + 50 فوق";
+  if (range === "100") return "متوسط: 100 تحت + 100 فوق";
+  return "عام: كل السترايكات";
+}
+
 async function openMap() {
   const modal = $("#mapModal");
   const body = $("#mapBody");
@@ -1354,18 +1473,44 @@ async function openMap() {
   body.innerHTML = '<p style="color:#94a3b8">جاري تحميل المستويات…</p>';
   try {
     const all = await loadLevels();
-    const L = (all.tickers || {})[state.ticker];
-    if (!L) throw new Error("لا مستويات لـ " + state.ticker);
-    title.textContent = "Levels Map — " + state.ticker;
-    sub.textContent = (L.as_of ? ("as of " + L.as_of) : "") +
-      (L.close != null ? (" · " + fmtNum(L.close, 2)) : "");
+    const raw = (all.tickers || {})[state.ticker];
+    if (!raw) throw new Error("لا مستويات لـ " + state.ticker);
     mapZoom = 1;
+    mapRawL = raw;
+    const L = await levelsForMapRange(raw, state.mapRange || "ALL");
+    title.textContent = "Levels Map — " + state.ticker;
+    sub.textContent =
+      (raw.as_of ? ("as of " + raw.as_of) : "") +
+      (raw.close != null ? (" · إغلاق " + fmtNum(raw.close, 2)) : "");
     body.innerHTML = renderMapPanel(L);
     bindMapZoom(L);
   } catch (e) {
     body.innerHTML =
       '<p style="color:#f87171">' + (e.message || e) + "</p>" +
       '<p style="color:#94a3b8;font-size:12px">بعد دمج الكود، شغّل Actions مرة لينشأ data/levels.json</p>';
+  }
+}
+
+async function setMapRange(range) {
+  state.mapRange = range || "ALL";
+  if (!$("#mapModal") || $("#mapModal").classList.contains("hidden")) return;
+  const body = $("#mapBody");
+  if (!body) return;
+  body.innerHTML = '<p style="color:#94a3b8">جاري تحديث النطاق…</p>';
+  try {
+    var raw = mapRawL;
+    if (!raw) {
+      const all = await loadLevels();
+      raw = (all.tickers || {})[state.ticker];
+      mapRawL = raw;
+    }
+    if (!raw) throw new Error("لا بيانات");
+    mapZoom = 1;
+    const L = await levelsForMapRange(raw, state.mapRange);
+    body.innerHTML = renderMapPanel(L);
+    bindMapZoom(L);
+  } catch (e) {
+    body.innerHTML = '<p style="color:#f87171">' + (e.message || e) + "</p>";
   }
 }
 
