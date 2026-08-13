@@ -31,6 +31,22 @@ const state = {
 
 const $ = (sel) => document.querySelector(sel);
 
+function formatUpdatedAt(s) {
+  try {
+    // ISO أو شبيه: 2026-08-13T05:40:45Z
+    var d = new Date(s);
+    if (isNaN(d.getTime())) return String(s);
+    return d.toLocaleString("ar-SA", {
+      timeZone: "Asia/Riyadh",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch (e) {
+    return String(s);
+  }
+}
+
+
 function dataUrl(ticker) {
   const base = document.body.dataset.dataBase || "../data";
   return base + "/" + ticker + ".json?t=" + Date.now();
@@ -152,7 +168,7 @@ function renderStocksDropdown() {
   });
   host.innerHTML =
     '<label class="stocks-label" for="stocksSelect">STOCKS</label>' +
-    '<select id="stocksSelect" class="stocks-select">' +
+    '<select id="stocksSelect" class="stocks-select" title="STOCKS">' +
     opts +
     "</select>";
 
@@ -223,7 +239,7 @@ async function refresh() {
     }
     sel.value = state.expiration || "";
     $("#updatedAt").textContent = data.updated_at
-      ? "آخر تحديث بيانات: " + data.updated_at
+      ? "آخر تحديث: " + formatUpdatedAt(data.updated_at)
       : "لا يوجد تحديث بعد — شغّل Actions أولاً";
     renderTable();
     setStatus("جاهز", "ok");
@@ -991,9 +1007,12 @@ var mapLastL = null;
 function levelArrow(curr, prev) {
   if (curr == null || prev == null || isNaN(Number(curr)) || isNaN(Number(prev))) return "";
   var c = Number(curr), p = Number(prev);
-  if (c > p) return '<span class="lvl-arrow up" title="تم الرفع من ' + p + '">↑</span>';
-  if (c < p) return '<span class="lvl-arrow down" title="تم التنزيل من ' + p + '">↓</span>';
-  return '<span class="lvl-arrow flat" title="بدون تغيير">·</span>';
+  // تسامح كسور السترايك
+  if (Math.abs(c - p) < 0.001)
+    return '<span class="lvl-arrow flat" title="ثابت عند ' + fmtStrike(p) + '">·</span>';
+  if (c > p)
+    return '<span class="lvl-arrow up" title="رُفع من ' + fmtStrike(p) + ' → ' + fmtStrike(c) + '">↑</span>';
+  return '<span class="lvl-arrow down" title="نُزّل من ' + fmtStrike(p) + ' → ' + fmtStrike(c) + '">↓</span>';
 }
 
 function readPrevLevels(ticker) {
@@ -1022,15 +1041,18 @@ function savePrevLevels(ticker, L) {
 }
 
 function getCompareBands(ticker, L) {
+  // أولوية: قيم السيرفر من levels.json (اليوم vs أمس في القاعدة)
+  // ثم localStorage كاحتياط فقط
   var prev = readPrevLevels(ticker);
   var out = {};
   ["daily", "tomorrow", "weekly", "opx", "next_opx"].forEach(function (k) {
     var b = L[k] || {};
-    var ps = b.prev_support, pr = b.prev_resistance;
-    if ((ps == null || pr == null) && prev && prev.bands && prev.bands[k]) {
+    var ps = b.prev_support;
+    var pr = b.prev_resistance;
+    if (ps == null && prev && prev.bands && prev.bands[k])
       ps = prev.bands[k].support;
+    if (pr == null && prev && prev.bands && prev.bands[k])
       pr = prev.bands[k].resistance;
-    }
     out[k] = { prev_support: ps, prev_resistance: pr };
   });
   return out;
@@ -1057,6 +1079,33 @@ function mapScale(L) {
 
 
 /** بكرا يوافق الجمعة/نفس انتهاء الأسبوع → نكتفي ببطاقة الأسبوع */
+
+/** ترتيب بطاقات الماب حسب اليوم (جمعة الأسبوع vs باقي الأيام) */
+function getMapBandDefs(L) {
+  var meta = (L && L.meta) || {};
+  var daily = (L && L.daily) || {};
+  var weekly = (L && L.weekly) || {};
+  var todayWeekly =
+    meta.today_is_weekly === true ||
+    (daily.exp && weekly.exp && daily.exp === weekly.exp);
+  if (todayWeekly) {
+    // يوم الجمعة / يوم الأوبكس الأسبوعي: الأسبوع أولًا ثم بكرا (الإثنين) ثم OPX
+    return [
+      { key: "weekly", label: "الأسبوع" },
+      { key: "tomorrow", label: "بكرا" },
+      { key: "opx", label: "OPX" },
+      { key: "next_opx", label: "OPX+" },
+    ];
+  }
+  return [
+    { key: "daily", label: "اليوم" },
+    { key: "tomorrow", label: "بكرا" },
+    { key: "weekly", label: "الأسبوع" },
+    { key: "opx", label: "OPX" },
+    { key: "next_opx", label: "OPX+" },
+  ];
+}
+
 function shouldSkipTomorrow(L) {
   if (!L) return false;
   if (L.meta && L.meta.tomorrow_merged_weekly) return true;
@@ -1088,8 +1137,9 @@ function renderMapPanel(L) {
     { key: "next_opx", label: "OPX+" },
   ];
 
-  savePrevLevels(state.ticker, L);
+  // قارن أولًا ثم احفظ — حتى لا تُستبدل لقطة الأمس قبل المقارنة
   const cmp = getCompareBands(state.ticker, L);
+  savePrevLevels(state.ticker, L);
 
   const byPrice = {};
   function add(v, kind, lab) {
@@ -1170,8 +1220,10 @@ function renderMapPanel(L) {
 
   return (
     '<div class="map-h1">' +
-    '<div class="price-card"><b>' + (price != null ? fmtNum(price, 2) : "—") +
-    "</b><p>أين نقف بين القمة والقاع؟</p></div>" +
+    '<div class="price-card">' +
+    '<div class="close-label">الإغلاق</div>' +
+    '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
+    "</div>" +
     '<div class="grid-wrap">' +
     '<div class="stage" id="mapStage">' +
     '<div class="track"></div>' +

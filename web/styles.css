@@ -815,34 +815,65 @@ html[data-theme="dark"] .brand-sign-wrap {
 }
 
 
-/* STOCKS dropdown under index cards */
-.stocks-row {
-  display: flex;
-  align-items: center;
+/* شبكة المؤشرات: 5 بطاقات + STOCKS تحت IWM (العمود 3) */
+.tickers-wrap {
+  display: grid;
+  grid-template-columns: repeat(5, 150px);
+  gap: 10px 10px;
   justify-content: center;
+  margin-bottom: 16px;
+}
+.tickers-wrap .tickers {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, 150px);
   gap: 10px;
-  margin: 0 0 16px;
-  flex-wrap: wrap;
+  margin: 0;
+  justify-content: center;
+}
+.stocks-row {
+  grid-column: 3;
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  margin: 0;
 }
 .stocks-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--gray);
+  text-align: center;
 }
 .stocks-select {
-  min-width: 220px;
-  max-width: 320px;
-  padding: 8px 12px;
-  border-radius: 10px;
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+  padding: 8px 8px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  box-sizing: border-box;
 }
 .stocks-select:focus {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
+.price-card .close-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray);
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+.lvl-arrow { font-weight: 700; margin-inline-start: 4px; }
+.lvl-arrow.up { color: #34d399; }
+.lvl-arrow.down { color: #f87171; }
+.lvl-arrow.flat { color: #64748b; }
+
