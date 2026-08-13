@@ -36,6 +36,7 @@
         <div style="display:flex;gap:8px;align-items:center">
           <button id="exportBtn" class="btn btn-excel" type="button">Excel</button>
           <button id="mapBtn" class="btn btn-map" type="button">Map</button>
+          <button id="feedbackBtn" class="btn btn-feedback" type="button" title="تعليق خاص">💬</button>
         </div>
       </div>
       <div class="tickers-wrap">
@@ -81,6 +82,28 @@
         <button id="exportClose" class="btn" type="button">إغلاق</button>
       </div>
       <div id="exportBody" class="map-body export-body"></div>
+    </div>
+  </div>
+  <div id="feedbackModal" class="map-modal hidden" role="dialog" aria-modal="true">
+    <div class="map-panel feedback-panel">
+      <div class="map-head">
+        <div>
+          <h3>تعليق خاص</h3>
+          <p class="map-sub">يصل لصاحب المشروع فقط — بدون ظهور إيميل</p>
+        </div>
+        <button id="feedbackClose" class="btn" type="button">إغلاق</button>
+      </div>
+      <form id="feedbackForm" class="feedback-form">
+        <label>الاسم <span class="opt">(اختياري)</span></label>
+        <input id="fbName" type="text" maxlength="80" placeholder="—" autocomplete="name" />
+        <label>التعليق</label>
+        <textarea id="fbMsg" rows="4" maxlength="2000" required placeholder="اكتب ملاحظتك…"></textarea>
+        <p id="fbStatus" class="exp-status"></p>
+        <div class="exp-export-actions">
+          <button type="submit" class="btn btn-teal" id="fbSend">إرسال</button>
+          <button type="button" class="btn" id="fbCancel">إلغاء</button>
+        </div>
+      </form>
     </div>
   </div>
   <script src="app.js"></script>

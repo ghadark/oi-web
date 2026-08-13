@@ -962,7 +962,7 @@ html[data-theme="dark"] .brand-sign-wrap {
 .export-panel .map-head {
   padding: 16px 18px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(37,99,235,.12), transparent);
+  background: transparent;
 }
 .export-panel .map-head h3 {
   margin: 0;
@@ -1047,3 +1047,71 @@ html[data-theme="light"] .exp-checks { background: #f8fafc; }
   color: var(--gray);
 }
 
+
+
+.exp-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  padding-top: 12px;
+  padding-bottom: 4px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.export-body {
+  max-height: min(70vh, 560px);
+  overflow: auto;
+}
+.export-panel .map-head {
+  background: transparent !important;
+}
+.btn-feedback {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.9;
+}
+.btn-feedback:hover {
+  border-color: var(--primary);
+  background: rgba(37,99,235,.1);
+}
+.feedback-panel { max-width: 420px; width: min(420px, 94vw); }
+.feedback-form {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 8px 4px 12px;
+}
+.feedback-form label {
+  font-size: 12px; font-weight: 600; color: var(--text);
+}
+.feedback-form .opt { font-weight: 400; color: var(--gray); font-size: 11px; }
+.feedback-form input,
+.feedback-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(15,23,42,.4);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+.feedback-form input:focus,
+.feedback-form textarea:focus {
+  outline: 2px solid rgba(37,99,235,.45);
+  border-color: var(--primary);
+}
+.map-range-sub {
+  direction: rtl;
+  unicode-bidi: isolate;
+}

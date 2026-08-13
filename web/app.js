@@ -669,10 +669,12 @@ function openExportDialog() {
   });
   html += "</div>";
   html += '<p class="exp-export-note">صفحة واحدة = الجداول جنب بعض · متعددة = كل انتهاء في ورقة</p>';
+  html += '<div class="exp-footer">';
+  html += '<p id="expStatus" class="exp-status"></p>';
   html += '<div class="exp-export-actions">';
   html += '<button type="button" class="btn btn-teal" id="expDoBtn">تصدير Excel</button>';
   html += '<button type="button" class="btn" id="expCancelBtn">إلغاء</button></div>';
-  html += '<p id="expStatus" class="exp-status"></p>';
+  html += '</div>';
   body.innerHTML = html;
   modal.classList.remove("hidden");
 
@@ -928,6 +930,13 @@ function init() {
   if ($("#mapBtn")) $("#mapBtn").onclick = function () { openMap(); };
   if ($("#mapClose")) $("#mapClose").onclick = closeMap;
   if ($("#exportClose")) $("#exportClose").onclick = closeExportDialog;
+  if ($("#feedbackBtn")) $("#feedbackBtn").onclick = openFeedback;
+  if ($("#feedbackClose")) $("#feedbackClose").onclick = closeFeedback;
+  if ($("#fbCancel")) $("#fbCancel").onclick = closeFeedback;
+  if ($("#feedbackForm")) $("#feedbackForm").onsubmit = submitFeedback;
+  if ($("#feedbackModal")) $("#feedbackModal").addEventListener("click", function (e) {
+    if (e.target.id === "feedbackModal") closeFeedback();
+  });
   if ($("#exportModal")) $("#exportModal").addEventListener("click", function (e) {
     if (e.target.id === "exportModal") closeExportDialog();
   });
@@ -1418,7 +1427,7 @@ function renderMapPanel(L) {
     '<div class="price-card">' +
     '<div class="close-label">الإغلاق</div>' +
     '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
-    '<p class="map-range-intro">تُحدد القمم والقيعان بناءً على نطاق السترايكات المُختار<br><span class="map-range-sub">(حيث ALL يمثل النطاق العام)</span></p>' +
+    '<p class="map-range-intro">تُحدد القمم والقيعان بناءً على نطاق السترايكات المُختار<br><span class="map-range-sub" dir="rtl">(حيث ALL يمثل النطاق العام)</span></p>' +
     '<div class="map-range-row">' +
       mapRangeChip("50", state.mapRange) +
       mapRangeChip("100", state.mapRange) +
@@ -1699,5 +1708,63 @@ function closeMap() {
   if (modal) modal.classList.add("hidden");
 }
 
+
+
+// —— تعليقات خاصة (Web3Forms) ——
+// ضعي مفتاحك من https://web3forms.com بعد التسجيل (Access Key)
+const FEEDBACK_ACCESS_KEY = ""; // ← الصقي المفتاح هنا
+
+function openFeedback() {
+  const modal = $("#feedbackModal");
+  if (!modal) return;
+  const st = $("#fbStatus");
+  if (st) st.textContent = "";
+  modal.classList.remove("hidden");
+}
+function closeFeedback() {
+  const modal = $("#feedbackModal");
+  if (modal) modal.classList.add("hidden");
+}
+async function submitFeedback(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const st = $("#fbStatus");
+  const msg = ($("#fbMsg") && $("#fbMsg").value || "").trim();
+  const name = ($("#fbName") && $("#fbName").value || "").trim();
+  if (!msg) {
+    if (st) st.textContent = "اكتبي التعليق أولًا";
+    return;
+  }
+  if (!FEEDBACK_ACCESS_KEY) {
+    if (st) st.textContent = "لم يُضبط مفتاح الإرسال بعد (Web3Forms)";
+    setStatus("أضيفي FEEDBACK_ACCESS_KEY في app.js", "err");
+    return;
+  }
+  if (st) st.textContent = "جاري الإرسال…";
+  try {
+    const res = await fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        access_key: FEEDBACK_ACCESS_KEY,
+        subject: "Oi Web — تعليق جديد",
+        from_name: name || "زائر Oi",
+        message: msg,
+        ticker: state.ticker || "",
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (st) st.textContent = "✅ تم الإرسال — شكرًا لك";
+      if ($("#fbMsg")) $("#fbMsg").value = "";
+      if ($("#fbName")) $("#fbName").value = "";
+      setStatus("✅ وصل تعليقك", "ok");
+      setTimeout(closeFeedback, 1200);
+    } else {
+      if (st) st.textContent = data.message || "تعذر الإرسال";
+    }
+  } catch (err) {
+    if (st) st.textContent = "خطأ شبكة — حاولي لاحقًا";
+  }
+}
 
 document.addEventListener("DOMContentLoaded", init);
