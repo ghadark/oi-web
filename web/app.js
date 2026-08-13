@@ -688,9 +688,10 @@ function openExportDialog() {
     setStatus("نافذة التصدير غير متوفرة", "err");
     return;
   }
-  const exps = Object.keys(data.by_expiration || {}).sort();
+  const allExps = Object.keys(data.by_expiration || {}).sort();
+  const exps = futureExpirations(allExps);
   if (!exps.length) {
-    setStatus("لا تواريخ انتهاء للتصدير", "err");
+    setStatus("لا تواريخ انتهاء متاحة من اليوم فصاعدًا", "err");
     return;
   }
   const curExp = state.expiration;
@@ -721,8 +722,9 @@ function openExportDialog() {
   });
   html += "</div>";
   html += '<div class="exp-export-row"><span>Strikes</span>';
-  ["30", "50", "ALL"].forEach(function (s) {
-    const on = String(state.strikes) === s ? " on" : "";
+  ["50", "100", "ALL"].forEach(function (s) {
+    const curS = ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0 ? String(state.strikes) : "50";
+    const on = curS === s ? " on" : "";
     html += '<button type="button" class="chip' + on + '" data-estrikes="' + s + '">' + s + "</button>";
   });
   html += "</div>";
@@ -738,7 +740,7 @@ function openExportDialog() {
 
   let emode = "single";
   let edays = String(state.days || "2");
-  let estrikes = String(state.strikes || "30");
+  let estrikes = ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0 ? String(state.strikes) : "50";
 
   body.querySelectorAll("[data-emode]").forEach(function (btn) {
     btn.onclick = function () {
