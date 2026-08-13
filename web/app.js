@@ -155,7 +155,7 @@ function renderStocksDropdown() {
   const host = $("#stocksRow");
   if (!host) return;
   const cur = isIndexTicker(state.ticker) ? "" : state.ticker;
-  let opts = '<option value="">STOCKS</option>';
+  let opts = '<option value=""></option>';
   STOCKS_TICKERS.forEach(function (t) {
     opts +=
       '<option value="' +
@@ -168,7 +168,7 @@ function renderStocksDropdown() {
   });
   host.innerHTML =
     '<label class="stocks-label" for="stocksSelect">STOCKS</label>' +
-    '<select id="stocksSelect" class="stocks-select" title="STOCKS">' +
+    '<select id="stocksSelect" class="stocks-select" title="اختر سهمًا">' +
     opts +
     "</select>";
 
@@ -1041,19 +1041,15 @@ function savePrevLevels(ticker, L) {
 }
 
 function getCompareBands(ticker, L) {
-  // أولوية: قيم السيرفر من levels.json (اليوم vs أمس في القاعدة)
-  // ثم localStorage كاحتياط فقط
-  var prev = readPrevLevels(ticker);
+  // مصدر وحيد: levels.json من السيرفر (لكل رمز على حدة)
+  // لا localStorage — كان يخلط بين SPY وQQQ ويقلب الأسهم
   var out = {};
   ["daily", "tomorrow", "weekly", "opx", "next_opx"].forEach(function (k) {
     var b = L[k] || {};
-    var ps = b.prev_support;
-    var pr = b.prev_resistance;
-    if (ps == null && prev && prev.bands && prev.bands[k])
-      ps = prev.bands[k].support;
-    if (pr == null && prev && prev.bands && prev.bands[k])
-      pr = prev.bands[k].resistance;
-    out[k] = { prev_support: ps, prev_resistance: pr };
+    out[k] = {
+      prev_support: b.prev_support != null ? b.prev_support : null,
+      prev_resistance: b.prev_resistance != null ? b.prev_resistance : null,
+    };
   });
   return out;
 }
