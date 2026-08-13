@@ -485,11 +485,13 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
     left: { style: "thin", color: { argb: "FFCBD5E1" } },
     right: { style: "thin", color: { argb: "FFCBD5E1" } },
   };
-  const fillTitle = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2563EB" } };
-  const fillSec = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
-  const fillDates = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+  // ألوان هيدر مطابقة للديسكتوب
+  const fillTitle = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE7E6E6" } };
+  const fillSec = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } };
+  const fillDates = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
+  const fillExp = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDD9C4" } };
   const fillDelta = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
-  const fontWhite = { name: "Calibri", size: 12, bold: true, color: { argb: "FFFFFFFF" } };
+  const fontTitle = { name: "Calibri", size: 12, bold: true, color: { argb: "FF0F172A" } };
 
   const visual = [];
   if (canDelta) visual.push({ kind: "deltaCall" });
@@ -515,7 +517,7 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
 
   ws.mergeCells(r0, startCol, r0, endCol);
   ws.getCell(r0, startCol).value = ticker + "  |  " + view.expiration;
-  styleRange(r0, startCol, endCol, { font: fontWhite, fill: fillTitle, align: alignC });
+  styleRange(r0, startCol, endCol, { font: fontTitle, fill: fillTitle, align: alignC });
 
   // row 2: PUT | CALL labels simplified
   colDefs.forEach(function (def, i) {
@@ -556,7 +558,7 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
     const cell = ws.getCell(r0 + 3, c);
     cell.alignment = alignC;
     cell.font = fontHeader;
-    cell.fill = fillDates;
+    cell.fill = fillExp;
     cell.border = border;
     if (def.kind === "call" || def.kind === "put") {
       const f = formatPullDate(def.label);
@@ -574,8 +576,14 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
       cell.border = border;
       if (def.kind === "strike") {
         const s = Number(r.strike);
-        cell.value = Math.abs(s - Math.round(s)) < 1e-9 ? Math.round(s) : Math.round(s * 100) / 100;
-        cell.numFmt = "0.##";
+        // عدد صحيح بلا نقطة · نصف سترايك إن وُجد بدون أصفار زائدة
+        if (Math.abs(s - Math.round(s)) < 1e-9) {
+          cell.value = Math.round(s);
+          cell.numFmt = "0";
+        } else {
+          cell.value = Math.round(s * 100) / 100;
+          cell.numFmt = "0.0";
+        }
         cell.font = { name: "Calibri", size: 11, bold: true };
       } else if (def.kind === "call") {
         const cv = r.calls[def.idx] || 0;
@@ -1410,7 +1418,7 @@ function renderMapPanel(L) {
     '<div class="price-card">' +
     '<div class="close-label">الإغلاق</div>' +
     '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
-    '<p class="map-range-intro">تُحدد القمم والقيعان بناءً على نطاق السترايكات المُختار (حيث ALL يمثل النطاق العام)</p>' +
+    '<p class="map-range-intro">تُحدد القمم والقيعان بناءً على نطاق السترايكات المُختار<br><span class="map-range-sub">(حيث ALL يمثل النطاق العام)</span></p>' +
     '<div class="map-range-row">' +
       mapRangeChip("50", state.mapRange) +
       mapRangeChip("100", state.mapRange) +
