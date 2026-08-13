@@ -348,19 +348,34 @@ def previous_pull_date(hist: dict, pull_date: str) -> str | None:
     return ordered[-1]
 
 
-def max_oi_levels_for_exp(hist: dict[str, Any], exp: str, pull_date: str) -> dict[str, Any]:
-    """Highest put_oi strike = support, highest call_oi strike = resistance for one expiration."""
-    block = (hist.get("days") or {}).get(pull_date, {}).get(exp) or {}
-    if not block:
-        # fallback: search latest pull_date that has this exp
-        for pd in reversed(sort_pull_dates(list((hist.get("days") or {}).keys()))):
-            block = (hist.get("days") or {}).get(pd, {}).get(exp) or {}
-            if block:
-                pull_date = pd
+def max_oi_levels_for_exp(
+    hist: dict[str, Any],
+    exp: str,
+    pull_date: str,
+    *,
+    allow_fallback: bool = True,
+    only_on_or_before: str | None = None,
+) -> dict[str, Any]:
+    """قاع = أعلى Put OI، قمة = أعلى Call OI لانتهاء واحد."""
+    days = hist.get("days") or {}
+    block = (days.get(pull_date) or {}).get(exp) or {}
+    used_pd = pull_date
+
+    if not block and allow_fallback:
+        ordered = sort_pull_dates(list(days.keys()))
+        for pd in reversed(ordered):
+            if only_on_or_before is not None and only_on_or_before in ordered and pd in ordered:
+                if ordered.index(pd) > ordered.index(only_on_or_before):
+                    continue
+            cand = (days.get(pd) or {}).get(exp) or {}
+            if cand:
+                block = cand
+                used_pd = pd
                 break
-    max_put_s, max_put_v = None, -1
-    max_call_s, max_call_v = None, -1
-    for sk, cell in block.items():
+
+    max_put_s, max_put_v = None, -1.0
+    max_call_s, max_call_v = None, -1.0
+    for sk, cell in (block or {}).items():
         try:
             strike = float(sk)
         except Exception:
@@ -371,14 +386,14 @@ def max_oi_levels_for_exp(hist: dict[str, Any], exp: str, pull_date: str) -> dic
             max_put_v, max_put_s = put_v, strike
         if call_v > max_call_v:
             max_call_v, max_call_s = call_v, strike
+
     return {
         "exp": exp,
-        "pull_date": pull_date,
-        "support": max_put_s,   # قاع = أعلى Put
-        "resistance": max_call_s,  # قمة = أعلى Call
-        "support_oi": max_put_v if max_put_s is not None else None,
-        "resistance_oi": max_call_v if max_call_s is not None else None,
+        "pull_date": used_pd,
+        "support": max_put_s,
+        "resistance": max_call_s,
     }
+
 
 
 def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, close: float | None) -> dict[str, Any]:
@@ -423,15 +438,31 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
             return {
                 "exp": None, "support": None, "resistance": None,
                 "prev_support": None, "prev_resistance": None,
+                "prev_as_of": None,
             }
-        cur = max_oi_levels_for_exp(hist, exp, pull_date)
+        # اليوم: يسمح بالبحث الاحتياطي دون تجاوز
+        cur = max_oi_levels_for_exp(hist, exp, pull_date, allow_fallback=True)
         if prev_pd:
-            old = max_oi_levels_for_exp(hist, exp, prev_pd)
-            cur["prev_support"] = old.get("support")
-            cur["prev_resistance"] = old.get("resistance")
+            # الأمس فقط — ممنوع السقوط على بيانات اليوم (سبب الأسهم المقلوبة)
+            old = max_oi_levels_for_exp(
+                hist, exp, prev_pd,
+                allow_fallback=True,
+                only_on_or_before=prev_pd,
+            )
+            # إذا لم توجد بيانات حقيقية ليوم prev على هذا الانتهاء → لا سهم
+            old_block = ((hist.get("days") or {}).get(prev_pd) or {}).get(exp)
+            if not old_block and old.get("pull_date") != prev_pd:
+                cur["prev_support"] = None
+                cur["prev_resistance"] = None
+                cur["prev_as_of"] = None
+            else:
+                cur["prev_support"] = old.get("support")
+                cur["prev_resistance"] = old.get("resistance")
+                cur["prev_as_of"] = old.get("pull_date") or prev_pd
         else:
             cur["prev_support"] = None
             cur["prev_resistance"] = None
+            cur["prev_as_of"] = None
         return cur
 
     # price path from closes (phase 3)
