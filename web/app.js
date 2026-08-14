@@ -1348,7 +1348,7 @@ function mapScale(L) {
 }
 
 
-/** بكرا يوافق الجمعة/نفس انتهاء الأسبوع → نكتفي ببطاقة الأسبوع */
+/** يوم بعد يوافق الجمعة/نفس انتهاء الأسبوع → نكتفي ببطاقة الأسبوع */
 
 /** ترتيب بطاقات الماب حسب اليوم (جمعة الأسبوع vs باقي الأيام) */
 function getMapBandDefs(L) {
@@ -1359,17 +1359,17 @@ function getMapBandDefs(L) {
     meta.today_is_weekly === true ||
     (daily.exp && weekly.exp && daily.exp === weekly.exp);
   if (todayWeekly) {
-    // يوم الجمعة / يوم الأوبكس الأسبوعي: الأسبوع أولًا ثم بكرا (الإثنين) ثم OPX
+    // يوم الجمعة / يوم الأوبكس الأسبوعي: الأسبوع أولًا ثم يوم بعد (الإثنين) ثم OPX
     return [
       { key: "weekly", label: "الأسبوع" },
-      { key: "tomorrow", label: "بكرا" },
+      { key: "tomorrow", label: "يوم بعد" },
       { key: "opx", label: "OPX" },
       { key: "next_opx", label: "OPX+" },
     ];
   }
   return [
     { key: "daily", label: "اليوم" },
-    { key: "tomorrow", label: "بكرا" },
+    { key: "tomorrow", label: "يوم بعد" },
     { key: "weekly", label: "الأسبوع" },
     { key: "opx", label: "OPX" },
     { key: "next_opx", label: "OPX+" },
@@ -1415,7 +1415,7 @@ function renderMapPanel(L) {
     if (lab && byPrice[k].labels.indexOf(lab) < 0) byPrice[k].labels.push(lab);
   }
   bands.forEach(function (b) {
-    // تخطي بكرا إذا اندمجت مع الأسبوع
+    // تخطي يوم بعد إذا اندمجت مع الأسبوع
     if (b.key === "tomorrow" && shouldSkipTomorrow(L)) return;
     const block = L[b.key] || {};
     add(block.support, "sup", b.label);
