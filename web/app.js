@@ -1105,7 +1105,7 @@ function buildMapSvg(L) {
   const price = L.close;
   const bandDefs = [
     { key: "daily", label: "اليوم" },
-    { key: "tomorrow", label: "بكرا" },
+    { key: "tomorrow", label: "يوم بعد" },
     { key: "weekly", label: "الأسبوع" },
     { key: "opx", label: "OPX" },
     { key: "next_opx", label: "OPX+" },
