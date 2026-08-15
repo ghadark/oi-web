@@ -1358,6 +1358,9 @@ function getMapBandDefs(L) {
   var nextOpx = (L && L.next_opx) || {};
   var t = (L && L.tomorrow) || {};
 
+  // جمعة هذا الأسبوع عطلة → المرجع الجمعة التالية + تسمية «الأسبوع القادم»
+  var weekWord = meta.weekly_is_next_week ? "الأسبوع القادم" : "الأسبوع";
+
   var weeklyIsOpx = !!(weekly.exp && opx.exp && String(weekly.exp) === String(opx.exp));
   var dailyIsWeekly =
     meta.today_is_weekly === true ||
@@ -1376,8 +1379,9 @@ function getMapBandDefs(L) {
 
   // الجمعة: اليوم = الأسبوع
   if (dailyIsWeekly) {
-    var lab = weeklyIsOpx ? "اليوم · الأسبوع · OPX" : "اليوم · الأسبوع";
-    // يوم بعد = الإثنين التالي (لا يُدمج مع الأسبوع)
+    var lab = weeklyIsOpx
+      ? ("اليوم · " + weekWord + " · OPX")
+      : ("اليوم · " + weekWord);
     var bands = [
       { key: "weekly", label: lab },
       { key: "tomorrow", label: "يوم بعد" },
@@ -1388,7 +1392,9 @@ function getMapBandDefs(L) {
 
   // الخميس: يوم بعد = الجمعة = الأسبوع
   if (tomorrowIsWeekly) {
-    var lab2 = weeklyIsOpx ? "يوم بعد · الأسبوع · OPX" : "يوم بعد · الأسبوع";
+    var lab2 = weeklyIsOpx
+      ? ("يوم بعد · " + weekWord + " · OPX")
+      : ("يوم بعد · " + weekWord);
     var bands2 = [
       { key: "daily", label: "اليوم" },
       { key: "weekly", label: lab2 },
@@ -1398,7 +1404,7 @@ function getMapBandDefs(L) {
   }
 
   // إثنين–أربعاء (وأي يوم عادي)
-  var wlab = weeklyIsOpx ? "الأسبوع · OPX" : "الأسبوع";
+  var wlab = weeklyIsOpx ? (weekWord + " · OPX") : weekWord;
   var bands3 = [
     { key: "daily", label: "اليوم" },
     { key: "tomorrow", label: "يوم بعد" },
@@ -1530,8 +1536,8 @@ function renderMapPanel(L) {
     '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
     '<p class="map-range-intro">تُحدد القمم والقيعان بناءً على نطاق السترايكات المُختار<br><span class="map-range-sub" dir="rtl">(حيث ALL يمثل النطاق العام)</span></p>' +
     '<div class="map-range-row">' +
+      mapRangeChip("30", state.mapRange) +
       mapRangeChip("50", state.mapRange) +
-      mapRangeChip("100", state.mapRange) +
       mapRangeChip("ALL", state.mapRange) +
     "</div>" +
     "</div>" +
@@ -1673,6 +1679,7 @@ function bindMapZoom(L) {
 
 
 function mapRangeN(range) {
+  if (range === "30") return 30;
   if (range === "50") return 50;
   if (range === "100") return 100;
   return null;
@@ -1749,7 +1756,8 @@ function mapRangeChip(val, cur) {
 }
 
 function mapRangeHint(range) {
-  if (range === "50") return "50 سترايك تحت الإغلاق + 50 فوق";
+  if (range === "30") return "30 سترايك تحت الإغلاق + 30 فوق — نفس الواجهة";
+  if (range === "50") return "50 سترايك تحت الإغلاق + 50 فوق — نفس الواجهة";
   if (range === "100") return "100 سترايك تحت الإغلاق + 100 فوق";
   return "ALL — القاع والقمة على كل السترايكات";
 }
