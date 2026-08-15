@@ -148,25 +148,6 @@ table.oi td.delta {
   color: var(--text) !important;
   border-color: var(--delta-bg) !important;
 }
-/* عمود النمو G — لون الماكرو RGB(216,231,231) */
-table.oi th.growth,
-table.oi td.growth {
-  background: #d8e7e7 !important;
-  color: #0f172a !important;
-  border-color: #c5d6d6 !important;
-  font-weight: 700;
-}
-html[data-theme="dark"] table.oi th.growth,
-html[data-theme="dark"] table.oi td.growth {
-  background: #2a3f40 !important;
-  color: #e2e8f0 !important;
-  border-color: #3d5556 !important;
-}
-.growth-btn.active {
-  background: #0f766e !important;
-  color: #fff !important;
-  border-color: #0f766e !important;
-}
 .status { font-size: 12px; color: var(--gray); text-align: center; margin-top: 10px; }
 .status.ok { color: #16a34a; }
 .status.err { color: #dc2626; }
@@ -435,9 +416,7 @@ html[data-theme="dark"] .brand-sign-wrap {
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
-  gap: 8px !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
+  gap: 10px !important;
 }
 .logo {
   width: 36px !important;
@@ -486,17 +465,14 @@ html[data-theme="dark"] .brand-sign-wrap {
 .brand-sign {
   font-family: "Montserrat", system-ui, sans-serif !important;
   font-weight: 500 !important;
-  font-size: 8px !important;
-  letter-spacing: 0.12em !important;
+  font-size: 9px !important;
+  letter-spacing: 0.28em !important;
   text-transform: uppercase !important;
   color: #6B8CFF !important;
   white-space: nowrap !important;
   border: none !important;
-  margin-left: 6px !important;
-  flex: 0 1 auto !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  margin-left: 14px !important; /* مسافة فخمة قبل BY GEE بدون خط */
+  flex: 0 0 auto !important;
 }
 
 /* ===== Levels Map H1 ===== */
@@ -1139,52 +1115,3 @@ html[data-theme="light"] .exp-checks { background: #f8fafc; }
   direction: rtl;
   unicode-bidi: isolate;
 }
-
-
-/* شريط تمرير ناعم رمادي نحيف — نافذة Excel وغيرها */
-.export-body,
-.exp-checks,
-.map-body,
-.reports-body,
-.rep-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: #475569 #1e293b;
-}
-.export-body::-webkit-scrollbar,
-.exp-checks::-webkit-scrollbar,
-.map-body::-webkit-scrollbar,
-.reports-body::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.export-body::-webkit-scrollbar-track,
-.exp-checks::-webkit-scrollbar-track,
-.map-body::-webkit-scrollbar-track,
-.reports-body::-webkit-scrollbar-track {
-  background: #1e293b;
-  border-radius: 8px;
-}
-.export-body::-webkit-scrollbar-thumb,
-.exp-checks::-webkit-scrollbar-thumb,
-.map-body::-webkit-scrollbar-thumb,
-.reports-body::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 8px;
-}
-.export-body::-webkit-scrollbar-thumb:hover,
-.exp-checks::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
-html[data-theme="light"] .export-body,
-html[data-theme="light"] .exp-checks {
-  scrollbar-color: #94a3b8 #e2e8f0;
-}
-html[data-theme="light"] .export-body::-webkit-scrollbar-track,
-html[data-theme="light"] .exp-checks::-webkit-scrollbar-track {
-  background: #e2e8f0;
-}
-html[data-theme="light"] .export-body::-webkit-scrollbar-thumb,
-html[data-theme="light"] .exp-checks::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-}
-.map-range-hint { display: none !important; }
