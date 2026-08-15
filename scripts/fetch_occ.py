@@ -455,14 +455,13 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         available.update(day.keys())
     avail = sorted(available)
 
-    # —— مراجع الماب ——
-    # اليوم: إن كان التقويم يوم تداول → نفسه؛ وإلا آخر جلسة (ويكند/عطلة → الجمعة السابقة)
-    # يوم بعد: أول جلسة تداول بعد مرجع «اليوم»
-    #   خميس → جمعة | جمعة → اثنين | سبت (مرجع جمعة) → اثنين | اثنين → ثلاثاء
-    if today.weekday() < 5 and today not in US_MARKET_HOLIDAYS:
-        daily_ref = today
-    else:
-        daily_ref = last_session_day(today)
+    # —— مراجع الماب (أيام التداول Mon–Fri فقط) ——
+    # نفس منطق session_pull_date لعمود الجدول:
+    #   سبت/أحد → جلسة الاثنين (أرقام OCC المحدَّثة)
+    #   إثنين–جمعة → نفس اليوم (مع تخطي العطل)
+    # يوم بعد = أول جلسة بعد daily_ref
+    # الأسبوع = جمعة ذلك الأسبوع
+    _, daily_ref = session_pull_date(today)
     tomorrow_session = next_session_day(daily_ref)
     tomorrow_cal = today + timedelta(days=1)
     weekly_friday = next_friday_on_or_after(daily_ref)
@@ -470,11 +469,11 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
     daily_exp = pick_expiration(avail, daily_ref)
     tomorrow_exp = pick_expiration(avail, tomorrow_session)
     weekly_exp = pick_expiration(avail, weekly_friday)
-    opx_date = third_friday(today.year, today.month)
-    if opx_date < today:
-        # next month
-        m = today.month + 1
-        y = today.year
+    # OPX = ثالث جمعة للشهر الذي تقع فيه جلسة «اليوم»؛ إن انقضت → الشهر التالي
+    opx_date = third_friday(daily_ref.year, daily_ref.month)
+    if opx_date < daily_ref:
+        m = daily_ref.month + 1
+        y = daily_ref.year
         if m > 12:
             m, y = 1, y + 1
         opx_date = third_friday(y, m)
