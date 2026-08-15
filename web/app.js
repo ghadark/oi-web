@@ -1355,25 +1355,70 @@ function getMapBandDefs(L) {
   var meta = (L && L.meta) || {};
   var daily = (L && L.daily) || {};
   var weekly = (L && L.weekly) || {};
-  var todayWeekly =
+  var opx = (L && L.opx) || {};
+  var nextOpx = (L && L.next_opx) || {};
+  var t = (L && L.tomorrow) || {};
+
+  var weeklyIsOpx = !!(weekly.exp && opx.exp && weekly.exp === opx.exp);
+  var dailyIsWeekly =
     meta.today_is_weekly === true ||
-    (daily.exp && weekly.exp && daily.exp === weekly.exp);
-  if (todayWeekly) {
-    // يوم الجمعة / يوم الأوبكس الأسبوعي: الأسبوع أولًا ثم يوم بعد (الإثنين) ثم OPX
-    return [
-      { key: "weekly", label: "الأسبوع" },
-      { key: "tomorrow", label: "يوم بعد" },
-      { key: "opx", label: "OPX" },
-      { key: "next_opx", label: "OPX+" },
-    ];
+    !!(daily.exp && weekly.exp && daily.exp === weekly.exp);
+  var tomorrowIsWeekly =
+    meta.tomorrow_merged_weekly === true ||
+    t.merged_into === "weekly" ||
+    !!(t.exp && weekly.exp && t.exp === weekly.exp);
+
+  function weeklyLabel() {
+    if (dailyIsWeekly && weeklyIsOpx) return "اليوم · الأسبوع · OPX";
+    if (dailyIsWeekly) return "اليوم · الأسبوع";
+    if (tomorrowIsWeekly && weeklyIsOpx) return "يوم بعد · الأسبوع · OPX";
+    if (tomorrowIsWeekly) return "يوم بعد · الأسبوع";
+    if (weeklyIsOpx) return "الأسبوع · OPX";
+    return "الأسبوع";
   }
-  return [
+
+  // الجمعة: اليوم = الأسبوع
+  if (dailyIsWeekly) {
+    var bands = [{ key: "weekly", label: weeklyLabel() }];
+    bands.push({ key: "tomorrow", label: "يوم بعد" });
+    if (!weeklyIsOpx) bands.push({ key: "opx", label: "OPX" });
+    if (nextOpx.exp && (!opx.exp || nextOpx.exp !== opx.exp)) {
+      bands.push({ key: "next_opx", label: "OPX+" });
+    }
+    return bands;
+  }
+
+  // الخميس: يوم بعد = جمعة الأسبوع → دمج التسمية، بدون بطاقة يوم بعد مكررة
+  if (tomorrowIsWeekly) {
+    var bands2 = [
+      { key: "daily", label: "اليوم" },
+      { key: "weekly", label: weeklyLabel() },
+    ];
+    if (!weeklyIsOpx) bands2.push({ key: "opx", label: "OPX" });
+    if (nextOpx.exp && (!opx.exp || nextOpx.exp !== opx.exp)) {
+      bands2.push({ key: "next_opx", label: "OPX+" });
+    }
+    return bands2;
+  }
+
+  // باقي الأيام: اليوم → يوم بعد (ثلاثاء/أربعاء/خميس حسب اليوم) → الأسبوع → OPX
+  var bands3 = [
     { key: "daily", label: "اليوم" },
     { key: "tomorrow", label: "يوم بعد" },
-    { key: "weekly", label: "الأسبوع" },
-    { key: "opx", label: "OPX" },
-    { key: "next_opx", label: "OPX+" },
+    { key: "weekly", label: weeklyLabel() },
   ];
+  if (!weeklyIsOpx) bands3.push({ key: "opx", label: "OPX" });
+  if (nextOpx.exp && (!opx.exp || nextOpx.exp !== opx.exp)) {
+    bands3.push({ key: "next_opx", label: "OPX+" });
+  }
+  return bands3;
+}
+
+function shouldSkipOpx(L) {
+  if (!L) return false;
+  var w = L.weekly || {};
+  var o = L.opx || {};
+  return !!(w.exp && o.exp && w.exp === o.exp);
 }
 
 function shouldSkipTomorrow(L) {
@@ -1417,6 +1462,7 @@ function renderMapPanel(L) {
   bands.forEach(function (b) {
     // تخطي يوم بعد إذا اندمجت مع الأسبوع
     if (b.key === "tomorrow" && shouldSkipTomorrow(L)) return;
+    if (b.key === "opx" && shouldSkipOpx(L)) return;
     const block = L[b.key] || {};
     add(block.support, "sup", b.label);
     add(block.resistance, "res", b.label);
@@ -1468,6 +1514,7 @@ function renderMapPanel(L) {
   let cards = "";
   bands.forEach(function (b) {
     if (b.key === "tomorrow" && shouldSkipTomorrow(L)) return;
+    if (b.key === "opx" && shouldSkipOpx(L)) return;
     const block = L[b.key] || {};
     const peak = block.resistance;
     const floor = block.support;
@@ -1487,13 +1534,11 @@ function renderMapPanel(L) {
     '<div class="price-card">' +
     '<div class="close-label">الإغلاق</div>' +
     '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
-    '<p class="map-range-intro">تُحدد القمم والقيعان بناءً على نطاق السترايكات المُختار<br><span class="map-range-sub" dir="rtl">(حيث ALL يمثل النطاق العام)</span></p>' +
     '<div class="map-range-row">' +
       mapRangeChip("50", state.mapRange) +
       mapRangeChip("100", state.mapRange) +
       mapRangeChip("ALL", state.mapRange) +
     "</div>" +
-    '<p class="map-range-hint">' + mapRangeHint(state.mapRange || "ALL") + "</p>" +
     "</div>" +
     '<div class="grid-wrap">' +
     '<div class="stage" id="mapStage">' +
@@ -1650,14 +1695,17 @@ function maxOiNearClose(data, exp, close, nEach, dateIdx) {
       put: Number((r.puts && r.puts[dateIdx]) || 0),
     };
   });
-  rows.sort(function (a, b) { return a.strike - b.strike; });
+  // نفس منطق filterStrikes في الجدول: أقرب n*2 سترايك من الإغلاق
   if (close != null && !isNaN(Number(close)) && nEach != null) {
     var c = Number(close);
-    var below = rows.filter(function (r) { return r.strike <= c; }).slice(-nEach);
-    var above = rows.filter(function (r) { return r.strike >= c; }).slice(0, nEach);
-    var keep = {};
-    below.concat(above).forEach(function (r) { keep[r.strike] = true; });
-    rows = rows.filter(function (r) { return keep[r.strike]; });
+    rows = rows
+      .map(function (r) { return { r: r, dist: Math.abs(r.strike - c) }; })
+      .sort(function (a, b) { return a.dist - b.dist; })
+      .slice(0, nEach * 2)
+      .map(function (x) { return x.r; })
+      .sort(function (a, b) { return a.strike - b.strike; });
+  } else {
+    rows.sort(function (a, b) { return a.strike - b.strike; });
   }
   var maxPut = -1, maxCall = -1, sup = null, res = null;
   rows.forEach(function (r) {

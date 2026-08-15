@@ -1115,3 +1115,48 @@ html[data-theme="light"] .exp-checks { background: #f8fafc; }
   direction: rtl;
   unicode-bidi: isolate;
 }
+
+
+/* شريط تمرير ناعم رمادي نحيف — Excel / الماب */
+.export-body,
+.exp-checks,
+.map-body {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 #1e293b;
+}
+.export-body::-webkit-scrollbar,
+.exp-checks::-webkit-scrollbar,
+.map-body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.export-body::-webkit-scrollbar-track,
+.exp-checks::-webkit-scrollbar-track,
+.map-body::-webkit-scrollbar-track {
+  background: #1e293b;
+  border-radius: 8px;
+}
+.export-body::-webkit-scrollbar-thumb,
+.exp-checks::-webkit-scrollbar-thumb,
+.map-body::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 8px;
+}
+.export-body::-webkit-scrollbar-thumb:hover,
+.exp-checks::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+html[data-theme="light"] .export-body,
+html[data-theme="light"] .exp-checks {
+  scrollbar-color: #94a3b8 #e2e8f0;
+}
+html[data-theme="light"] .export-body::-webkit-scrollbar-track,
+html[data-theme="light"] .exp-checks::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+html[data-theme="light"] .export-body::-webkit-scrollbar-thumb,
+html[data-theme="light"] .exp-checks::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+}
+.map-range-hint { display: none !important; }
+.map-range-intro { display: none !important; }
