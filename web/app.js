@@ -1358,60 +1358,56 @@ function getMapBandDefs(L) {
   var nextOpx = (L && L.next_opx) || {};
   var t = (L && L.tomorrow) || {};
 
-  var weeklyIsOpx = !!(weekly.exp && opx.exp && weekly.exp === opx.exp);
+  var weeklyIsOpx = !!(weekly.exp && opx.exp && String(weekly.exp) === String(opx.exp));
   var dailyIsWeekly =
     meta.today_is_weekly === true ||
-    !!(daily.exp && weekly.exp && daily.exp === weekly.exp);
+    !!(daily.exp && weekly.exp && String(daily.exp) === String(weekly.exp));
   var tomorrowIsWeekly =
     meta.tomorrow_merged_weekly === true ||
     t.merged_into === "weekly" ||
-    !!(t.exp && weekly.exp && t.exp === weekly.exp);
+    !!(t.exp && weekly.exp && String(t.exp) === String(weekly.exp));
 
-  function weeklyLabel() {
-    if (dailyIsWeekly && weeklyIsOpx) return "اليوم · الأسبوع · OPX";
-    if (dailyIsWeekly) return "اليوم · الأسبوع";
-    if (tomorrowIsWeekly && weeklyIsOpx) return "يوم بعد · الأسبوع · OPX";
-    if (tomorrowIsWeekly) return "يوم بعد · الأسبوع";
-    if (weeklyIsOpx) return "الأسبوع · OPX";
-    return "الأسبوع";
-  }
-
-  // الجمعة: اليوم = الأسبوع
-  if (dailyIsWeekly) {
-    var bands = [{ key: "weekly", label: weeklyLabel() }];
-    bands.push({ key: "tomorrow", label: "يوم بعد" });
-    if (!weeklyIsOpx) bands.push({ key: "opx", label: "OPX" });
-    if (nextOpx.exp && (!opx.exp || nextOpx.exp !== opx.exp)) {
+  function addNextOpx(bands) {
+    if (nextOpx.exp && (!opx.exp || String(nextOpx.exp) !== String(opx.exp))) {
       bands.push({ key: "next_opx", label: "OPX+" });
     }
     return bands;
   }
 
-  // الخميس: يوم بعد = جمعة الأسبوع → دمج التسمية، بدون بطاقة يوم بعد مكررة
-  if (tomorrowIsWeekly) {
-    var bands2 = [
-      { key: "daily", label: "اليوم" },
-      { key: "weekly", label: weeklyLabel() },
+  // الجمعة: اليوم = الأسبوع
+  if (dailyIsWeekly) {
+    var lab = weeklyIsOpx ? "اليوم · الأسبوع · OPX" : "اليوم · الأسبوع";
+    // يوم بعد = الإثنين التالي (لا يُدمج مع الأسبوع)
+    var bands = [
+      { key: "weekly", label: lab },
+      { key: "tomorrow", label: "يوم بعد" },
     ];
-    if (!weeklyIsOpx) bands2.push({ key: "opx", label: "OPX" });
-    if (nextOpx.exp && (!opx.exp || nextOpx.exp !== opx.exp)) {
-      bands2.push({ key: "next_opx", label: "OPX+" });
-    }
-    return bands2;
+    if (!weeklyIsOpx) bands.push({ key: "opx", label: "OPX" });
+    return addNextOpx(bands);
   }
 
-  // باقي الأيام: اليوم → يوم بعد (ثلاثاء/أربعاء/خميس حسب اليوم) → الأسبوع → OPX
+  // الخميس: يوم بعد = الجمعة = الأسبوع
+  if (tomorrowIsWeekly) {
+    var lab2 = weeklyIsOpx ? "يوم بعد · الأسبوع · OPX" : "يوم بعد · الأسبوع";
+    var bands2 = [
+      { key: "daily", label: "اليوم" },
+      { key: "weekly", label: lab2 },
+    ];
+    if (!weeklyIsOpx) bands2.push({ key: "opx", label: "OPX" });
+    return addNextOpx(bands2);
+  }
+
+  // إثنين–أربعاء (وأي يوم عادي)
+  var wlab = weeklyIsOpx ? "الأسبوع · OPX" : "الأسبوع";
   var bands3 = [
     { key: "daily", label: "اليوم" },
     { key: "tomorrow", label: "يوم بعد" },
-    { key: "weekly", label: weeklyLabel() },
+    { key: "weekly", label: wlab },
   ];
   if (!weeklyIsOpx) bands3.push({ key: "opx", label: "OPX" });
-  if (nextOpx.exp && (!opx.exp || nextOpx.exp !== opx.exp)) {
-    bands3.push({ key: "next_opx", label: "OPX+" });
-  }
-  return bands3;
+  return addNextOpx(bands3);
 }
+
 
 function shouldSkipOpx(L) {
   if (!L) return false;
@@ -1422,32 +1418,22 @@ function shouldSkipOpx(L) {
 
 function shouldSkipTomorrow(L) {
   if (!L) return false;
-  if (L.meta && L.meta.tomorrow_merged_weekly) return true;
   var t = L.tomorrow || {};
   var w = L.weekly || {};
   var d = L.daily || {};
+  if (L.meta && L.meta.tomorrow_merged_weekly) return true;
   if (t.merged_into === "weekly") return true;
-  if (t.exp && w.exp && t.exp === w.exp) return true;
+  // انتهاء يوم بعد = انتهاء الأسبوع → مدمج في بطاقة الأسبوع
+  if (t.exp && w.exp && String(t.exp) === String(w.exp)) return true;
   if (t.support == null && t.resistance == null && !t.exp) return true;
-  // لا تكرار: يوم بعد مطابق لليوم (انتهاء + قاع + قمة)
+  // تطابق تام مع اليوم → لا بطاقة مكررة
   if (
-    t.exp &&
-    d.exp &&
-    t.exp === d.exp &&
-    t.support === d.support &&
-    t.resistance === d.resistance
-  )
-    return true;
-  if (
-    t.exp &&
-    w.exp &&
-    t.exp === w.exp &&
-    t.support === w.support &&
-    t.resistance === w.resistance
-  )
-    return true;
+    t.exp && d.exp && String(t.exp) === String(d.exp) &&
+    t.support === d.support && t.resistance === d.resistance
+  ) return true;
   return false;
 }
+
 
 function renderMapPanel(L) {
   mapLastL = L;

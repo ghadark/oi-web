@@ -1196,3 +1196,21 @@ html[data-theme="light"] .exp-checks::-webkit-scrollbar-thumb {
   line-height: 1.45;
   text-align: center;
 }
+
+
+/* map-range-intro-center-fix */
+.map-h1 .price-card .map-range-intro {
+  display: block !important;
+  width: 100%;
+  max-width: 280px;
+  margin: 10px auto 12px;
+  text-align: center !important;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--gray);
+}
+.map-h1 .price-card .map-range-sub {
+  display: block;
+  text-align: center !important;
+  margin-top: 4px;
+}
