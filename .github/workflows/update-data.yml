@@ -2,9 +2,14 @@ name: Update OCC Data
 
 on:
   schedule:
-    # 7:00 Saudi (UTC+3) = 04:00 UTC — نبدأ 03:30 أيضًا لأن GitHub قد يتأخر
-    - cron: "30 3 * * 1-5"
-    - cron: "0 4 * * 1-5"
+    # توقيت السعودية UTC+3 — أبكر ما يمكن حول 7 صباحًا
+    - cron: "0 4 * * 1-5"    # 7:00 ص — الإثنين–الجمعة
+    - cron: "20 4 * * 1-5"   # 7:20 ص — إعادة محاولة إن تأخر OCC
+    # الويكند: OCC غالبًا ينشر أرقام الاثنين من السبت
+    - cron: "0 4 * * 6"      # 7:00 ص السبت
+    - cron: "20 4 * * 6"     # 7:20 ص السبت
+    - cron: "0 4 * * 0"      # 7:00 ص الأحد
+    - cron: "20 4 * * 0"     # 7:20 ص الأحد
   workflow_dispatch: {}
 
 permissions:
@@ -27,14 +32,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests yfinance
 
-      - name: Fetch OCC → JSON
+      - name: Fetch OCC → JSON (data/ + web/data/)
         run: python scripts/fetch_occ.py
 
       - name: Commit data if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data
+          git add data web/data
           if git diff --staged --quiet; then
             echo "No data changes"
           else
