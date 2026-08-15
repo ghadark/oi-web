@@ -455,14 +455,21 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         available.update(day.keys())
     avail = sorted(available)
 
-    # اليوم = آخر جلسة تداول ≤ التقويم (في الويكند = الجمعة السابقة)
-    # يوم بعد = أول جلسة تداول بعد «اليوم» (اثنين بعد جمعة، ثلاثاء بعد اثنين، …)
-    daily_ref = last_session_day(today)
+    # —— مراجع الماب ——
+    # اليوم: إن كان التقويم يوم تداول → نفسه؛ وإلا آخر جلسة (ويكند/عطلة → الجمعة السابقة)
+    # يوم بعد: أول جلسة تداول بعد مرجع «اليوم»
+    #   خميس → جمعة | جمعة → اثنين | سبت (مرجع جمعة) → اثنين | اثنين → ثلاثاء
+    if today.weekday() < 5 and today not in US_MARKET_HOLIDAYS:
+        daily_ref = today
+    else:
+        daily_ref = last_session_day(today)
     tomorrow_session = next_session_day(daily_ref)
     tomorrow_cal = today + timedelta(days=1)
+    weekly_friday = next_friday_on_or_after(daily_ref)
+
     daily_exp = pick_expiration(avail, daily_ref)
     tomorrow_exp = pick_expiration(avail, tomorrow_session)
-    weekly_exp = pick_expiration(avail, next_friday_on_or_after(daily_ref))
+    weekly_exp = pick_expiration(avail, weekly_friday)
     opx_date = third_friday(today.year, today.month)
     if opx_date < today:
         # next month
@@ -534,7 +541,7 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         "tomorrow": (
             {"exp": None, "support": None, "resistance": None, "merged_into": "weekly",
              "prev_support": None, "prev_resistance": None}
-            if (tomorrow_session == next_friday_on_or_after(daily_ref))
+            if (tomorrow_session == weekly_friday)
             else safe_levels(tomorrow_exp)
         ),
         "weekly": safe_levels(weekly_exp),
@@ -545,9 +552,9 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
             "daily_ref": daily_ref.isoformat(),
             "tomorrow_cal": tomorrow_cal.isoformat(),
             "tomorrow_session": tomorrow_session.isoformat(),
-            "weekly_friday": next_friday_on_or_after(daily_ref).isoformat(),
-            "today_is_weekly": (daily_ref == next_friday_on_or_after(daily_ref)),
-            "tomorrow_merged_weekly": (tomorrow_session == next_friday_on_or_after(daily_ref)),
+            "weekly_friday": weekly_friday.isoformat(),
+            "today_is_weekly": (daily_ref == weekly_friday),
+            "tomorrow_merged_weekly": (tomorrow_session == weekly_friday),
         },
         "path": path[-30:],
     }
