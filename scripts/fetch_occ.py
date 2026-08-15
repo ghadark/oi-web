@@ -342,6 +342,16 @@ def third_friday(year: int, month: int) -> date:
     return d + timedelta(days=14)
 
 
+def last_session_day(d: date) -> date:
+    """آخر يوم تداول ≤ d (يتخطى ويكند + عطل)."""
+    x = d
+    guard = 0
+    while (x.weekday() >= 5 or x in US_MARKET_HOLIDAYS) and guard < 14:
+        x -= timedelta(days=1)
+        guard += 1
+    return x
+
+
 def next_session_day(d: date) -> date:
     """Next US equity session (skip weekend + listed holidays)."""
     x = d + timedelta(days=1)
@@ -445,14 +455,14 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         available.update(day.keys())
     avail = sorted(available)
 
-    daily_exp = pick_expiration(avail, today)
-    # بكرا = اليوم التالي بالتقويم (11 → 12). إن وقع عطلة/ويكند نأخذ أول جلسة بعده للانتهاء فقط
+    # اليوم = آخر جلسة تداول ≤ التقويم (في الويكند = الجمعة السابقة)
+    # يوم بعد = أول جلسة تداول بعد «اليوم» (اثنين بعد جمعة، ثلاثاء بعد اثنين، …)
+    daily_ref = last_session_day(today)
+    tomorrow_session = next_session_day(daily_ref)
     tomorrow_cal = today + timedelta(days=1)
-    tomorrow_session = tomorrow_cal
-    while tomorrow_session.weekday() >= 5 or tomorrow_session in US_MARKET_HOLIDAYS:
-        tomorrow_session += timedelta(days=1)
+    daily_exp = pick_expiration(avail, daily_ref)
     tomorrow_exp = pick_expiration(avail, tomorrow_session)
-    weekly_exp = pick_expiration(avail, next_friday_on_or_after(today))
+    weekly_exp = pick_expiration(avail, next_friday_on_or_after(daily_ref))
     opx_date = third_friday(today.year, today.month)
     if opx_date < today:
         # next month
@@ -524,7 +534,7 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         "tomorrow": (
             {"exp": None, "support": None, "resistance": None, "merged_into": "weekly",
              "prev_support": None, "prev_resistance": None}
-            if (tomorrow_session == next_friday_on_or_after(today))
+            if (tomorrow_session == next_friday_on_or_after(daily_ref))
             else safe_levels(tomorrow_exp)
         ),
         "weekly": safe_levels(weekly_exp),
@@ -532,11 +542,12 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
         "next_opx": safe_levels(next_opx_exp),
         "meta": {
             "today": today.isoformat(),
+            "daily_ref": daily_ref.isoformat(),
             "tomorrow_cal": tomorrow_cal.isoformat(),
             "tomorrow_session": tomorrow_session.isoformat(),
-            "weekly_friday": next_friday_on_or_after(today).isoformat(),
-            "today_is_weekly": (today == next_friday_on_or_after(today)),
-            "tomorrow_merged_weekly": (tomorrow_session == next_friday_on_or_after(today)),
+            "weekly_friday": next_friday_on_or_after(daily_ref).isoformat(),
+            "today_is_weekly": (daily_ref == next_friday_on_or_after(daily_ref)),
+            "tomorrow_merged_weekly": (tomorrow_session == next_friday_on_or_after(daily_ref)),
         },
         "path": path[-30:],
     }
