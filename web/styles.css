@@ -1159,4 +1159,40 @@ html[data-theme="light"] .exp-checks::-webkit-scrollbar-thumb {
   background: #94a3b8;
 }
 .map-range-hint { display: none !important; }
-.map-range-intro { display: none !important; }
+
+
+/* Excel modal: يظهر كاملًا في Chrome — تمرير للجسم + تذييل ثابت للأزرار */
+.map-modal .export-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: min(92vh, 720px) !important;
+  overflow: hidden !important;
+  width: min(520px, 94vw) !important;
+}
+.map-modal .export-panel .map-head {
+  flex: 0 0 auto;
+}
+.map-modal .export-panel .export-body {
+  flex: 1 1 auto !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  padding-bottom: 8px;
+}
+.map-modal .export-panel .exp-footer {
+  flex: 0 0 auto !important;
+  position: relative !important;
+  margin-top: 0 !important;
+  padding: 12px 18px 16px !important;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+.exp-export-note { display: none !important; }
+.map-range-intro {
+  display: block !important;
+  font-size: 12px;
+  color: var(--gray);
+  margin: 8px 0 10px;
+  line-height: 1.45;
+  text-align: center;
+}

@@ -728,7 +728,6 @@ function openExportDialog() {
     html += '<button type="button" class="chip' + on + '" data-estrikes="' + s + '">' + s + "</button>";
   });
   html += "</div>";
-  html += '<p class="exp-export-note">صفحة واحدة = الجداول جنب بعض · متعددة = كل انتهاء في ورقة</p>';
   html += '<div class="exp-footer">';
   html += '<p id="expStatus" class="exp-status"></p>';
   html += '<div class="exp-export-actions">';
@@ -1426,10 +1425,19 @@ function shouldSkipTomorrow(L) {
   if (L.meta && L.meta.tomorrow_merged_weekly) return true;
   var t = L.tomorrow || {};
   var w = L.weekly || {};
+  var d = L.daily || {};
   if (t.merged_into === "weekly") return true;
   if (t.exp && w.exp && t.exp === w.exp) return true;
   if (t.support == null && t.resistance == null && !t.exp) return true;
-  // احتياط: إذا نفس القمة والقاع ونفس الانتهاء
+  // لا تكرار: يوم بعد مطابق لليوم (انتهاء + قاع + قمة)
+  if (
+    t.exp &&
+    d.exp &&
+    t.exp === d.exp &&
+    t.support === d.support &&
+    t.resistance === d.resistance
+  )
+    return true;
   if (
     t.exp &&
     w.exp &&
@@ -1534,6 +1542,7 @@ function renderMapPanel(L) {
     '<div class="price-card">' +
     '<div class="close-label">الإغلاق</div>' +
     '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
+    '<p class="map-range-intro">تُحدد القمم والقيعان بناءً على نطاق السترايكات المُختار<br><span class="map-range-sub" dir="rtl">(حيث ALL يمثل النطاق العام)</span></p>' +
     '<div class="map-range-row">' +
       mapRangeChip("50", state.mapRange) +
       mapRangeChip("100", state.mapRange) +
