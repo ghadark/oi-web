@@ -23,9 +23,33 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
+# نسخة داخل web/ حتى Cloudflare Workers (assets = web) يجد JSON على /data/...
+WEB_DATA_DIR = ROOT / "web" / "data"
 
 # حذف أيام أقدم من هذا الحد (حماية حجم المستودع)
 RETENTION_DAYS = 60
+
+
+def _write_json(path: Path, obj: Any, *, indent: int | None = None) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        if indent is None:
+            json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
+        else:
+            json.dump(obj, f, ensure_ascii=False, indent=indent)
+
+
+def mirror_to_web_data() -> None:
+    """انسخ كل ملفات data/ → web/data/ لتوافق استضافة Cloudflare."""
+    if not DATA_DIR.exists():
+        return
+    WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    count = 0
+    for src in DATA_DIR.glob("*.json"):
+        dst = WEB_DATA_DIR / src.name
+        dst.write_bytes(src.read_bytes())
+        count += 1
+    print(f"[mirror] web/data ← {count} json file(s)")
 
 TICKER_URLS = {
     "SPY": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=spy",
@@ -64,16 +88,31 @@ US_MARKET_HOLIDAYS = {
 
 
 def session_pull_date(today: date | None = None) -> tuple[str, date]:
-    """Map calendar day to the options session column label (d-m)."""
+    """
+    يربط يوم التقويم بعمود جلسة تداول رسمية (Mon–Fri فقط).
+
+    قواعد OCC / الخيارات الأمريكية:
+    - السبت/الأحد: أرقام OCC المحدَّثة تخصّ **جلسة الاثنين التالية**
+      (أو أول يوم تداول بعد العطلة إن وافق الاثنين عطلة).
+    - الإثنين–الجمعة: نفس اليوم إن كان يوم تداول؛ وإلا أول جلسة تالية.
+    - العطل الرسمية في US_MARKET_HOLIDAYS تُتخطى فلا يُنشأ لها عمود.
+    """
     d = today or date.today()
-    wd = d.weekday()
-    if wd == 5:
+    cal = d
+    wd = d.weekday()  # 0=Mon … 5=Sat 6=Sun
+    if wd == 5:  # Saturday → Monday (+2)
         d = d + timedelta(days=2)
-    elif wd == 6:
+    elif wd == 6:  # Sunday → Monday (+1)
         d = d + timedelta(days=1)
     while d.weekday() >= 5 or d in US_MARKET_HOLIDAYS:
         d = d + timedelta(days=1)
-    return f"{d.day}-{d.month}", d
+    label = f"{d.day}-{d.month}"
+    if cal != d:
+        print(
+            f"[session] calendar {cal.isoformat()} (wd={cal.weekday()}) "
+            f"→ trading column {label} ({d.isoformat()})"
+        )
+    return label, d
 
 
 def get_close(ticker: str) -> float | None:
@@ -505,6 +544,7 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
 
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
+    WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
     levels_all: dict[str, Any] = {}
     pull_date, pull_day = session_pull_date()
     now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -544,23 +584,25 @@ def main() -> int:
             hist.setdefault("closes", {})[pull_date] = close
 
         hist["updated_at"] = now
-        with hist_path.open("w", encoding="utf-8") as f:
-            json.dump(hist, f, ensure_ascii=False, separators=(",", ":"))
+        _write_json(hist_path, hist)
 
         snap = build_public_snapshot(hist, ticker)
-        with pub_path.open("w", encoding="utf-8") as f:
-            json.dump(snap, f, ensure_ascii=False, separators=(",", ":"))
+        _write_json(pub_path, snap)
 
         levels_all[ticker] = build_levels_for_ticker(hist, ticker, pull_date, close)
         index["tickers"].append(ticker)
         print(f"[saved] {pub_path.name} days={len(snap['pull_dates'])} exps={len(snap['expirations'])}")
 
-    with (DATA_DIR / "index.json").open("w", encoding="utf-8") as f:
-        json.dump(index, f, ensure_ascii=False, indent=2)
-
-    with (DATA_DIR / "levels.json").open("w", encoding="utf-8") as f:
-        json.dump({"updated_at": datetime.utcnow().isoformat() + "Z", "tickers": levels_all}, f, ensure_ascii=False, indent=2)
+    _write_json(DATA_DIR / "index.json", index, indent=2)
+    _write_json(
+        DATA_DIR / "levels.json",
+        {"updated_at": datetime.utcnow().isoformat() + "Z", "tickers": levels_all},
+        indent=2,
+    )
     print("[saved] levels.json")
+
+    # مهم لـ Cloudflare: نفس الملفات تحت web/data
+    mirror_to_web_data()
 
     print("done.")
     return 0
