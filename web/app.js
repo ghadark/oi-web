@@ -1538,6 +1538,7 @@ function renderMapPanel(L) {
     '<div class="map-range-row">' +
       mapRangeChip("30", state.mapRange) +
       mapRangeChip("50", state.mapRange) +
+      mapRangeChip("100", state.mapRange) +
       mapRangeChip("ALL", state.mapRange) +
     "</div>" +
     "</div>" +
@@ -1756,10 +1757,10 @@ function mapRangeChip(val, cur) {
 }
 
 function mapRangeHint(range) {
-  if (range === "30") return "30 سترايك تحت الإغلاق + 30 فوق — نفس الواجهة";
-  if (range === "50") return "50 سترايك تحت الإغلاق + 50 فوق — نفس الواجهة";
-  if (range === "100") return "100 سترايك تحت الإغلاق + 100 فوق";
-  return "ALL — القاع والقمة على كل السترايكات";
+  if (range === "30") return "30 — نفس نطاق الواجهة";
+  if (range === "50") return "50 — نفس نطاق الواجهة";
+  if (range === "100") return "100 سترايك تحت/فوق الإغلاق (الماب فقط)";
+  return "ALL — كل السترايكات";
 }
 
 async function openMap() {
