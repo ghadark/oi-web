@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1200" />
-  <title>Oi | BY GEE</title>
+  <title>Oi | BY MY SELF</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 </head>
-<body data-data-base="../data">
+<body data-data-base="data">
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
@@ -21,7 +21,7 @@
           <div class="brand-oi">Oi</div>
           <div class="brand-sub">Open Interest</div>
         </div>
-        <span class="brand-sign">BY GEE</span>
+        <span class="brand-sign">BY MY SELF</span>
       </div>
       <div class="meta">
         <div id="updatedAt">—</div>
@@ -51,7 +51,8 @@
         <div id="daysRow" class="chip-row"></div>
         <label>Strikes</label>
         <div id="strikesRow" class="chip-row"></div>
-        <button id="deltaBtn" class="delta-btn" type="button" title="التزايد">Δ</button>
+        <button id="deltaBtn" class="delta-btn" type="button" title="التزايد (آخر يومين)">Δ</button>
+        <button id="growthBtn" class="delta-btn growth-btn" type="button" title="النمو — مقارنة بعدة أيام">G</button>
         <div id="stocksRow" class="stocks-inline"></div>
       </div>
       <div class="panel">

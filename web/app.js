@@ -26,7 +26,8 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
-  expiration: null, showDelta: false, dark: false, cache: {}, livePrice: null, mapRange: "ALL",
+  expiration: null, showDelta: false, showGrowth: false, growthDays: 3,
+  dark: false, cache: {}, livePrice: null, mapRange: "ALL",
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -51,18 +52,48 @@ function formatUpdatedAt(s) {
 }
 
 
+function dataBases() {
+  var preferred = (document.body && document.body.dataset && document.body.dataset.dataBase) || "/data";
+  preferred = String(preferred).replace(/\/$/, "");
+  // جذر Worker + web/data + نسبي — توافق نشر Git والرفع اليدوي
+  var list = [
+    preferred,
+    "/data",
+    "data",
+    "./data",
+    "../data",
+    "/web/data",
+    "web/data",
+    "."
+  ];
+  var out = [];
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && out.indexOf(list[i]) === -1) out.push(list[i]);
+  }
+  return out;
+}
+
 function dataUrl(ticker) {
-  const base = document.body.dataset.dataBase || "../data";
+  var base = dataBases()[0];
   return base + "/" + ticker + ".json?t=" + Date.now();
 }
 
 async function loadTicker(ticker) {
   if (state.cache[ticker]) return state.cache[ticker];
-  const res = await fetch(dataUrl(ticker));
-  if (!res.ok) throw new Error("تعذر تحميل بيانات " + ticker);
-  const json = await res.json();
-  state.cache[ticker] = json;
-  return json;
+  var bases = dataBases();
+  var lastStatus = 0;
+  for (var i = 0; i < bases.length; i++) {
+    try {
+      var res = await fetch(bases[i] + "/" + ticker + ".json?t=" + Date.now());
+      lastStatus = res.status;
+      if (res.ok) {
+        var json = await res.json();
+        state.cache[ticker] = json;
+        return json;
+      }
+    } catch (e) {}
+  }
+  throw new Error("تعذر تحميل بيانات " + ticker);
 }
 
 /** قبل 7 ص الرياض يُبقى انتهاء أمس للمراجعة الليلية؛ بعد 7 ص يُحذف */
@@ -134,6 +165,17 @@ function filterStrikes(rows, close, strikesLimit) {
 function positiveDelta(last, prev) {
   const d = (last || 0) - (prev || 0);
   return d > 0 ? d : null;
+}
+
+/** نمو السترايك: أحدث قيمة − قيمة قبل growthDays أعمدة (موجب فقط) */
+function positiveGrowth(arr, daysBack) {
+  if (!arr || !arr.length) return null;
+  var n = Number(daysBack) || 0;
+  if (n < 1) return null;
+  var lastI = arr.length - 1;
+  var prevI = lastI - n;
+  if (prevI < 0) return null;
+  return positiveDelta(arr[lastI], arr[prevI]);
 }
 
 function setStatus(msg, cls) {
@@ -279,14 +321,15 @@ async function refresh() {
   }
 }
 
-function greenBarRow(canDelta, n, close) {
-  const cols = (canDelta ? 1 : 0) + n + 1 + n + (canDelta ? 1 : 0);
+function greenBarRow(canDelta, canGrowth, n, close) {
+  const sideExtra = (canDelta ? 1 : 0) + (canGrowth ? 1 : 0);
+  const cols = sideExtra + n + 1 + n + sideExtra;
+  const strikeAt = sideExtra + n;
   let html = "<tr>";
   for (let i = 0; i < cols; i++) {
-    const isStrike = i === (canDelta ? 1 : 0) + n;
     html +=
       '<td class="green">' +
-      (isStrike
+      (i === strikeAt
         ? Number(close).toLocaleString(undefined, { maximumFractionDigits: 2 })
         : "") +
       "</td>";
@@ -310,6 +353,8 @@ function renderTable() {
   const rows = view.rows;
   const close = effectiveClose(data);
   const canDelta = state.showDelta && pullDates.length >= 2;
+  const gDays = Math.max(1, parseInt(state.growthDays, 10) || 3);
+  const canGrowth = state.showGrowth && pullDates.length > gDays;
   const lastI = pullDates.length - 1;
   const prevI = pullDates.length - 2;
 
@@ -330,6 +375,8 @@ function renderTable() {
   }
   html += '</div><div class="table-scroll"><table class="oi"><thead><tr>';
 
+  // ترتيب الطرف: G (خارج) ثم Δ ثم التواريخ — نفس المنطق لكلا الجهتين
+  if (canGrowth) html += '<th class="growth">G<br><span class="subh">' + gDays + "d</span></th>";
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (let i = pullDates.length - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
@@ -341,9 +388,9 @@ function renderTable() {
     html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
+  if (canGrowth) html += '<th class="growth">G<br><span class="subh">' + gDays + "d</span></th>";
   html += "</tr></thead><tbody>";
 
-  // أعلى قيمة لكل عمود Call/Put (بدون Strike)
   const callMax = [];
   const putMax = [];
   for (let i = 0; i < pullDates.length; i++) {
@@ -366,11 +413,20 @@ function renderTable() {
       if (dp != null && dp > deltaPutMax) deltaPutMax = dp;
     });
   }
+  let growthCallMax = 0, growthPutMax = 0;
+  if (canGrowth) {
+    rows.forEach(function (r) {
+      const gc = positiveGrowth(r.calls, gDays);
+      const gp = positiveGrowth(r.puts, gDays);
+      if (gc != null && gc > growthCallMax) growthCallMax = gc;
+      if (gp != null && gp > growthPutMax) growthPutMax = gp;
+    });
+  }
 
   let barDone = false;
   rows.forEach(function (r, ri) {
     if (close != null && !barDone && r.strike > close) {
-      html += greenBarRow(canDelta, pullDates.length, close);
+      html += greenBarRow(canDelta, canGrowth, pullDates.length, close);
       barDone = true;
     }
     const zebra = ri % 2 === 1 ? " zebra" : "";
@@ -382,13 +438,19 @@ function renderTable() {
       above || (close != null && r.strike === close) ? "itm" : "otm";
 
     html += '<tr class="' + zebra + '">';
+    if (canGrowth) {
+      const g = positiveGrowth(r.calls, gDays);
+      const maxCls = g != null && growthCallMax > 0 && g === growthCallMax ? " max-oi" : "";
+      html +=
+        '<td class="growth' + maxCls + '">' +
+        (g != null ? g.toLocaleString() : "") +
+        "</td>";
+    }
     if (canDelta) {
       const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
       const maxCls = d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
       html +=
-        '<td class="delta' +
-        maxCls +
-        '">' +
+        '<td class="delta' + maxCls + '">' +
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
@@ -396,10 +458,7 @@ function renderTable() {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
       html +=
-        '<td class="' +
-        callCls +
-        maxCls +
-        '">' +
+        '<td class="' + callCls + maxCls + '">' +
         cv.toLocaleString() +
         "</td>";
     }
@@ -408,10 +467,7 @@ function renderTable() {
       const pv = r.puts[i] || 0;
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
       html +=
-        '<td class="' +
-        putCls +
-        maxCls +
-        '">' +
+        '<td class="' + putCls + maxCls + '">' +
         pv.toLocaleString() +
         "</td>";
     }
@@ -419,16 +475,22 @@ function renderTable() {
       const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
       const maxCls = d != null && deltaPutMax > 0 && d === deltaPutMax ? " max-oi" : "";
       html +=
-        '<td class="delta' +
-        maxCls +
-        '">' +
+        '<td class="delta' + maxCls + '">' +
         (d != null ? d.toLocaleString() : "") +
+        "</td>";
+    }
+    if (canGrowth) {
+      const g = positiveGrowth(r.puts, gDays);
+      const maxCls = g != null && growthPutMax > 0 && g === growthPutMax ? " max-oi" : "";
+      html +=
+        '<td class="growth' + maxCls + '">' +
+        (g != null ? g.toLocaleString() : "") +
         "</td>";
     }
     html += "</tr>";
   });
   if (close != null && !barDone) {
-    html += greenBarRow(canDelta, pullDates.length, close);
+    html += greenBarRow(canDelta, canGrowth, pullDates.length, close);
   }
   html += "</tbody></table></div>";
   host.innerHTML = html;
@@ -457,7 +519,7 @@ function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
 
 
 /** يكتب جدول انتهاء بنفس تنسيق الديسكتوب (B2، pad=2، تواريخ 13-8، هيدر ناعم) */
-function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
+function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta, showGrowth, growthDays) {
   const arabicMonths = {
     1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل",
     5: "مايو", 6: "يونيو", 7: "يوليو", 8: "أغسطس",
@@ -467,6 +529,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   const rows = view.rows;
   const n = pullDates.length;
   const hasDelta = !!(showDelta && n >= 2);
+  const gDays = Math.max(1, parseInt(growthDays, 10) || 3);
+  const hasGrowth = !!(showGrowth && n > gDays);
   const lastI = n - 1;
   const prevI = n - 2;
   const pad = 2;
@@ -476,6 +540,7 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   const fillRow3 = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
   const fillRow4 = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDD9C4" } };
   const fillDelta = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
+  const fillGrowth = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD8E7E7" } };
   const fillMax = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
   const fontB = { name: "Calibri", size: 11, bold: true, color: { argb: "FF000000" } };
   const fontN = { name: "Calibri", size: 11, color: { argb: "FF000000" } };
@@ -499,8 +564,14 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   const rExp = startRow + 3;
   const dataStart = startRow + 4;
 
+  // Put side (تواريخ تنازلي في العرض RTL): G ثم Δ ثم تواريخ
   let col = startCol + pad;
+  let putGrowthCol = null;
   let putDeltaCol = null;
+  if (hasGrowth) {
+    putGrowthCol = col;
+    col += 1;
+  }
   if (hasDelta) {
     putDeltaCol = col;
     col += 1;
@@ -518,8 +589,13 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
     col += 1;
   }
   let callDeltaCol = null;
+  let callGrowthCol = null;
   if (hasDelta) {
     callDeltaCol = col;
+    col += 1;
+  }
+  if (hasGrowth) {
+    callGrowthCol = col;
     col += 1;
   }
   const contentEnd = col - 1;
@@ -542,8 +618,14 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   ws.getCell(rTitle, strikeCol).value = ticker;
 
   // Section labels Put / Strike / Call
-  const putCols = (putDeltaCol ? [putDeltaCol] : []).concat(putDateCols.map(function (x) { return x.c; }));
-  const callCols = callDateCols.map(function (x) { return x.c; }).concat(callDeltaCol ? [callDeltaCol] : []);
+  const putCols = []
+    .concat(putGrowthCol ? [putGrowthCol] : [])
+    .concat(putDeltaCol ? [putDeltaCol] : [])
+    .concat(putDateCols.map(function (x) { return x.c; }));
+  const callCols = callDateCols
+    .map(function (x) { return x.c; })
+    .concat(callDeltaCol ? [callDeltaCol] : [])
+    .concat(callGrowthCol ? [callGrowthCol] : []);
   if (putCols.length) {
     ws.mergeCells(rSection, Math.min.apply(null, putCols), rSection, Math.max.apply(null, putCols));
     const cell = ws.getCell(rSection, Math.min.apply(null, putCols));
@@ -610,8 +692,48 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
     callMax[x.c] = m;
   });
 
+  // ترويسة G / Δ
+  if (hasGrowth && putGrowthCol) {
+    const cell = ws.getCell(rDates, putGrowthCol);
+    cell.value = "G·" + gDays;
+    cell.fill = fillGrowth;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  }
+  if (hasDelta && putDeltaCol) {
+    const cell = ws.getCell(rDates, putDeltaCol);
+    cell.value = "Δ";
+    cell.fill = fillDelta;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  }
+  if (hasDelta && callDeltaCol) {
+    const cell = ws.getCell(rDates, callDeltaCol);
+    cell.value = "Δ";
+    cell.fill = fillDelta;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  }
+  if (hasGrowth && callGrowthCol) {
+    const cell = ws.getCell(rDates, callGrowthCol);
+    cell.value = "G·" + gDays;
+    cell.fill = fillGrowth;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  }
+
   rows.forEach(function (r, ri) {
     const rowIdx = dataStart + ri;
+    if (hasGrowth && putGrowthCol) {
+      const g = positiveGrowth(r.puts, gDays);
+      const cell = ws.getCell(rowIdx, putGrowthCol);
+      cell.value = g != null ? g : "";
+      cell.numFmt = "#,##0";
+      cell.font = fontN;
+      cell.alignment = alignC;
+      cell.border = border;
+      cell.fill = fillGrowth;
+    }
     if (hasDelta && putDeltaCol) {
       const dlt = positiveDelta(r.puts[lastI], r.puts[prevI]);
       const cell = ws.getCell(rowIdx, putDeltaCol);
@@ -663,6 +785,16 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
       cell.alignment = alignC;
       cell.border = border;
       cell.fill = fillDelta;
+    }
+    if (hasGrowth && callGrowthCol) {
+      const g = positiveGrowth(r.calls, gDays);
+      const cell = ws.getCell(rowIdx, callGrowthCol);
+      cell.value = g != null ? g : "";
+      cell.numFmt = "#,##0";
+      cell.font = fontN;
+      cell.alignment = alignC;
+      cell.border = border;
+      cell.fill = fillGrowth;
     }
   });
 
@@ -809,6 +941,8 @@ function runExportFromDialog(emode, edays, estrikes) {
     const wb = new ExcelJS.Workbook();
     const GAP = 4;
     const showDelta = !!state.showDelta;
+    const showGrowth = !!state.showGrowth;
+    const growthDays = state.growthDays;
 
     if (emode === "multi") {
       chosen.forEach(function (exp, i) {
@@ -817,7 +951,7 @@ function runExportFromDialog(emode, edays, estrikes) {
         const ws = wb.addWorksheet(String(exp).slice(0, 31), {
           views: [{ rightToLeft: true, state: "frozen", ySplit: 5 }],
         });
-        writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta);
+        writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta, showGrowth, growthDays);
       });
     } else {
       const ws = wb.addWorksheet("Export", {
@@ -827,7 +961,7 @@ function runExportFromDialog(emode, edays, estrikes) {
       chosen.forEach(function (exp) {
         const view = getViewRowsFor(data, exp, edays, estrikes);
         if (!view) return;
-        const last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta);
+        const last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta, showGrowth, growthDays);
         col = last + 1 + GAP;
       });
     }
@@ -978,6 +1112,28 @@ function init() {
     $("#deltaBtn").classList.toggle("active", state.showDelta);
     renderTable();
   };
+  if ($("#growthBtn")) {
+    $("#growthBtn").onclick = function () {
+      if (!state.showGrowth) {
+        var ans = window.prompt("كم يومًا للرجوع للخلف لحساب النمو؟", String(state.growthDays || 3));
+        if (ans == null || ans === "") return;
+        var n = parseInt(ans, 10);
+        if (!n || n < 1) {
+          setStatus("أدخلي رقم أيام صحيح (1 فأكثر)", "err");
+          return;
+        }
+        state.growthDays = n;
+        state.showGrowth = true;
+      } else {
+        state.showGrowth = false;
+      }
+      $("#growthBtn").classList.toggle("active", state.showGrowth);
+      $("#growthBtn").title = state.showGrowth
+        ? "النمو نشط — " + state.growthDays + " يوم (اضغطي لإيقاف)"
+        : "النمو — مقارنة بعدة أيام";
+      renderTable();
+    };
+  }
   $("#exportBtn").onclick = function () {
     try {
       exportExcel();
@@ -1020,11 +1176,17 @@ let mapRawL = null;
 
 async function loadLevels() {
   if (levelsCache) return levelsCache;
-  const base = document.body.dataset.dataBase || "../data";
-  const res = await fetch(base + "/levels.json?t=" + Date.now());
-  if (!res.ok) throw new Error("لا يوجد levels.json بعد — شغّل Actions أولًا");
-  levelsCache = await res.json();
-  return levelsCache;
+  var bases = dataBases();
+  for (var i = 0; i < bases.length; i++) {
+    try {
+      var res = await fetch(bases[i] + "/levels.json?t=" + Date.now());
+      if (res.ok) {
+        levelsCache = await res.json();
+        return levelsCache;
+      }
+    } catch (e) {}
+  }
+  throw new Error("لا يوجد levels.json بعد — شغّل Actions أولًا");
 }
 
 function fmtNum(v, d) {
@@ -1348,25 +1510,45 @@ function mapScale(L) {
 }
 
 
-/** يوم بعد يوافق الجمعة/نفس انتهاء الأسبوع → نكتفي ببطاقة الأسبوع */
+/** بكرا يوافق الجمعة/نفس انتهاء الأسبوع → نكتفي ببطاقة الأسبوع */
 
 /** ترتيب بطاقات الماب حسب اليوم (جمعة الأسبوع vs باقي الأيام) */
 function getMapBandDefs(L) {
-  var meta = (L && L.meta) || {};
-  var daily = (L && L.daily) || {};
-  var weekly = (L && L.weekly) || {};
-  var todayWeekly =
-    meta.today_is_weekly === true ||
-    (daily.exp && weekly.exp && daily.exp === weekly.exp);
-  if (todayWeekly) {
-    // يوم الجمعة / يوم الأوبكس الأسبوعي: الأسبوع أولًا ثم يوم بعد (الإثنين) ثم OPX
+  var daily = L.daily || {};
+  var weekly = L.weekly || {};
+  var opx = L.opx || {};
+  var nextOpx = L.next_opx || {};
+  var weeklyIsOpx = !!(weekly.exp && opx.exp && weekly.exp === opx.exp);
+  var dailyIsWeekly = !!(daily.exp && weekly.exp && daily.exp === weekly.exp);
+
+  // الجمعة = اليوم والأسبوع معًا → بطاقة موحّدة "اليوم · الأسبوع"
+  if (dailyIsWeekly) {
+    var bands = [
+      { key: "weekly", label: weeklyIsOpx ? "اليوم · الأسبوع · OPX" : "اليوم · الأسبوع" },
+    ];
+    if (!weeklyIsOpx) {
+      bands.push({ key: "tomorrow", label: "يوم بعد" });
+      bands.push({ key: "opx", label: "OPX" });
+    } else {
+      // اليوم=أسبوع=OPX: يوم بعد فقط + OPX التالي
+      bands.push({ key: "tomorrow", label: "يوم بعد" });
+    }
+    if (nextOpx.exp && nextOpx.exp !== opx.exp) {
+      bands.push({ key: "next_opx", label: "OPX+" });
+    }
+    return bands;
+  }
+
+  // الأسبوع = OPX (ثالث جمعة) بدون أن يكون اليوم جمعة الانتهاء
+  if (weeklyIsOpx) {
     return [
-      { key: "weekly", label: "الأسبوع" },
+      { key: "daily", label: "اليوم" },
       { key: "tomorrow", label: "يوم بعد" },
-      { key: "opx", label: "OPX" },
+      { key: "weekly", label: "الأسبوع · OPX" },
       { key: "next_opx", label: "OPX+" },
     ];
   }
+
   return [
     { key: "daily", label: "اليوم" },
     { key: "tomorrow", label: "يوم بعد" },
@@ -1374,6 +1556,14 @@ function getMapBandDefs(L) {
     { key: "opx", label: "OPX" },
     { key: "next_opx", label: "OPX+" },
   ];
+}
+
+function shouldSkipOpx(L) {
+  if (!L) return false;
+  var w = L.weekly || {};
+  var o = L.opx || {};
+  if (w.exp && o.exp && w.exp === o.exp) return true;
+  return false;
 }
 
 function shouldSkipTomorrow(L) {
@@ -1415,8 +1605,9 @@ function renderMapPanel(L) {
     if (lab && byPrice[k].labels.indexOf(lab) < 0) byPrice[k].labels.push(lab);
   }
   bands.forEach(function (b) {
-    // تخطي يوم بعد إذا اندمجت مع الأسبوع
+    // تخطي بكرا إذا اندمجت مع الأسبوع
     if (b.key === "tomorrow" && shouldSkipTomorrow(L)) return;
+    if (b.key === "opx" && shouldSkipOpx(L)) return;
     const block = L[b.key] || {};
     add(block.support, "sup", b.label);
     add(block.resistance, "res", b.label);
@@ -1468,6 +1659,7 @@ function renderMapPanel(L) {
   let cards = "";
   bands.forEach(function (b) {
     if (b.key === "tomorrow" && shouldSkipTomorrow(L)) return;
+    if (b.key === "opx" && shouldSkipOpx(L)) return;
     const block = L[b.key] || {};
     const peak = block.resistance;
     const floor = block.support;
@@ -1487,13 +1679,11 @@ function renderMapPanel(L) {
     '<div class="price-card">' +
     '<div class="close-label">الإغلاق</div>' +
     '<b>' + (price != null ? fmtNum(price, 2) : "—") + "</b>" +
-    '<p class="map-range-intro">تُحدد القمم والقيعان بناءً على نطاق السترايكات المُختار<br><span class="map-range-sub" dir="rtl">(حيث ALL يمثل النطاق العام)</span></p>' +
     '<div class="map-range-row">' +
       mapRangeChip("50", state.mapRange) +
       mapRangeChip("100", state.mapRange) +
       mapRangeChip("ALL", state.mapRange) +
     "</div>" +
-    '<p class="map-range-hint">' + mapRangeHint(state.mapRange || "ALL") + "</p>" +
     "</div>" +
     '<div class="grid-wrap">' +
     '<div class="stage" id="mapStage">' +
@@ -1650,14 +1840,17 @@ function maxOiNearClose(data, exp, close, nEach, dateIdx) {
       put: Number((r.puts && r.puts[dateIdx]) || 0),
     };
   });
-  rows.sort(function (a, b) { return a.strike - b.strike; });
+  // نفس منطق filterStrikes في الجدول: أقرب n*2 سترايك من الإغلاق بالمسافة
   if (close != null && !isNaN(Number(close)) && nEach != null) {
     var c = Number(close);
-    var below = rows.filter(function (r) { return r.strike <= c; }).slice(-nEach);
-    var above = rows.filter(function (r) { return r.strike >= c; }).slice(0, nEach);
-    var keep = {};
-    below.concat(above).forEach(function (r) { keep[r.strike] = true; });
-    rows = rows.filter(function (r) { return keep[r.strike]; });
+    rows = rows
+      .map(function (r) { return { r: r, dist: Math.abs(r.strike - c) }; })
+      .sort(function (a, b) { return a.dist - b.dist; })
+      .slice(0, nEach * 2)
+      .map(function (x) { return x.r; })
+      .sort(function (a, b) { return a.strike - b.strike; });
+  } else {
+    rows.sort(function (a, b) { return a.strike - b.strike; });
   }
   var maxPut = -1, maxCall = -1, sup = null, res = null;
   rows.forEach(function (r) {
