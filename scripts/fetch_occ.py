@@ -360,10 +360,35 @@ def next_session_day(d: date) -> date:
     return x
 
 
-def next_friday_on_or_after(d: date) -> date:
+def first_friday_on_or_after(d: date) -> date:
+    """أول جمعة تقويمية ≥ d (بدون اعتبار العطل)."""
     while d.weekday() != 4:
         d += timedelta(days=1)
     return d
+
+
+def next_friday_on_or_after(d: date) -> date:
+    """جمعة تداول ≥ d — إن وافقت عطلة رسمية نأخذ الجمعة التالية."""
+    guard = 0
+    while guard < 10:
+        d = first_friday_on_or_after(d)
+        if d not in US_MARKET_HOLIDAYS:
+            return d
+        d = d + timedelta(days=1)
+        guard += 1
+    return d
+
+
+def weekly_friday_for(d: date) -> tuple[date, bool]:
+    """
+    جمعة الأسبوع لمرجع الجلسة d.
+    إن كانت جمعة هذا الأسبوع عطلة → الجمعة التالية + is_next_week=True
+    (للماب: تسمية «الأسبوع القادم»).
+    """
+    cand = first_friday_on_or_after(d)
+    if cand in US_MARKET_HOLIDAYS:
+        return next_friday_on_or_after(cand + timedelta(days=1)), True
+    return cand, False
 
 
 def pick_expiration(available: list[str], target: date) -> str | None:
@@ -464,7 +489,7 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
     _, daily_ref = session_pull_date(today)
     tomorrow_session = next_session_day(daily_ref)
     tomorrow_cal = today + timedelta(days=1)
-    weekly_friday = next_friday_on_or_after(daily_ref)
+    weekly_friday, weekly_is_next_week = weekly_friday_for(daily_ref)
 
     daily_exp = pick_expiration(avail, daily_ref)
     tomorrow_exp = pick_expiration(avail, tomorrow_session)
@@ -554,6 +579,7 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
             "weekly_friday": weekly_friday.isoformat(),
             "today_is_weekly": (daily_ref == weekly_friday),
             "tomorrow_merged_weekly": (tomorrow_session == weekly_friday),
+            "weekly_is_next_week": weekly_is_next_week,
         },
         "path": path[-30:],
     }
