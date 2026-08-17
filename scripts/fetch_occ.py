@@ -134,10 +134,29 @@ def get_close(ticker: str) -> float | None:
         return None
 
 
-def _product_matches(product: str, ticker: str) -> bool:
+def _is_third_friday(exp: str) -> bool:
+    """ثالث جمعة من الشهر = OpEx الشهري (جذر SPX / تسوية AM)."""
+    try:
+        y, m, d = [int(x) for x in str(exp).split("-")[:3]]
+        dt = date(y, m, d)
+        return dt.weekday() == 4 and 15 <= dt.day <= 21
+    except Exception:
+        return False
+
+
+def _product_matches(product: str, ticker: str, exp: str | None = None) -> bool:
+    """
+    SPX:
+      - ثالث جمعة (أوبيكس الشهري) → من جذر SPX فقط
+      - بقية الأيام → من SPXW فقط
+    """
     p = (product or "").upper().strip()
     t = (ticker or "").upper().strip()
     if t == "SPX":
+        if exp and _is_third_friday(exp):
+            return p == "SPX"
+        if exp:
+            return p == "SPXW"
         return p in ("SPX", "SPXW")
     return p == t
 
@@ -149,10 +168,11 @@ def parse_occ_text(ticker: str, text: str) -> list[dict[str, Any]]:
         parts = line.split()
         if len(parts) < 10:
             continue
-        if not _product_matches(parts[0], ticker):
-            continue
         try:
+            product = parts[0]
             exp = f"{parts[1]}-{parts[2].zfill(2)}-{parts[3].zfill(2)}"
+            if not _product_matches(product, ticker, exp):
+                continue
             strike = float(f"{parts[4]}.{parts[5]}")
             call_oi = int(parts[8])
             put_oi = int(parts[9])
