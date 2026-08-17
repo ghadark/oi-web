@@ -1214,3 +1214,119 @@ html[data-theme="light"] .exp-checks::-webkit-scrollbar-thumb {
   text-align: center !important;
   margin-top: 4px;
 }
+
+
+/* ×3 — خط زمني + جداول كاملة + شريط إغلاق */
+.x3-btn.active {
+  background: #6366f1 !important;
+  color: #fff !important;
+  border-color: #6366f1 !important;
+}
+.x3-btn { margin-left: 4px; }
+.x3-board {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  direction: rtl;
+}
+.x3-timeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  direction: rtl;
+}
+.x3-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 110px;
+  max-width: 160px;
+}
+.x3-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid var(--primary);
+  background: var(--bg);
+  box-sizing: border-box;
+}
+.x3-dot.on {
+  background: var(--primary);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 55%, transparent);
+}
+.x3-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  max-width: 72px;
+  min-width: 20px;
+  margin: 0 4px 32px;
+}
+.x3-lab {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.35;
+}
+.x3-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  direction: rtl;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .x3-cols { grid-template-columns: 1fr; }
+}
+.x3-col {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: visible;
+  background: var(--bg);
+  min-width: 0;
+}
+.x3-col.active .x3-col-h {
+  background: color-mix(in srgb, var(--primary) 22%, var(--card));
+}
+.x3-col-h {
+  text-align: center;
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  line-height: 1.35;
+}
+.x3-table-wrap { overflow: visible; }
+.x3-table {
+  direction: ltr;
+  font-size: 10px !important;
+  width: 100%;
+}
+.x3-table th, .x3-table td {
+  min-width: 44px !important;
+  height: 24px !important;
+  padding: 2px 3px !important;
+}
+.x3-board table.oi { direction: ltr; }
+.x3-table tr.close-bar td {
+  background: #134e4a !important;
+  color: #5eead4 !important;
+  font-weight: 700;
+  border-bottom: 1px solid #0f766e !important;
+}
+html[data-theme="light"] .x3-table tr.close-bar td {
+  background: #ecfdf5 !important;
+  color: #0f766e !important;
+  border-bottom: 1px solid #a7f3d0 !important;
+}
+.x3-table td.close-strike {
+  font-size: 11px !important;
+}

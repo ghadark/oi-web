@@ -257,11 +257,12 @@ async function refresh() {
     const data = await loadTicker(state.ticker);
     const sel = $("#expSelect");
     sel.innerHTML = "";
-    const exps = futureExpirations(data.expirations || []);
+    const exps = filterTickerExpirations(state.ticker, data.expirations || []);
     exps.forEach(function (exp) {
       const o = document.createElement("option");
       o.value = exp;
-      o.textContent = exp;
+      // ثالث جمعة: وسم AM للتنبيه (تسوية صباحية / شهري SPX)
+      o.textContent = isThirdFridayExp(exp) ? exp + "  AM" : exp;
       sel.appendChild(o);
     });
     if (!state.expiration || !exps.includes(state.expiration)) {
@@ -294,9 +295,188 @@ function greenBarRow(canDelta, n, close) {
   return html + "</tr>";
 }
 
+
+function arabicDayMonth(exp) {
+  try {
+    var parts = String(exp).split("-");
+    if (parts.length < 3) return String(exp);
+    var d = parseInt(parts[2], 10);
+    var m = parseInt(parts[1], 10);
+    var months = {
+      1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل", 5: "مايو", 6: "يونيو",
+      7: "يوليو", 8: "أوغست", 9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر",
+    };
+    return d + " " + (months[m] || parts[1]);
+  } catch (e) {
+    return String(exp);
+  }
+}
+
+function x3PanelTitle(label, exp) {
+  var dm = arabicDayMonth(exp);
+  var lab = String(label || "").replace(/\d{4}-\d{2}-\d{2}/g, "").trim();
+  if (/اليوم|يوم بعد|الأسبوع|OPX/i.test(lab)) return lab + " " + dm;
+  return lab + " " + dm;
+}
+
+function renderOneMiniTable(data, expiration, label, opts) {
+  opts = opts || {};
+  var saved = {
+    expiration: state.expiration,
+    days: state.days,
+    showDelta: state.showDelta,
+  };
+  state.expiration = expiration;
+  state.days = "2";
+  var view = getViewRows(data);
+  state.expiration = saved.expiration;
+  state.days = saved.days;
+  state.showDelta = saved.showDelta;
+
+  var title = x3PanelTitle(label, expiration);
+  if (!view || !view.rows.length) {
+    return (
+      '<div class="x3-col' + (opts.active ? " active" : "") + '">' +
+      '<div class="x3-col-h">' + title + "</div>" +
+      '<p class="status" style="padding:12px">لا بيانات</p></div>'
+    );
+  }
+  var pullDates = view.pullDates;
+  var rows = view.rows;
+  var close = effectiveClose(data);
+  var canDelta = state.showDelta && pullDates.length >= 2;
+  var lastI = pullDates.length - 1;
+  var prevI = pullDates.length - 2;
+
+  var callMax = [], putMax = [];
+  for (var i = 0; i < pullDates.length; i++) {
+    var mc = 0, mp = 0;
+    rows.forEach(function (r) {
+      var cv = r.calls[i] || 0;
+      var pv = r.puts[i] || 0;
+      if (cv > mc) mc = cv;
+      if (pv > mp) mp = pv;
+    });
+    callMax.push(mc);
+    putMax.push(mp);
+  }
+  var deltaCallMax = 0, deltaPutMax = 0;
+  if (canDelta) {
+    rows.forEach(function (r) {
+      var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      var dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      if (dc != null && dc > deltaCallMax) deltaCallMax = dc;
+      if (dp != null && dp > deltaPutMax) deltaPutMax = dp;
+    });
+  }
+
+  var closeStrike = null;
+  if (close != null && !isNaN(Number(close)) && rows.length) {
+    var best = rows[0].strike, bestD = Math.abs(rows[0].strike - close);
+    rows.forEach(function (r) {
+      var d = Math.abs(r.strike - close);
+      if (d < bestD) { bestD = d; best = r.strike; }
+    });
+    closeStrike = best;
+  }
+
+  var html =
+    '<div class="x3-col' + (opts.active ? " active" : "") + '">' +
+    '<div class="x3-col-h">' + title + "</div>" +
+    '<div class="x3-table-wrap"><table class="oi x3-table"><thead><tr>';
+  if (canDelta) html += '<th class="delta">Δ</th>';
+  for (var hi = pullDates.length - 1; hi >= 0; hi--) {
+    var f = formatPullDate(pullDates[hi]);
+    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+  }
+  html += '<th class="strike">STRIKE</th>';
+  for (var hj = 0; hj < pullDates.length; hj++) {
+    var f2 = formatPullDate(pullDates[hj]);
+    html += "<th>" + f2.top + '<br><span class="subh">' + f2.sub + "</span></th>";
+  }
+  if (canDelta) html += '<th class="delta">Δ</th>';
+  html += "</tr></thead><tbody>";
+
+  rows.forEach(function (r) {
+    var isCloseRow = closeStrike != null && Number(r.strike) === Number(closeStrike);
+    var above = close != null && r.strike > close;
+    var below = close != null && r.strike < close;
+    var callCls = below || (close != null && r.strike === close) ? "itm" : "otm";
+    var putCls = above || (close != null && r.strike === close) ? "itm" : "otm";
+    html += '<tr class="' + (isCloseRow ? "close-bar" : "") + '">';
+    if (canDelta) {
+      var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      var maxD = dc != null && deltaCallMax > 0 && dc === deltaCallMax ? " max-oi" : "";
+      html += '<td class="delta' + maxD + '">' + (dc != null ? dc.toLocaleString() : "") + "</td>";
+    }
+    for (var ci = pullDates.length - 1; ci >= 0; ci--) {
+      var cv = r.calls[ci] || 0;
+      var maxC = callMax[ci] > 0 && cv === callMax[ci] ? " max-oi" : "";
+      html += '<td class="' + callCls + maxC + '">' + cv.toLocaleString() + "</td>";
+    }
+    if (isCloseRow && close != null) {
+      html +=
+        '<td class="strike close-strike">' +
+        Number(close).toLocaleString(undefined, { maximumFractionDigits: 2 }) +
+        "</td>";
+    } else {
+      html += '<td class="strike">' + r.strike + "</td>";
+    }
+    for (var pi = 0; pi < pullDates.length; pi++) {
+      var pv = r.puts[pi] || 0;
+      var maxP = putMax[pi] > 0 && pv === putMax[pi] ? " max-oi" : "";
+      html += '<td class="' + putCls + maxP + '">' + pv.toLocaleString() + "</td>";
+    }
+    if (canDelta) {
+      var dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      var maxDp = dp != null && deltaPutMax > 0 && dp === deltaPutMax ? " max-oi" : "";
+      html += '<td class="delta' + maxDp + '">' + (dp != null ? dp.toLocaleString() : "") + "</td>";
+    }
+    html += "</tr>";
+  });
+  html += "</tbody></table></div></div>";
+  return html;
+}
+
+function renderX3() {
+  var data = state.cache[state.ticker];
+  var host = $("#tableHost");
+  if (!data) {
+    host.innerHTML = '<p class="status">لا بيانات</p>';
+    return;
+  }
+  var exps = filterTickerExpirations(state.ticker, data.expirations || []);
+  var targets = pickX3Targets(exps);
+  if (!targets.length) {
+    host.innerHTML = '<p class="status">لا تواريخ لوضع ×3</p>';
+    return;
+  }
+  var tl = '<div class="x3-timeline">';
+  targets.forEach(function (t, i) {
+    if (i > 0) tl += '<div class="x3-line"></div>';
+    tl +=
+      '<div class="x3-node">' +
+      '<div class="x3-dot' + (i === 0 ? " on" : "") + '"></div>' +
+      '<div class="x3-lab">' + x3PanelTitle(t.label, t.exp) + "</div>" +
+      "</div>";
+  });
+  tl += "</div>";
+  var cols = '<div class="x3-cols">';
+  targets.forEach(function (t, i) {
+    cols += renderOneMiniTable(data, t.exp, t.label, { active: i === 0 });
+  });
+  cols += "</div>";
+  host.innerHTML = '<div class="x3-board">' + tl + cols + "</div>";
+}
+
+
 function renderTable() {
   const data = state.cache[state.ticker];
   const host = $("#tableHost");
+  if (state.x3Mode) {
+    renderX3();
+    return;
+  }
   if (!data || !state.expiration) {
     host.innerHTML = '<p class="status">اختر تاريخ انتهاء</p>';
     return;
@@ -972,6 +1152,13 @@ function init() {
     state.expiration = e.target.value;
     renderTable();
   };
+  if ($("#x3Btn")) {
+    $("#x3Btn").onclick = function () {
+      state.x3Mode = !state.x3Mode;
+      $("#x3Btn").classList.toggle("active", state.x3Mode);
+      renderTable();
+    };
+  }
   $("#deltaBtn").onclick = function () {
     state.showDelta = !state.showDelta;
     $("#deltaBtn").classList.toggle("active", state.showDelta);
@@ -1720,7 +1907,6 @@ function maxOiNearClose(data, exp, close, nEach, dateIdx) {
 
 async function levelsForMapRange(baseL, range) {
   if (!baseL) return baseL;
-  if (!range || range === "ALL") return baseL;
   var data;
   try { data = await loadTicker(state.ticker); } catch (e) { return baseL; }
   var nEach = mapRangeN(range);
@@ -1729,20 +1915,24 @@ async function levelsForMapRange(baseL, range) {
   var lastIdx = pullDates.length - 1;
   var prevIdx = pullDates.length > 1 ? pullDates.length - 2 : -1;
   var L2 = JSON.parse(JSON.stringify(baseL));
-  L2.mapRange = range;
+  L2.mapRange = range || "ALL";
   L2.close = close;
   ["daily", "tomorrow", "weekly", "opx", "next_opx"].forEach(function (key) {
     var band = L2[key] || {};
     var exp = band.exp;
     if (!exp) return;
-    var cur = maxOiNearClose(data, exp, close, nEach, lastIdx);
-    var old = prevIdx >= 0 ? maxOiNearClose(data, exp, close, nEach, prevIdx) : {};
+    var useLastOnly =
+      String(state.ticker).toUpperCase() === "SPX" && isThirdFridayExp(exp);
+    var idx = lastIdx;
+    var pidx = useLastOnly ? -1 : prevIdx;
+    var cur = maxOiNearClose(data, exp, close, nEach, idx);
+    var old = pidx >= 0 ? maxOiNearClose(data, exp, close, nEach, pidx) : {};
     L2[key] = Object.assign({}, band, {
       support: cur.support,
       resistance: cur.resistance,
       prev_support: old.support != null ? old.support : null,
       prev_resistance: old.resistance != null ? old.resistance : null,
-      range: range,
+      range: range || "ALL",
     });
   });
   return L2;
@@ -1764,6 +1954,8 @@ function mapRangeHint(range) {
 }
 
 async function openMap() {
+  levelsCache = null;
+
   const modal = $("#mapModal");
   const body = $("#mapBody");
   const title = $("#mapTitle");
