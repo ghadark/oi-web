@@ -100,6 +100,97 @@ function futureExpirations(list) {
   });
 }
 
+function isThirdFridayExp(exp) {
+  try {
+    var d = new Date(String(exp) + "T12:00:00");
+    if (isNaN(d.getTime()) || d.getDay() !== 5) return false;
+    var day = d.getDate();
+    return day >= 15 && day <= 21;
+  } catch (e) {
+    return false;
+  }
+}
+
+function filterTickerExpirations(ticker, list) {
+  return futureExpirations(list || []);
+}
+
+function riyadhYmd() {
+  try {
+    var parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Riyadh",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    var get = function (t) {
+      for (var i = 0; i < parts.length; i++) if (parts[i].type === t) return parts[i].value;
+      return "01";
+    };
+    return get("year") + "-" + get("month") + "-" + get("day");
+  } catch (e) {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+function expIsoDay(iso) {
+  return String(iso).slice(0, 10);
+}
+
+function isFridayIso(iso) {
+  var d = new Date(String(iso) + "T12:00:00");
+  return !isNaN(d.getTime()) && d.getDay() === 5;
+}
+
+function pickX3Targets(exps) {
+  var list = (exps || []).slice().sort();
+  if (!list.length) return [];
+  var todayStr = riyadhYmd();
+  var iToday = 0;
+  for (var i = 0; i < list.length; i++) {
+    if (expIsoDay(list[i]) >= todayStr) {
+      iToday = i;
+      break;
+    }
+    iToday = i;
+  }
+  var expToday = list[iToday];
+  var expTomorrow = list[iToday + 1] || null;
+  var expWeek = null;
+  for (var j = iToday; j < list.length; j++) {
+    if (isFridayIso(list[j])) {
+      expWeek = list[j];
+      break;
+    }
+  }
+  if (!expWeek) expWeek = list[list.length - 1];
+
+  var out = [];
+  var todayIsWeek = expToday && expWeek && expIsoDay(expToday) === expIsoDay(expWeek);
+  var tomIsWeek = expTomorrow && expWeek && expIsoDay(expTomorrow) === expIsoDay(expWeek);
+
+  if (todayIsWeek) {
+    out.push({ exp: expToday, label: "اليوم · الأسبوع" });
+    if (expTomorrow && expIsoDay(expTomorrow) !== expIsoDay(expToday)) {
+      out.push({ exp: expTomorrow, label: "يوم بعد" });
+    }
+  } else if (tomIsWeek) {
+    out.push({ exp: expToday, label: "اليوم" });
+    out.push({ exp: expWeek, label: "يوم بعد · الأسبوع" });
+  } else {
+    out.push({ exp: expToday, label: "اليوم" });
+    if (expTomorrow) out.push({ exp: expTomorrow, label: "يوم بعد" });
+    if (
+      expWeek &&
+      expIsoDay(expWeek) !== expIsoDay(expToday) &&
+      (!expTomorrow || expIsoDay(expWeek) !== expIsoDay(expTomorrow))
+    ) {
+      var wlab = isThirdFridayExp(expWeek) ? "الأسبوع · OPX" : "الأسبوع";
+      out.push({ exp: expWeek, label: wlab });
+    }
+  }
+  return out;
+}
+
+
 function formatPullDate(s) {
   try {
     const parts = s.split("-").map(Number);
