@@ -1357,6 +1357,8 @@ html[data-theme="dark"] #expSelect option.exp-am {
   position: relative;
   display: inline-block;
   min-width: 150px;
+  width: auto;
+  max-width: 100%;
 }
 .exp-dd-btn {
   display: flex;
@@ -1365,6 +1367,8 @@ html[data-theme="dark"] #expSelect option.exp-am {
   gap: 8px;
   width: 100%;
   min-width: 150px;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -1394,9 +1398,10 @@ html[data-theme="dark"] #expSelect option.exp-am {
   z-index: 80;
   top: calc(100% + 4px);
   right: 0;
-  left: auto;
-  min-width: 168px;
-  width: max(100%, 168px);
+  left: 0;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   max-height: 420px; /* أطول مثل القائمة السابقة */
   overflow-y: auto;
   overflow-x: hidden;
