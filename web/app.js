@@ -111,6 +111,37 @@ function isThirdFridayExp(exp) {
   }
 }
 
+
+/** أدنى يوم سحب نظيف لـ SPX ثالث جمعة (AM) — ما قبله مخفي لأنه مخلوط */
+var SPX_AM_PULL_CUTOFF = "17-8";
+
+function pullDateSortKey(pd) {
+  try {
+    var parts = String(pd).split("-").map(Number);
+    var day = parts[0], month = parts[1];
+    if (!day || !month) return 0;
+    var now = new Date();
+    var year = now.getFullYear();
+    // لو الشهر أكبر بكثير من الحالي قد يكون من سنة سابقة في نهاية العام
+    if (month > now.getMonth() + 1 + 6) year -= 1;
+    return new Date(year, month - 1, day).getTime();
+  } catch (e) {
+    return 0;
+  }
+}
+
+function filterSpxMonthlyPullDates(pullDates) {
+  var all = (pullDates || []).slice();
+  var cut = pullDateSortKey(SPX_AM_PULL_CUTOFF);
+  var filtered = all.filter(function (pd) {
+    return pullDateSortKey(pd) >= cut;
+  });
+  // إن لم يبقَ شيء (بيانات قديمة فقط) أظهر آخر يوم فقط كاحتياط
+  if (!filtered.length && all.length) return [all[all.length - 1]];
+  return filtered;
+}
+
+
 function filterTickerExpirations(ticker, list) {
   return futureExpirations(list || []);
 }
@@ -436,17 +467,17 @@ function renderChips(rowId, options, key) {
 function getViewRows(data) {
   const block = data.by_expiration[state.expiration];
   if (!block) return null;
-  var pullDates = lastN(data.pull_dates || [], state.days);
-  // SPX + ثالث جمعة (AM): عمود آخر سحب فقط — بدون تراكم الأيام السابقة
+  var basePull = data.pull_dates || [];
   if (
     String(state.ticker).toUpperCase() === "SPX" &&
     state.expiration &&
     typeof isThirdFridayExp === "function" &&
     isThirdFridayExp(state.expiration)
   ) {
-    var all = (data.pull_dates || []).slice();
-    pullDates = all.length ? [all[all.length - 1]] : [];
+    // من 17-8 فصاعدًا فقط — ما قبله مخفي؛ غدًا 18-8 يتراكم بجانب 17-8
+    basePull = filterSpxMonthlyPullDates(basePull);
   }
+  var pullDates = lastN(basePull, state.days);
   if (!pullDates.length) return null;
   const fullDates = data.pull_dates || [];
   const idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
@@ -819,16 +850,16 @@ function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
   if (!data || !expiration) return null;
   const block = data.by_expiration[expiration];
   if (!block) return null;
-  var pullDates = lastN(data.pull_dates || [], daysLimit);
+  var basePullFor = data.pull_dates || [];
   if (
     String(state.ticker).toUpperCase() === "SPX" &&
     expiration &&
     typeof isThirdFridayExp === "function" &&
     isThirdFridayExp(expiration)
   ) {
-    var allFor = (data.pull_dates || []).slice();
-    pullDates = allFor.length ? [allFor[allFor.length - 1]] : [];
+    basePullFor = filterSpxMonthlyPullDates(basePullFor);
   }
+  var pullDates = lastN(basePullFor, daysLimit);
   if (!pullDates.length) return null;
   const fullDates = data.pull_dates || [];
   const idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
