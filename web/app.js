@@ -131,7 +131,7 @@ function ensureExpDropdownUI() {
   dd.className = "exp-dd";
   dd.innerHTML =
     '<button type="button" class="exp-dd-btn" id="expDdBtn" aria-haspopup="listbox">' +
-    '<span id="expDdLabel">—</span><span class="exp-dd-caret">▾</span></button>' +
+    '<span id="expDdLabel">—</span></button>' +
     '<div class="exp-dd-list" id="expDdList" role="listbox" hidden></div>';
   parent.appendChild(dd);
 
@@ -436,7 +436,17 @@ function renderChips(rowId, options, key) {
 function getViewRows(data) {
   const block = data.by_expiration[state.expiration];
   if (!block) return null;
-  const pullDates = lastN(data.pull_dates || [], state.days);
+  var pullDates = lastN(data.pull_dates || [], state.days);
+  // SPX + ثالث جمعة (AM): عمود آخر سحب فقط — بدون تراكم الأيام السابقة
+  if (
+    String(state.ticker).toUpperCase() === "SPX" &&
+    state.expiration &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(state.expiration)
+  ) {
+    var all = (data.pull_dates || []).slice();
+    pullDates = all.length ? [all[all.length - 1]] : [];
+  }
   if (!pullDates.length) return null;
   const fullDates = data.pull_dates || [];
   const idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
@@ -809,7 +819,16 @@ function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
   if (!data || !expiration) return null;
   const block = data.by_expiration[expiration];
   if (!block) return null;
-  const pullDates = lastN(data.pull_dates || [], daysLimit);
+  var pullDates = lastN(data.pull_dates || [], daysLimit);
+  if (
+    String(state.ticker).toUpperCase() === "SPX" &&
+    expiration &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(expiration)
+  ) {
+    var allFor = (data.pull_dates || []).slice();
+    pullDates = allFor.length ? [allFor[allFor.length - 1]] : [];
+  }
   if (!pullDates.length) return null;
   const fullDates = data.pull_dates || [];
   const idx = pullDates.map(function (d) { return fullDates.indexOf(d); });

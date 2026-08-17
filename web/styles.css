@@ -1455,3 +1455,7 @@ html[data-theme="dark"] #expSelect option.exp-am {
 html[data-theme="dark"] .exp-am {
   color: #93c5fd;
 }
+
+.exp-dd-caret { display: none !important; }
+.exp-dd-btn::after { content: none !important; }
+.exp-dd-item::before { content: none !important; }
