@@ -115,6 +115,115 @@ function filterTickerExpirations(ticker, list) {
   return futureExpirations(list || []);
 }
 
+
+function ensureExpDropdownUI() {
+  var sel = $("#expSelect");
+  if (!sel) return null;
+  var parent = sel.parentNode;
+  if (!parent) return null;
+  var dd = document.getElementById("expDropdown");
+  if (dd) return dd;
+  sel.classList.add("exp-select-hidden");
+  sel.setAttribute("aria-hidden", "true");
+  sel.tabIndex = -1;
+  dd = document.createElement("div");
+  dd.id = "expDropdown";
+  dd.className = "exp-dd";
+  dd.innerHTML =
+    '<button type="button" class="exp-dd-btn" id="expDdBtn" aria-haspopup="listbox">' +
+    '<span id="expDdLabel">—</span><span class="exp-dd-caret">▾</span></button>' +
+    '<div class="exp-dd-list" id="expDdList" role="listbox" hidden></div>';
+  parent.appendChild(dd);
+
+  document.addEventListener("click", function (e) {
+    var list = $("#expDdList");
+    var btn = $("#expDdBtn");
+    if (!list || !btn) return;
+    if (btn.contains(e.target) || list.contains(e.target)) return;
+    list.hidden = true;
+    btn.classList.remove("open");
+  });
+  return dd;
+}
+
+function expOptionLabelHtml(exp) {
+  var showAm =
+    String(state.ticker).toUpperCase() === "SPX" &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(exp);
+  if (showAm) {
+    return (
+      '<span class="exp-date">' +
+      exp +
+      '</span> <span class="exp-am">(AM)</span>'
+    );
+  }
+  return '<span class="exp-date">' + exp + "</span>";
+}
+
+function syncExpDropdownLabel() {
+  var lab = $("#expDdLabel");
+  if (!lab) return;
+  var exp = state.expiration;
+  if (!exp) {
+    lab.innerHTML = "—";
+    return;
+  }
+  lab.innerHTML = expOptionLabelHtml(exp);
+}
+
+function fillExpDropdown(exps) {
+  ensureExpDropdownUI();
+  var sel = $("#expSelect");
+  var list = $("#expDdList");
+  var btn = $("#expDdBtn");
+  if (!sel || !list || !btn) return;
+
+  sel.innerHTML = "";
+  list.innerHTML = "";
+  (exps || []).forEach(function (exp) {
+    var o = document.createElement("option");
+    o.value = exp;
+    o.textContent = exp;
+    sel.appendChild(o);
+
+    var item = document.createElement("button");
+    item.type = "button";
+    item.className =
+      "exp-dd-item" + (exp === state.expiration ? " active" : "");
+    item.setAttribute("role", "option");
+    item.dataset.value = exp;
+    item.innerHTML = expOptionLabelHtml(exp);
+    item.onclick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      state.expiration = exp;
+      sel.value = exp;
+      list.hidden = true;
+      btn.classList.remove("open");
+      syncExpDropdownLabel();
+      fillExpDropdown(exps);
+      renderTable();
+    };
+    list.appendChild(item);
+  });
+
+  if (!state.expiration || exps.indexOf(state.expiration) < 0) {
+    state.expiration = exps[0] || null;
+  }
+  sel.value = state.expiration || "";
+  syncExpDropdownLabel();
+
+  btn.onclick = function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var open = list.hidden;
+    list.hidden = !open;
+    btn.classList.toggle("open", open);
+  };
+}
+
+
 function riyadhYmd() {
   try {
     var parts = new Intl.DateTimeFormat("en-CA", {
@@ -349,32 +458,7 @@ async function refresh() {
     const sel = $("#expSelect");
     sel.innerHTML = "";
     const exps = filterTickerExpirations(state.ticker, data.expirations || []);
-    exps.forEach(function (exp) {
-      const o = document.createElement("option");
-      o.value = exp;
-      // AM فقط لـ SPX + ثالث جمعة (تسوية صباحية)
-      if (
-        String(state.ticker).toUpperCase() === "SPX" &&
-        typeof isThirdFridayExp === "function" &&
-        isThirdFridayExp(exp)
-      ) {
-        o.textContent = exp + " AM";
-        o.className = "exp-am";
-        try {
-          o.style.fontSize = "11px";
-          o.style.color = "#1e3a8a"; /* كحلي */
-          o.style.fontWeight = "600";
-        } catch (e) {}
-      } else {
-        o.textContent = exp;
-      }
-      sel.appendChild(o);
-    });
-
-    if (!state.expiration || !exps.includes(state.expiration)) {
-      state.expiration = exps[0] || null;
-    }
-    sel.value = state.expiration || "";
+    fillExpDropdown(exps);
     $("#updatedAt").textContent = data.updated_at
       ? "آخر تحديث: " + formatUpdatedAt(data.updated_at)
       : "لا يوجد تحديث بعد — شغّل Actions أولاً";
