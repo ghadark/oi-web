@@ -1330,3 +1330,15 @@ html[data-theme="light"] .x3-table tr.close-bar td {
 .x3-table td.close-strike {
   font-size: 11px !important;
 }
+
+
+/* وسم AM في قائمة الانتهاء — SPX ثالث جمعة */
+#expSelect option.exp-am {
+  font-size: 11px;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+html[data-theme="dark"] #expSelect option.exp-am {
+  color: #93c5fd; /* كحلي فاتح للقراءة على خلفية داكنة */
+  font-size: 11px;
+}

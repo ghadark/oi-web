@@ -352,10 +352,25 @@ async function refresh() {
     exps.forEach(function (exp) {
       const o = document.createElement("option");
       o.value = exp;
-      // ثالث جمعة: وسم AM للتنبيه (تسوية صباحية / شهري SPX)
-      o.textContent = isThirdFridayExp(exp) ? exp + "  AM" : exp;
+      // AM فقط لـ SPX + ثالث جمعة (تسوية صباحية)
+      if (
+        String(state.ticker).toUpperCase() === "SPX" &&
+        typeof isThirdFridayExp === "function" &&
+        isThirdFridayExp(exp)
+      ) {
+        o.textContent = exp + " AM";
+        o.className = "exp-am";
+        try {
+          o.style.fontSize = "11px";
+          o.style.color = "#1e3a8a"; /* كحلي */
+          o.style.fontWeight = "600";
+        } catch (e) {}
+      } else {
+        o.textContent = exp;
+      }
       sel.appendChild(o);
     });
+
     if (!state.expiration || !exps.includes(state.expiration)) {
       state.expiration = exps[0] || null;
     }
