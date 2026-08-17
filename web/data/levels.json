@@ -1,11 +1,11 @@
 {
-  "updated_at": "2026-08-17T20:31:29.552098Z",
+  "updated_at": "2026-08-17T21:06:54.437923Z",
   "tickers": {
     "SPY": {
       "ticker": "SPY",
       "close": 772.6699829101562,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -92,7 +92,7 @@
       "ticker": "QQQ",
       "close": 729.8699951171875,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -179,7 +179,7 @@
       "ticker": "IWM",
       "close": 304.05999755859375,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -266,7 +266,7 @@
       "ticker": "GLD",
       "close": 405.489990234375,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -353,7 +353,7 @@
       "ticker": "SPX",
       "close": 7745.06005859375,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -440,7 +440,7 @@
       "ticker": "AAPL",
       "close": 305.5899963378906,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -519,7 +519,7 @@
       "ticker": "MSFT",
       "close": 480.3500061035156,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -598,7 +598,7 @@
       "ticker": "NVDA",
       "close": 225.00999450683594,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -677,7 +677,7 @@
       "ticker": "TSLA",
       "close": 339.29998779296875,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -756,7 +756,7 @@
       "ticker": "AMZN",
       "close": 261.30999755859375,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -835,7 +835,7 @@
       "ticker": "META",
       "close": 568.969970703125,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -914,7 +914,7 @@
       "ticker": "GOOGL",
       "close": 344.0,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -989,90 +989,11 @@
         }
       ]
     },
-    "AVGO": {
-      "ticker": "AVGO",
-      "close": 392.42999267578125,
-      "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
-      "daily": {
-        "exp": "2026-08-17",
-        "pull_date": "17-8",
-        "support": 380.0,
-        "resistance": 405.0,
-        "prev_support": 420.0,
-        "prev_resistance": 420.0,
-        "prev_as_of": "14-8"
-      },
-      "tomorrow": {
-        "exp": "2026-08-19",
-        "pull_date": "17-8",
-        "support": 420.0,
-        "resistance": 430.0,
-        "prev_support": 420.0,
-        "prev_resistance": 430.0,
-        "prev_as_of": "14-8"
-      },
-      "weekly": {
-        "exp": "2026-08-21",
-        "pull_date": "17-8",
-        "support": 340.0,
-        "resistance": 500.0,
-        "prev_support": 340.0,
-        "prev_resistance": 500.0,
-        "prev_as_of": "14-8"
-      },
-      "opx": {
-        "exp": "2026-08-21",
-        "pull_date": "17-8",
-        "support": 340.0,
-        "resistance": 500.0,
-        "prev_support": 340.0,
-        "prev_resistance": 500.0,
-        "prev_as_of": "14-8"
-      },
-      "next_opx": {
-        "exp": "2026-09-18",
-        "pull_date": "17-8",
-        "support": 320.0,
-        "resistance": 600.0,
-        "prev_support": 320.0,
-        "prev_resistance": 450.0,
-        "prev_as_of": "14-8"
-      },
-      "meta": {
-        "today": "2026-08-17",
-        "daily_ref": "2026-08-17",
-        "tomorrow_cal": "2026-08-18",
-        "tomorrow_session": "2026-08-18",
-        "weekly_friday": "2026-08-21",
-        "today_is_weekly": false,
-        "tomorrow_merged_weekly": false,
-        "weekly_is_next_week": false
-      },
-      "path": [
-        {
-          "date": "12-8",
-          "close": 416.04998779296875
-        },
-        {
-          "date": "13-8",
-          "close": 420.57000732421875
-        },
-        {
-          "date": "14-8",
-          "close": 417.82000732421875
-        },
-        {
-          "date": "17-8",
-          "close": 392.42999267578125
-        }
-      ]
-    },
     "MSTR": {
       "ticker": "MSTR",
       "close": 97.68000030517578,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-21",
         "pull_date": "17-8",
@@ -1151,7 +1072,7 @@
       "ticker": "AMD",
       "close": 506.0,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -1230,7 +1151,7 @@
       "ticker": "MU",
       "close": 1011.75,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-17",
         "pull_date": "17-8",
@@ -1309,7 +1230,7 @@
       "ticker": "COHR",
       "close": 351.2200012207031,
       "as_of": "17-8",
-      "updated_at": "2026-08-17T20:31:13Z",
+      "updated_at": "2026-08-17T21:06:37Z",
       "daily": {
         "exp": "2026-08-21",
         "pull_date": "17-8",
