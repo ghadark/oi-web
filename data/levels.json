@@ -1,11 +1,11 @@
 {
-  "updated_at": "2026-08-18T04:03:34.934454Z",
+  "updated_at": "2026-08-18T04:28:12.773602Z",
   "tickers": {
     "SPY": {
       "ticker": "SPY",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-18",
         "pull_date": "18-8",
@@ -88,15 +88,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "QQQ": {
       "ticker": "QQQ",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-18",
         "pull_date": "18-8",
@@ -179,15 +179,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "IWM": {
       "ticker": "IWM",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-18",
         "pull_date": "18-8",
@@ -270,15 +270,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "GLD": {
       "ticker": "GLD",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -361,15 +361,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "SPX": {
       "ticker": "SPX",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-18",
         "pull_date": "18-8",
@@ -452,15 +452,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "AAPL": {
       "ticker": "AAPL",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -535,15 +535,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "MSFT": {
       "ticker": "MSFT",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -618,15 +618,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "NVDA": {
       "ticker": "NVDA",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -701,15 +701,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "TSLA": {
       "ticker": "TSLA",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -784,15 +784,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "AMZN": {
       "ticker": "AMZN",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -867,15 +867,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "META": {
       "ticker": "META",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -950,15 +950,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "GOOGL": {
       "ticker": "GOOGL",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -1033,15 +1033,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "AVGO": {
       "ticker": "AVGO",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -1116,15 +1116,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "MSTR": {
       "ticker": "MSTR",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-21",
         "pull_date": "18-8",
@@ -1199,15 +1199,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "AMD": {
       "ticker": "AMD",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -1282,15 +1282,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "MU": {
       "ticker": "MU",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -1365,15 +1365,15 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     },
     "COHR": {
       "ticker": "COHR",
-      "close": NaN,
+      "close": null,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T04:03:16Z",
+      "updated_at": "2026-08-18T04:27:51Z",
       "daily": {
         "exp": "2026-08-21",
         "pull_date": "18-8",
@@ -1448,7 +1448,7 @@
         },
         {
           "date": "18-8",
-          "close": NaN
+          "close": null
         }
       ]
     }
