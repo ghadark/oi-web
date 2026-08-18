@@ -132,6 +132,7 @@ def session_pull_date(today: date | None = None) -> tuple[str, date]:
 
 
 def get_close(ticker: str) -> float | None:
+    """آخر إغلاق متاح — yfinance ثم Yahoo Chart API مع تجاهل NaN."""
     symbol_map = {
         "SPY": "SPY", "QQQ": "QQQ", "IWM": "IWM", "GLD": "GLD", "SPX": "^GSPC",
         "AAPL": "AAPL", "MSFT": "MSFT", "NVDA": "NVDA", "TSLA": "TSLA",
@@ -139,18 +140,58 @@ def get_close(ticker: str) -> float | None:
         "MSTR": "MSTR", "AMD": "AMD", "MU": "MU", "COHR": "COHR",
     }
     symbol = symbol_map.get(ticker, ticker)
+
+    def _ok(v: Any) -> float | None:
+        try:
+            if v is None:
+                return None
+            x = float(v)
+            if math.isnan(x) or math.isinf(x) or x <= 0:
+                return None
+            return x
+        except Exception:
+            return None
+
+    # 1) yfinance
     try:
         import yfinance as yf
-        hist = yf.Ticker(symbol).history(period="10d")
-        if hist is None or hist.empty:
-            return None
-        val = float(hist["Close"].iloc[-1])
-        if math.isnan(val) or math.isinf(val):
-            return None
-        return val
+        hist = yf.Ticker(symbol).history(period="15d")
+        if hist is not None and not hist.empty and "Close" in hist.columns:
+            for v in reversed(list(hist["Close"].values)):
+                x = _ok(v)
+                if x is not None:
+                    return x
     except Exception as e:
-        print(f"[warn] close {ticker}: {e}", file=sys.stderr)
-        return None
+        print(f"[warn] yfinance close {ticker}: {e}", file=sys.stderr)
+
+    # 2) Yahoo chart API مباشرة
+    try:
+        from urllib.parse import quote
+        sym_q = quote(symbol, safe="^")
+        url = (
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{sym_q}"
+            f"?range=15d&interval=1d"
+        )
+        r = requests.get(url, headers=HEADERS, timeout=25)
+        r.raise_for_status()
+        result = (r.json().get("chart") or {}).get("result") or []
+        if result:
+            quotes = (result[0].get("indicators") or {}).get("quote") or []
+            closes = (quotes[0].get("close") if quotes else None) or []
+            for v in reversed(closes):
+                x = _ok(v)
+                if x is not None:
+                    return x
+            meta = result[0].get("meta") or {}
+            x = _ok(meta.get("regularMarketPrice")) or _ok(meta.get("previousClose"))
+            if x is not None:
+                return x
+    except Exception as e:
+        print(f"[warn] yahoo api close {ticker}: {e}", file=sys.stderr)
+
+    return None
+
+
 
 
 def _is_third_friday(exp: str) -> bool:
@@ -662,8 +703,25 @@ def main() -> int:
             print(f"[prune] {ticker}: removed {pruned} day(s) older than {RETENTION_DAYS}d")
 
         close = get_close(ticker)
+        # نظّف closes القديمة من NaN
+        closes_map = hist.setdefault("closes", {})
+        for ck in list(closes_map.keys()):
+            try:
+                cv = float(closes_map[ck])
+                if math.isnan(cv) or math.isinf(cv) or cv <= 0:
+                    closes_map.pop(ck, None)
+                else:
+                    closes_map[ck] = cv
+            except Exception:
+                closes_map.pop(ck, None)
         if close is not None:
-            hist.setdefault("closes", {})[pull_date] = close
+            closes_map[pull_date] = close
+        elif closes_map:
+            # احتياط: آخر إغلاق صالح سابق
+            try:
+                close = float(list(closes_map.values())[-1])
+            except Exception:
+                close = None
 
         hist["updated_at"] = now
         _write_json(hist_path, hist)
