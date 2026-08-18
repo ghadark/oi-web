@@ -222,6 +222,7 @@ def get_close(ticker: str, as_of: date | None = None) -> float | None:
     return best if best is not None else bars[-1][1]
 
 
+
 def _is_third_friday(exp: str) -> bool:
     """ثالث جمعة من الشهر = OpEx الشهري (جذر SPX / تسوية AM)."""
     try:
