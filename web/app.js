@@ -1413,12 +1413,20 @@ function isUsMarketHours() {
 
 
 async function fetchSessionClose(ticker) {
+  /**
+   * إغلاق آخر جلسة مكتملة من Yahoo:
+   * - يقرأ الشموع اليومية
+   * - إن كان آخر يوم close=null يستخدم regularMarketPrice
+   * - يعيد آخر إغلاق ≤ أمس (جلسة مكتملة) وليس السعر اللحظي أثناء الجلسة إن وُجد شريط أمس
+   */
   try {
     var symbol = (typeof YAHOO_MAP !== "undefined" && YAHOO_MAP[ticker]) ? YAHOO_MAP[ticker] : ticker;
+    if (ticker === "SPX") symbol = "^GSPC";
+    if (ticker === "NDX") symbol = "^NDX";
     var url =
       "https://query1.finance.yahoo.com/v8/finance/chart/" +
       encodeURIComponent(symbol) +
-      "?range=10d&interval=1d";
+      "?range=15d&interval=1d";
     var res = await fetch(url);
     if (!res.ok) return null;
     var j = await res.json();
@@ -1427,20 +1435,49 @@ async function fetchSessionClose(ticker) {
     var ts = result.timestamp || [];
     var quotes = (result.indicators && result.indicators.quote && result.indicators.quote[0]) || {};
     var closes = quotes.close || [];
-    var best = null;
+    var meta = result.meta || {};
+    var rmp = meta.regularMarketPrice;
+    var rows = [];
     for (var i = 0; i < ts.length; i++) {
       var c = closes[i];
-      if (c != null && !isNaN(Number(c)) && Number(c) > 0) best = Number(c);
+      // تاريخ تقريبي من timestamp (Yahoo daily عادةً بتوقيت السوق)
+      var d = new Date(ts[i] * 1000);
+      // استخدم تاريخ تقويم محلي UTC-date من الـ timestamp
+      var y = d.getUTCFullYear(), m = d.getUTCMonth(), day = d.getUTCDate();
+      var key = y + "-" + String(m + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+      var val = (c != null && !isNaN(Number(c)) && Number(c) > 0) ? Number(c) : null;
+      rows.push({ key: key, date: new Date(Date.UTC(y, m, day)), val: val });
     }
-    if (best != null) return best;
-    var meta = result.meta || {};
-    var p = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
-    if (p != null && !isNaN(Number(p)) && Number(p) > 0) return Number(p);
-    return null;
+    // املأ آخر شريط الناقص
+    if (rows.length && rows[rows.length - 1].val == null && rmp != null && !isNaN(Number(rmp)) && Number(rmp) > 0) {
+      rows[rows.length - 1].val = Number(rmp);
+    }
+    var valid = rows.filter(function (r) { return r.val != null; });
+    if (!valid.length) {
+      if (rmp != null && !isNaN(Number(rmp)) && Number(rmp) > 0) return Number(rmp);
+      return null;
+    }
+    // آخر جلسة مكتملة: آخر شريط صالح
+    // (إذا السوق مفتوح اليوم وآخر شريط = اليوم بسعر لحظي، نفضّل الشريط السابق إن وُجد)
+    var last = valid[valid.length - 1];
+    var today = new Date();
+    var todayKey =
+      today.getUTCFullYear() +
+      "-" +
+      String(today.getUTCMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(today.getUTCDate()).padStart(2, "0");
+    // إن كان آخر شريط هو "اليوم" وما زال الجلسة جارية، خذ السابق
+    if (last.key === todayKey && valid.length >= 2) {
+      // أثناء الجلسة: الإغلاق المعروض = إغلاق أمس
+      return valid[valid.length - 2].val;
+    }
+    return last.val;
   } catch (e) {
     return null;
   }
 }
+
 
 async function fetchLivePrice(ticker) {
   const sym = YAHOO_MAP[ticker] || ticker;
