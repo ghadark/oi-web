@@ -8,6 +8,7 @@ for static hosting (GitHub Pages / Cloudflare Pages).
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sys
@@ -30,7 +31,22 @@ WEB_DATA_DIR = ROOT / "web" / "data"
 RETENTION_DAYS = 60
 
 
+
+def _json_sanitize(obj: Any) -> Any:
+    """JSON لا يدعم NaN/Infinity — حوّلها إلى null قبل الكتابة."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _json_sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_sanitize(v) for v in obj]
+    return obj
+
+
 def _write_json(path: Path, obj: Any, *, indent: int | None = None) -> None:
+    obj = _json_sanitize(obj)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         if indent is None:
@@ -128,7 +144,10 @@ def get_close(ticker: str) -> float | None:
         hist = yf.Ticker(symbol).history(period="10d")
         if hist is None or hist.empty:
             return None
-        return float(hist["Close"].iloc[-1])
+        val = float(hist["Close"].iloc[-1])
+        if math.isnan(val) or math.isinf(val):
+            return None
+        return val
     except Exception as e:
         print(f"[warn] close {ticker}: {e}", file=sys.stderr)
         return None
