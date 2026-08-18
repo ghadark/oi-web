@@ -131,8 +131,12 @@ def session_pull_date(today: date | None = None) -> tuple[str, date]:
     return label, d
 
 
-def get_close(ticker: str) -> float | None:
-    """آخر إغلاق متاح — yfinance ثم Yahoo Chart API مع تجاهل NaN."""
+
+
+
+
+def get_close_bars(ticker: str) -> list[tuple[date, float]]:
+    """سلسلة (تاريخ, إغلاق) تصاعديًا من Yahoo — بدون NaN."""
     symbol_map = {
         "SPY": "SPY", "QQQ": "QQQ", "IWM": "IWM", "GLD": "GLD", "SPX": "^GSPC",
         "AAPL": "AAPL", "MSFT": "MSFT", "NVDA": "NVDA", "TSLA": "TSLA",
@@ -140,6 +144,7 @@ def get_close(ticker: str) -> float | None:
         "MSTR": "MSTR", "AMD": "AMD", "MU": "MU", "COHR": "COHR",
     }
     symbol = symbol_map.get(ticker, ticker)
+    bars: list[tuple[date, float]] = []
 
     def _ok(v: Any) -> float | None:
         try:
@@ -152,46 +157,69 @@ def get_close(ticker: str) -> float | None:
         except Exception:
             return None
 
-    # 1) yfinance
-    try:
-        import yfinance as yf
-        hist = yf.Ticker(symbol).history(period="15d")
-        if hist is not None and not hist.empty and "Close" in hist.columns:
-            for v in reversed(list(hist["Close"].values)):
-                x = _ok(v)
-                if x is not None:
-                    return x
-    except Exception as e:
-        print(f"[warn] yfinance close {ticker}: {e}", file=sys.stderr)
-
-    # 2) Yahoo chart API مباشرة
     try:
         from urllib.parse import quote
         sym_q = quote(symbol, safe="^")
         url = (
             f"https://query1.finance.yahoo.com/v8/finance/chart/{sym_q}"
-            f"?range=15d&interval=1d"
+            f"?range=1mo&interval=1d"
         )
         r = requests.get(url, headers=HEADERS, timeout=25)
         r.raise_for_status()
         result = (r.json().get("chart") or {}).get("result") or []
         if result:
+            ts = result[0].get("timestamp") or []
             quotes = (result[0].get("indicators") or {}).get("quote") or []
             closes = (quotes[0].get("close") if quotes else None) or []
-            for v in reversed(closes):
-                x = _ok(v)
-                if x is not None:
-                    return x
-            meta = result[0].get("meta") or {}
-            x = _ok(meta.get("regularMarketPrice")) or _ok(meta.get("previousClose"))
-            if x is not None:
-                return x
+            for i, tsv in enumerate(ts):
+                if i >= len(closes):
+                    break
+                x = _ok(closes[i])
+                if x is None:
+                    continue
+                d = datetime.utcfromtimestamp(int(tsv)).date()
+                bars.append((d, x))
     except Exception as e:
-        print(f"[warn] yahoo api close {ticker}: {e}", file=sys.stderr)
+        print(f"[warn] yahoo bars {ticker}: {e}", file=sys.stderr)
 
-    return None
+    if not bars:
+        try:
+            import yfinance as yf
+            hist = yf.Ticker(symbol).history(period="1mo")
+            if hist is not None and not hist.empty and "Close" in hist.columns:
+                for idx, row in hist.iterrows():
+                    x = _ok(row["Close"])
+                    if x is None:
+                        continue
+                    try:
+                        d = idx.date() if hasattr(idx, "date") else date.fromisoformat(str(idx)[:10])
+                    except Exception:
+                        continue
+                    bars.append((d, x))
+        except Exception as e:
+            print(f"[warn] yfinance bars {ticker}: {e}", file=sys.stderr)
+
+    merged: dict[date, float] = {}
+    for d, c in bars:
+        merged[d] = c
+    return [(d, merged[d]) for d in sorted(merged.keys())]
 
 
+def get_close(ticker: str, as_of: date | None = None) -> float | None:
+    """
+    إغلاق آخر جلسة مكتملة في أو قبل as_of.
+    as_of=None → أحدث إغلاق يومي متاح من Yahoo.
+    """
+    bars = get_close_bars(ticker)
+    if not bars:
+        return None
+    if as_of is None:
+        return bars[-1][1]
+    best = None
+    for d, c in bars:
+        if d <= as_of:
+            best = c
+    return best if best is not None else bars[-1][1]
 
 
 def _is_third_friday(exp: str) -> bool:
@@ -702,7 +730,7 @@ def main() -> int:
         if pruned:
             print(f"[prune] {ticker}: removed {pruned} day(s) older than {RETENTION_DAYS}d")
 
-        close = get_close(ticker)
+        close = get_close(ticker, min(pull_day, date.today()))
         # نظّف closes القديمة من NaN
         closes_map = hist.setdefault("closes", {})
         for ck in list(closes_map.keys()):
