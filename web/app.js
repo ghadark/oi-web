@@ -147,6 +147,7 @@ function filterTickerExpirations(ticker, list) {
 }
 
 
+
 function ensureExpDropdownUI() {
   var sel = $("#expSelect");
   if (!sel) return null;
@@ -154,9 +155,11 @@ function ensureExpDropdownUI() {
   if (!parent) return null;
   var dd = document.getElementById("expDropdown");
   if (dd) return dd;
-  sel.classList.add("exp-select-hidden");
-  sel.setAttribute("aria-hidden", "true");
-  sel.tabIndex = -1;
+  try {
+    sel.classList.add("exp-select-hidden");
+    sel.setAttribute("aria-hidden", "true");
+    sel.tabIndex = -1;
+  } catch (e) {}
   dd = document.createElement("div");
   dd.id = "expDropdown";
   dd.className = "exp-dd";
@@ -197,63 +200,109 @@ function syncExpDropdownLabel() {
   if (!lab) return;
   var exp = state.expiration;
   if (!exp) {
-    lab.innerHTML = "—";
+    lab.textContent = "—";
     return;
   }
   lab.innerHTML = expOptionLabelHtml(exp);
 }
 
+function safeSetSelectValue(sel, value) {
+  if (!sel) return;
+  try {
+    var v = value == null ? "" : String(value);
+    // لا تعيّن قيمة غير موجودة ضمن options (Safari: pattern error)
+    if (v) {
+      var ok = false;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === v) {
+          ok = true;
+          break;
+        }
+      }
+      if (!ok) {
+        sel.selectedIndex = sel.options.length ? 0 : -1;
+        return;
+      }
+    }
+    sel.value = v;
+  } catch (e) {
+    try {
+      sel.selectedIndex = 0;
+    } catch (e2) {}
+  }
+}
+
 function fillExpDropdown(exps) {
-  ensureExpDropdownUI();
+  try {
+    ensureExpDropdownUI();
+  } catch (e) {}
   var sel = $("#expSelect");
   var list = $("#expDdList");
   var btn = $("#expDdBtn");
-  if (!sel || !list || !btn) return;
+  if (!sel) return;
 
-  sel.innerHTML = "";
-  list.innerHTML = "";
-  (exps || []).forEach(function (exp) {
-    var o = document.createElement("option");
-    o.value = exp;
-    o.textContent = exp;
-    sel.appendChild(o);
+  var listExps = (exps || []).slice();
+  try {
+    sel.innerHTML = "";
+  } catch (e) {}
+  if (list) list.innerHTML = "";
 
-    var item = document.createElement("button");
-    item.type = "button";
-    item.className =
-      "exp-dd-item" + (exp === state.expiration ? " active" : "");
-    item.setAttribute("role", "option");
-    item.dataset.value = exp;
-    item.innerHTML = expOptionLabelHtml(exp);
-    item.onclick = function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      state.expiration = exp;
-      sel.value = exp;
-      list.hidden = true;
-      btn.classList.remove("open");
-      syncExpDropdownLabel();
-      fillExpDropdown(exps);
-      renderTable();
-    };
-    list.appendChild(item);
+  listExps.forEach(function (exp) {
+    try {
+      var o = document.createElement("option");
+      o.value = String(exp);
+      o.text = String(exp);
+      sel.appendChild(o);
+    } catch (e) {}
+
+    if (list) {
+      var item = document.createElement("button");
+      item.type = "button";
+      item.className =
+        "exp-dd-item" + (exp === state.expiration ? " active" : "");
+      item.setAttribute("role", "option");
+      item.setAttribute("data-value", String(exp));
+      item.innerHTML = expOptionLabelHtml(exp);
+      item.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        state.expiration = exp;
+        safeSetSelectValue(sel, exp);
+        if (list) list.hidden = true;
+        if (btn) btn.classList.remove("open");
+        syncExpDropdownLabel();
+        // حدّث تمييز active بدون إعادة بناء كاملة إن أمكن
+        try {
+          var nodes = list.querySelectorAll(".exp-dd-item");
+          for (var i = 0; i < nodes.length; i++) {
+            nodes[i].classList.toggle(
+              "active",
+              nodes[i].getAttribute("data-value") === String(exp)
+            );
+          }
+        } catch (e3) {}
+        renderTable();
+      };
+      list.appendChild(item);
+    }
   });
 
-  if (!state.expiration || exps.indexOf(state.expiration) < 0) {
-    state.expiration = exps[0] || null;
+  if (!state.expiration || listExps.indexOf(state.expiration) < 0) {
+    state.expiration = listExps[0] || null;
   }
-  sel.value = state.expiration || "";
+  safeSetSelectValue(sel, state.expiration || "");
   syncExpDropdownLabel();
 
-  btn.onclick = function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    var open = list.hidden;
-    list.hidden = !open;
-    btn.classList.toggle("open", open);
-  };
+  if (btn && list) {
+    btn.onclick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var open = list.hidden;
+      list.hidden = !open;
+      btn.classList.toggle("open", open);
+    };
+  }
 }
-
 
 function riyadhYmd() {
   try {
@@ -496,18 +545,38 @@ async function refresh() {
   setStatus("جاري التحميل...");
   try {
     const data = await loadTicker(state.ticker);
-    const sel = $("#expSelect");
-    sel.innerHTML = "";
     const exps = filterTickerExpirations(state.ticker, data.expirations || []);
-    fillExpDropdown(exps);
-    $("#updatedAt").textContent = data.updated_at
-      ? "آخر تحديث: " + formatUpdatedAt(data.updated_at)
-      : "لا يوجد تحديث بعد — شغّل Actions أولاً";
+    try {
+      fillExpDropdown(exps);
+    } catch (eFill) {
+      // احتياط: تعبئة select العادي إن فشلت القائمة المخصّصة
+      var sel = $("#expSelect");
+      if (sel) {
+        sel.innerHTML = "";
+        (exps || []).forEach(function (exp) {
+          var o = document.createElement("option");
+          o.value = exp;
+          o.textContent = exp;
+          sel.appendChild(o);
+        });
+        if (!state.expiration || exps.indexOf(state.expiration) < 0) {
+          state.expiration = exps[0] || null;
+        }
+        try { sel.value = state.expiration || ""; } catch (e2) {}
+      }
+    }
+    var up = $("#updatedAt");
+    if (up) {
+      up.textContent = data.updated_at
+        ? "آخر تحديث: " + formatUpdatedAt(data.updated_at)
+        : "لا يوجد تحديث بعد — شغّل Actions أولاً";
+    }
     renderTable();
     setStatus("جاهز", "ok");
   } catch (e) {
     setStatus(String(e.message || e), "err");
-    $("#tableHost").innerHTML = '<p class="status err">' + (e.message || e) + "</p>";
+    var host = $("#tableHost");
+    if (host) host.innerHTML = '<p class="status err">' + (e.message || e) + "</p>";
   }
 }
 
@@ -1388,10 +1457,15 @@ function init() {
   renderTickers();
   renderChips("#daysRow", ["2", "3", "5", "10", "ALL"], "days");
   renderChips("#strikesRow", ["30", "50", "ALL"], "strikes");
-  $("#expSelect").onchange = function (e) {
-    state.expiration = e.target.value;
-    renderTable();
-  };
+  if ($("#expSelect")) {
+    $("#expSelect").onchange = function (e) {
+      try {
+        state.expiration = e.target.value || null;
+        syncExpDropdownLabel();
+        renderTable();
+      } catch (err) {}
+    };
+  }
   if ($("#x3Btn")) {
     $("#x3Btn").onclick = function () {
       state.x3Mode = !state.x3Mode;
