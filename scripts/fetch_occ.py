@@ -135,13 +135,28 @@ def session_pull_date(today: date | None = None) -> tuple[str, date]:
 
 
 
+def last_completed_session(today: date | None = None) -> date:
+    """آخر يوم تداول مكتمل قبل today (يتخطى الويكند والعطل)."""
+    d = (today or date.today()) - timedelta(days=1)
+    for _ in range(15):
+        if d.weekday() < 5 and d not in US_MARKET_HOLIDAYS:
+            return d
+        d -= timedelta(days=1)
+    return d
+
+
 def get_close_bars(ticker: str) -> list[tuple[date, float]]:
-    """سلسلة (تاريخ, إغلاق) تصاعديًا من Yahoo — بدون NaN."""
+    """
+    سلسلة (تاريخ تداول ET, إغلاق) تصاعديًا.
+    إذا كان آخر شريط يومي close=None نستخدم regularMarketPrice كإغلاق مؤقت لذلك اليوم
+    (شائع بعد إغلاق الجلسة وقبل تسوية شريط Yahoo اليومي).
+    """
     symbol_map = {
         "SPY": "SPY", "QQQ": "QQQ", "IWM": "IWM", "GLD": "GLD", "SPX": "^GSPC",
         "AAPL": "AAPL", "MSFT": "MSFT", "NVDA": "NVDA", "TSLA": "TSLA",
         "AMZN": "AMZN", "META": "META", "GOOGL": "GOOGL", "AVGO": "AVGO",
         "MSTR": "MSTR", "AMD": "AMD", "MU": "MU", "COHR": "COHR",
+        "NDX": "^NDX",
     }
     symbol = symbol_map.get(ticker, ticker)
     bars: list[tuple[date, float]] = []
@@ -158,6 +173,12 @@ def get_close_bars(ticker: str) -> list[tuple[date, float]]:
             return None
 
     try:
+        from zoneinfo import ZoneInfo
+        ET = ZoneInfo("America/New_York")
+    except Exception:
+        ET = None
+
+    try:
         from urllib.parse import quote
         sym_q = quote(symbol, safe="^")
         url = (
@@ -170,15 +191,28 @@ def get_close_bars(ticker: str) -> list[tuple[date, float]]:
         if result:
             ts = result[0].get("timestamp") or []
             quotes = (result[0].get("indicators") or {}).get("quote") or []
-            closes = (quotes[0].get("close") if quotes else None) or []
+            closes_raw = (quotes[0].get("close") if quotes else None) or []
+            meta = result[0].get("meta") or {}
+            rmp = _ok(meta.get("regularMarketPrice"))
+            raw_rows: list[tuple[date, float | None]] = []
             for i, tsv in enumerate(ts):
-                if i >= len(closes):
-                    break
-                x = _ok(closes[i])
-                if x is None:
-                    continue
-                d = datetime.utcfromtimestamp(int(tsv)).date()
-                bars.append((d, x))
+                if ET is not None:
+                    d = datetime.fromtimestamp(int(tsv), tz=ET).date()
+                else:
+                    d = datetime.utcfromtimestamp(int(tsv)).date()
+                x = _ok(closes_raw[i]) if i < len(closes_raw) else None
+                raw_rows.append((d, x))
+            # املأ آخر شريط الناقص بـ regularMarketPrice
+            if raw_rows and raw_rows[-1][1] is None and rmp is not None:
+                d_last, _ = raw_rows[-1]
+                raw_rows[-1] = (d_last, rmp)
+            for d, x in raw_rows:
+                if x is not None:
+                    bars.append((d, x))
+            # احتياط إضافي من meta إن لم نجد أي شريط
+            if not bars and rmp is not None:
+                as_of = last_completed_session()
+                bars.append((as_of, rmp))
     except Exception as e:
         print(f"[warn] yahoo bars {ticker}: {e}", file=sys.stderr)
 
@@ -208,18 +242,32 @@ def get_close_bars(ticker: str) -> list[tuple[date, float]]:
 def get_close(ticker: str, as_of: date | None = None) -> float | None:
     """
     إغلاق آخر جلسة مكتملة في أو قبل as_of.
-    as_of=None → أحدث إغلاق يومي متاح من Yahoo.
+    as_of=None → آخر جلسة مكتملة بالنسبة لليوم الحالي.
     """
+    if as_of is None:
+        as_of = last_completed_session()
     bars = get_close_bars(ticker)
     if not bars:
         return None
-    if as_of is None:
-        return bars[-1][1]
     best = None
     for d, c in bars:
         if d <= as_of:
             best = c
-    return best if best is not None else bars[-1][1]
+    if best is not None:
+        return best
+    return bars[-1][1]
+
+
+def _parse_pull_label(label: str, year: int | None = None) -> date | None:
+    """حوّل '17-8' → date."""
+    try:
+        parts = str(label).strip().split("-")
+        day_n = int(parts[0])
+        mon_n = int(parts[1])
+        y = year or date.today().year
+        return date(y, mon_n, day_n)
+    except Exception:
+        return None
 
 
 
@@ -731,24 +779,52 @@ def main() -> int:
         if pruned:
             print(f"[prune] {ticker}: removed {pruned} day(s) older than {RETENTION_DAYS}d")
 
-        close = get_close(ticker, min(pull_day, date.today()))
-        # نظّف closes القديمة من NaN
+        # الإغلاق المعروض = آخر جلسة مكتملة (اليوم السابق التداولي)
+        # مثال: اليوم 18-8 → إغلاق 17-8 | السبت → إغلاق الجمعة
+        session_for_close = last_completed_session(date.today())
+        close = get_close(ticker, as_of=session_for_close)
+        print(f"[close] {ticker} as_of={session_for_close} → {close}")
+
+        # أعد بناء خريطة الإغلاقات من Yahoo بتواريخ صحيحة (ET)
         closes_map = hist.setdefault("closes", {})
+        bars = get_close_bars(ticker)
+        bar_map = {d: c for d, c in bars}
+        # نظّف القديم
         for ck in list(closes_map.keys()):
             try:
                 cv = float(closes_map[ck])
                 if math.isnan(cv) or math.isinf(cv) or cv <= 0:
                     closes_map.pop(ck, None)
-                else:
-                    closes_map[ck] = cv
             except Exception:
                 closes_map.pop(ck, None)
+        # املأ/صحّح لكل pull_date معروف
+        year_now = date.today().year
+        for pd in (hist.get("pull_dates") or []):
+            d = _parse_pull_label(pd, year_now)
+            if d is None:
+                continue
+            # إغلاق ذلك اليوم إن وُجد، وإلا آخر إغلاق ≤ ذلك اليوم
+            if d in bar_map:
+                closes_map[pd] = bar_map[d]
+            else:
+                prev = None
+                for bd in sorted(bar_map.keys()):
+                    if bd <= d:
+                        prev = bar_map[bd]
+                if prev is not None:
+                    closes_map[pd] = prev
         if close is not None:
-            closes_map[pull_date] = close
+            # اربط إغلاق الجلسة المكتملة بعمودها إن وُجد
+            close_label = f"{session_for_close.day}-{session_for_close.month}"
+            closes_map[close_label] = close
+            closes_map[pull_date] = close  # مرجع سريع للعرض
         elif closes_map:
-            # احتياط: آخر إغلاق صالح سابق
             try:
-                close = float(list(closes_map.values())[-1])
+                # آخر قيمة حسب ترتيب pull_dates
+                for pd in reversed(hist.get("pull_dates") or list(closes_map.keys())):
+                    if pd in closes_map:
+                        close = float(closes_map[pd])
+                        break
             except Exception:
                 close = None
 
