@@ -1,11 +1,11 @@
 {
-  "updated_at": "2026-08-18T05:21:19.520900Z",
+  "updated_at": "2026-08-18T05:27:15.400866Z",
   "tickers": {
     "SPY": {
       "ticker": "SPY",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-18",
         "pull_date": "18-8",
@@ -96,7 +96,7 @@
       "ticker": "QQQ",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-18",
         "pull_date": "18-8",
@@ -187,7 +187,7 @@
       "ticker": "IWM",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-18",
         "pull_date": "18-8",
@@ -278,7 +278,7 @@
       "ticker": "GLD",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -369,7 +369,7 @@
       "ticker": "SPX",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-18",
         "pull_date": "18-8",
@@ -460,7 +460,7 @@
       "ticker": "AAPL",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -543,7 +543,7 @@
       "ticker": "MSFT",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -626,7 +626,7 @@
       "ticker": "NVDA",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -709,7 +709,7 @@
       "ticker": "TSLA",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -792,7 +792,7 @@
       "ticker": "AMZN",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -875,7 +875,7 @@
       "ticker": "META",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -958,7 +958,7 @@
       "ticker": "GOOGL",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -1041,7 +1041,7 @@
       "ticker": "AVGO",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -1124,7 +1124,7 @@
       "ticker": "MSTR",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-21",
         "pull_date": "18-8",
@@ -1207,7 +1207,7 @@
       "ticker": "AMD",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -1290,7 +1290,7 @@
       "ticker": "MU",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-19",
         "pull_date": "18-8",
@@ -1373,7 +1373,7 @@
       "ticker": "COHR",
       "close": NaN,
       "as_of": "18-8",
-      "updated_at": "2026-08-18T05:21:01Z",
+      "updated_at": "2026-08-18T05:26:59Z",
       "daily": {
         "exp": "2026-08-21",
         "pull_date": "18-8",
