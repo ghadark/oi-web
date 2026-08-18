@@ -1214,3 +1214,253 @@ html[data-theme="light"] .exp-checks::-webkit-scrollbar-thumb {
   text-align: center !important;
   margin-top: 4px;
 }
+
+
+/* ×3 — خط زمني + جداول كاملة + شريط إغلاق */
+.x3-btn.active {
+  background: #6366f1 !important;
+  color: #fff !important;
+  border-color: #6366f1 !important;
+}
+.x3-btn { margin-left: 4px; }
+.x3-board {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  direction: rtl;
+}
+.x3-timeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  direction: rtl;
+}
+.x3-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 110px;
+  max-width: 160px;
+}
+.x3-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid var(--primary);
+  background: var(--bg);
+  box-sizing: border-box;
+}
+.x3-dot.on {
+  background: var(--primary);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 55%, transparent);
+}
+.x3-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  max-width: 72px;
+  min-width: 20px;
+  margin: 0 4px 32px;
+}
+.x3-lab {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.35;
+}
+.x3-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  direction: rtl;
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .x3-cols { grid-template-columns: 1fr; }
+}
+.x3-col {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: visible;
+  background: var(--bg);
+  min-width: 0;
+}
+.x3-col.active .x3-col-h {
+  background: color-mix(in srgb, var(--primary) 22%, var(--card));
+}
+.x3-col-h {
+  text-align: center;
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  line-height: 1.35;
+}
+.x3-table-wrap { overflow: visible; }
+.x3-table {
+  direction: ltr;
+  font-size: 10px !important;
+  width: 100%;
+}
+.x3-table th, .x3-table td {
+  min-width: 44px !important;
+  height: 24px !important;
+  padding: 2px 3px !important;
+}
+.x3-board table.oi { direction: ltr; }
+.x3-table tr.close-bar td {
+  background: #134e4a !important;
+  color: #5eead4 !important;
+  font-weight: 700;
+  border-bottom: 1px solid #0f766e !important;
+}
+html[data-theme="light"] .x3-table tr.close-bar td {
+  background: #ecfdf5 !important;
+  color: #0f766e !important;
+  border-bottom: 1px solid #a7f3d0 !important;
+}
+.x3-table td.close-strike {
+  font-size: 11px !important;
+}
+
+
+/* وسم AM في قائمة الانتهاء — SPX ثالث جمعة */
+#expSelect option.exp-am {
+  font-size: 11px;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+html[data-theme="dark"] #expSelect option.exp-am {
+  color: #93c5fd; /* كحلي فاتح للقراءة على خلفية داكنة */
+  font-size: 11px;
+}
+
+
+/* قائمة الانتهاء المخصّصة — شريط رمادي ناعم + (AM) كحلي صغير */
+.exp-select-hidden {
+  position: absolute !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+.exp-dd {
+  position: relative;
+  display: inline-block;
+  min-width: 150px;
+  width: auto;
+  max-width: 100%;
+}
+.exp-dd-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 150px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1.3;
+  direction: ltr;
+  text-align: left;
+}
+.exp-dd-btn #expDdLabel {
+  flex: 1;
+  text-align: left;
+  direction: ltr;
+}
+.exp-dd-btn.open {
+  border-color: var(--primary);
+}
+.exp-dd-caret {
+  font-size: 10px;
+  color: var(--gray);
+  opacity: 0.85;
+}
+.exp-dd-list {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  max-height: 420px; /* أطول مثل القائمة السابقة */
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.35);
+  padding: 4px;
+  direction: ltr; /* تواريخ بمحاذاة اليسار */
+  text-align: left;
+  scrollbar-width: thin;
+  scrollbar-color: #64748b transparent;
+}
+.exp-dd-list::-webkit-scrollbar {
+  width: 5px;
+}
+.exp-dd-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.exp-dd-list::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 99px;
+}
+.exp-dd-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.exp-dd-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  direction: ltr;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1.35;
+}
+.exp-dd-item:hover,
+.exp-dd-item.active {
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.exp-date {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+.exp-am {
+  font-size: 10px;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-right: 2px;
+}
+html[data-theme="dark"] .exp-am {
+  color: #93c5fd;
+}
+
+.exp-dd-caret { display: none !important; }
+.exp-dd-btn::after { content: none !important; }
+.exp-dd-item::before { content: none !important; }
