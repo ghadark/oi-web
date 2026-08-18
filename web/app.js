@@ -60,10 +60,24 @@ async function loadTicker(ticker) {
   if (state.cache[ticker]) return state.cache[ticker];
   const res = await fetch(dataUrl(ticker));
   if (!res.ok) throw new Error("تعذر تحميل بيانات " + ticker);
-  const json = await res.json();
+  var text = await res.text();
+  // ملفات قديمة قد تحتوي NaN (غير صالح في JSON) — صلّحها قبل parse
+  text = String(text)
+    .replace(/:\s*NaN\b/g, ":null")
+    .replace(/:\s*-?Infinity\b/g, ":null");
+  var json;
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    throw new Error("بيانات تالفة لـ " + ticker + " — شغّل Actions لإعادة التوليد");
+  }
+  if (json && (json.close == null || (typeof json.close === "number" && isNaN(json.close)))) {
+    json.close = null;
+  }
   state.cache[ticker] = json;
   return json;
 }
+
 
 /** قبل 7 ص الرياض يُبقى انتهاء أمس للمراجعة الليلية؛ بعد 7 ص يُحذف */
 function expirationCutoffDate() {
