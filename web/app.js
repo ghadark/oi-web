@@ -1511,7 +1511,6 @@ function effectiveClose(data) {
   if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
     return Number(data.close);
   }
-  // closes التاريخية إن وُجدت
   if (data && data.closes && typeof data.closes === "object") {
     var keys = Object.keys(data.closes);
     for (var i = keys.length - 1; i >= 0; i--) {
@@ -1519,11 +1518,11 @@ function effectiveClose(data) {
       if (!isNaN(v) && v > 0) return v;
     }
   }
-  // تقدير تقريبي من أعلى OI (حتى لا تختفي الألوان والماب)
   var est = estimateCloseFromRows(data);
   if (est != null && !isNaN(est)) return est;
   return null;
 }
+
 
 
 async function refreshLivePrice() {
