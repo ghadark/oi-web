@@ -156,8 +156,58 @@ function filterSpxMonthlyPullDates(pullDates) {
 }
 
 
+
+/** آخر يوم بيانات فعلي من pull_dates (لا يعتمد على منتصف الليل) */
+function dataSessionFromPull(data) {
+  try {
+    var pulls = (data && data.pull_dates) || [];
+    if (!pulls.length && state.cache[state.ticker]) {
+      pulls = state.cache[state.ticker].pull_dates || [];
+    }
+    if (!pulls.length) return null;
+    var last = String(pulls[pulls.length - 1]);
+    var parts = last.split("-").map(Number);
+    var day = parts[0], month = parts[1];
+    if (!day || !month) return null;
+    var year = new Date().getFullYear();
+    // نهاية السنة: لو الشهر أكبر بكثير من الحالي اعتبر السنة السابقة
+    var nowM = new Date().getMonth() + 1;
+    if (month > nowM + 6) year -= 1;
+    return { year: year, month: month, day: day, label: last };
+  } catch (e) {
+    return null;
+  }
+}
+
+function dataSessionYmd(data) {
+  var s = dataSessionFromPull(data);
+  if (!s) return riyadhYmd();
+  return (
+    s.year +
+    "-" +
+    String(s.month).padStart(2, "0") +
+    "-" +
+    String(s.day).padStart(2, "0")
+  );
+}
+
+function dataSessionCutoffDate(data) {
+  var s = dataSessionFromPull(data);
+  if (s) {
+    var d = new Date(s.year, s.month - 1, s.day);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  return expirationCutoffDate();
+}
+
 function filterTickerExpirations(ticker, list) {
-  return futureExpirations(list || []);
+  var data = state.cache[ticker] || state.cache[state.ticker] || null;
+  var cutoff = dataSessionCutoffDate(data);
+  return (list || []).filter(function (exp) {
+    var d = new Date(String(exp) + "T00:00:00");
+    return !isNaN(d.getTime()) && d >= cutoff;
+  });
 }
 
 
@@ -343,10 +393,10 @@ function isFridayIso(iso) {
   return !isNaN(d.getTime()) && d.getDay() === 5;
 }
 
-function pickX3Targets(exps) {
+function pickX3Targets(exps, data) {
   var list = (exps || []).slice().sort();
   if (!list.length) return [];
-  var todayStr = riyadhYmd();
+  var todayStr = dataSessionYmd(data);
   var iToday = 0;
   for (var i = 0; i < list.length; i++) {
     if (expIsoDay(list[i]) >= todayStr) {
@@ -720,13 +770,14 @@ function renderOneMiniTable(data, expiration, label, opts) {
   if (canDelta) html += '<th class="delta">Δ</th>';
   html += "</tr></thead><tbody>";
 
-  rows.forEach(function (r) {
+  rows.forEach(function (r, ri) {
     var isCloseRow = closeStrike != null && Number(r.strike) === Number(closeStrike);
     var above = close != null && r.strike > close;
     var below = close != null && r.strike < close;
     var callCls = below || (close != null && r.strike === close) ? "itm" : "otm";
     var putCls = above || (close != null && r.strike === close) ? "itm" : "otm";
-    html += '<tr class="' + (isCloseRow ? "close-bar" : "") + '">';
+    var zebra = ri % 2 === 1 ? " zebra" : "";
+    html += '<tr class="' + (isCloseRow ? "close-bar" : "") + zebra + '">';
     if (canDelta) {
       var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
       var maxD = dc != null && deltaCallMax > 0 && dc === deltaCallMax ? " max-oi" : "";
@@ -769,7 +820,7 @@ function renderX3() {
     return;
   }
   var exps = filterTickerExpirations(state.ticker, data.expirations || []);
-  var targets = pickX3Targets(exps);
+  var targets = pickX3Targets(exps, data);
   if (!targets.length) {
     host.innerHTML = '<p class="status">لا تواريخ لوضع ×3</p>';
     return;

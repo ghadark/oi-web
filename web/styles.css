@@ -1464,3 +1464,21 @@ html[data-theme="dark"] .exp-am {
 .exp-dd-caret { display: none !important; }
 .exp-dd-btn::after { content: none !important; }
 .exp-dd-item::before { content: none !important; }
+
+/* x3: نفس تدرج الصفوف الشفاف بين السترايكات */
+table.oi.x3-table tbody tr.zebra td.itm,
+table.oi.x3-table tbody tr.zebra td.otm {
+  filter: none;
+}
+html[data-theme="dark"] table.oi.x3-table tbody tr.zebra td.itm {
+  background: #172a45;
+}
+html[data-theme="dark"] table.oi.x3-table tbody tr.zebra td.otm {
+  background: #111c2e;
+}
+html[data-theme="light"] table.oi.x3-table tbody tr.zebra td.itm {
+  background: #cfe0f8;
+}
+html[data-theme="light"] table.oi.x3-table tbody tr.zebra td.otm {
+  background: #eef2f7;
+}
