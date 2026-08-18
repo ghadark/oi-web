@@ -26,7 +26,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
-  expiration: null, showDelta: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
+  expiration: null, showDelta: false, dark: false, cache: {}, livePrice: null, mapRange: "ALL",
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -60,24 +60,10 @@ async function loadTicker(ticker) {
   if (state.cache[ticker]) return state.cache[ticker];
   const res = await fetch(dataUrl(ticker));
   if (!res.ok) throw new Error("تعذر تحميل بيانات " + ticker);
-  var text = await res.text();
-  // ملفات قديمة قد تحتوي NaN (غير صالح في JSON) — صلّحها قبل parse
-  text = String(text)
-    .replace(/:\s*NaN\b/g, ":null")
-    .replace(/:\s*-?Infinity\b/g, ":null");
-  var json;
-  try {
-    json = JSON.parse(text);
-  } catch (e) {
-    throw new Error("بيانات تالفة لـ " + ticker + " — شغّل Actions لإعادة التوليد");
-  }
-  if (json && (json.close == null || (typeof json.close === "number" && isNaN(json.close)))) {
-    json.close = null;
-  }
+  const json = await res.json();
   state.cache[ticker] = json;
   return json;
 }
-
 
 /** قبل 7 ص الرياض يُبقى انتهاء أمس للمراجعة الليلية؛ بعد 7 ص يُحذف */
 function expirationCutoffDate() {
@@ -113,286 +99,6 @@ function futureExpirations(list) {
     return !isNaN(d.getTime()) && d >= cutoff;
   });
 }
-
-function isThirdFridayExp(exp) {
-  try {
-    var d = new Date(String(exp) + "T12:00:00");
-    if (isNaN(d.getTime()) || d.getDay() !== 5) return false;
-    var day = d.getDate();
-    return day >= 15 && day <= 21;
-  } catch (e) {
-    return false;
-  }
-}
-
-
-/** أدنى يوم سحب نظيف لـ SPX ثالث جمعة (AM) — ما قبله مخفي لأنه مخلوط */
-var SPX_AM_PULL_CUTOFF = "17-8";
-
-function pullDateSortKey(pd) {
-  try {
-    var parts = String(pd).split("-").map(Number);
-    var day = parts[0], month = parts[1];
-    if (!day || !month) return 0;
-    var now = new Date();
-    var year = now.getFullYear();
-    // لو الشهر أكبر بكثير من الحالي قد يكون من سنة سابقة في نهاية العام
-    if (month > now.getMonth() + 1 + 6) year -= 1;
-    return new Date(year, month - 1, day).getTime();
-  } catch (e) {
-    return 0;
-  }
-}
-
-function filterSpxMonthlyPullDates(pullDates) {
-  var all = (pullDates || []).slice();
-  var cut = pullDateSortKey(SPX_AM_PULL_CUTOFF);
-  var filtered = all.filter(function (pd) {
-    return pullDateSortKey(pd) >= cut;
-  });
-  // إن لم يبقَ شيء (بيانات قديمة فقط) أظهر آخر يوم فقط كاحتياط
-  if (!filtered.length && all.length) return [all[all.length - 1]];
-  return filtered;
-}
-
-
-function filterTickerExpirations(ticker, list) {
-  return futureExpirations(list || []);
-}
-
-
-
-function ensureExpDropdownUI() {
-  var sel = $("#expSelect");
-  if (!sel) return null;
-  var parent = sel.parentNode;
-  if (!parent) return null;
-  var dd = document.getElementById("expDropdown");
-  if (dd) return dd;
-  try {
-    sel.classList.add("exp-select-hidden");
-    sel.setAttribute("aria-hidden", "true");
-    sel.tabIndex = -1;
-  } catch (e) {}
-  dd = document.createElement("div");
-  dd.id = "expDropdown";
-  dd.className = "exp-dd";
-  dd.innerHTML =
-    '<button type="button" class="exp-dd-btn" id="expDdBtn" aria-haspopup="listbox">' +
-    '<span id="expDdLabel">—</span></button>' +
-    '<div class="exp-dd-list" id="expDdList" role="listbox" hidden></div>';
-  parent.appendChild(dd);
-
-  document.addEventListener("click", function (e) {
-    var list = $("#expDdList");
-    var btn = $("#expDdBtn");
-    if (!list || !btn) return;
-    if (btn.contains(e.target) || list.contains(e.target)) return;
-    list.hidden = true;
-    btn.classList.remove("open");
-  });
-  return dd;
-}
-
-function expOptionLabelHtml(exp) {
-  var showAm =
-    String(state.ticker).toUpperCase() === "SPX" &&
-    typeof isThirdFridayExp === "function" &&
-    isThirdFridayExp(exp);
-  if (showAm) {
-    return (
-      '<span class="exp-date">' +
-      exp +
-      '</span> <span class="exp-am">(AM)</span>'
-    );
-  }
-  return '<span class="exp-date">' + exp + "</span>";
-}
-
-function syncExpDropdownLabel() {
-  var lab = $("#expDdLabel");
-  if (!lab) return;
-  var exp = state.expiration;
-  if (!exp) {
-    lab.textContent = "—";
-    return;
-  }
-  lab.innerHTML = expOptionLabelHtml(exp);
-}
-
-function safeSetSelectValue(sel, value) {
-  if (!sel) return;
-  try {
-    var v = value == null ? "" : String(value);
-    // لا تعيّن قيمة غير موجودة ضمن options (Safari: pattern error)
-    if (v) {
-      var ok = false;
-      for (var i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].value === v) {
-          ok = true;
-          break;
-        }
-      }
-      if (!ok) {
-        sel.selectedIndex = sel.options.length ? 0 : -1;
-        return;
-      }
-    }
-    sel.value = v;
-  } catch (e) {
-    try {
-      sel.selectedIndex = 0;
-    } catch (e2) {}
-  }
-}
-
-function fillExpDropdown(exps) {
-  try {
-    ensureExpDropdownUI();
-  } catch (e) {}
-  var sel = $("#expSelect");
-  var list = $("#expDdList");
-  var btn = $("#expDdBtn");
-  if (!sel) return;
-
-  var listExps = (exps || []).slice();
-  try {
-    sel.innerHTML = "";
-  } catch (e) {}
-  if (list) list.innerHTML = "";
-
-  listExps.forEach(function (exp) {
-    try {
-      var o = document.createElement("option");
-      o.value = String(exp);
-      o.text = String(exp);
-      sel.appendChild(o);
-    } catch (e) {}
-
-    if (list) {
-      var item = document.createElement("button");
-      item.type = "button";
-      item.className =
-        "exp-dd-item" + (exp === state.expiration ? " active" : "");
-      item.setAttribute("role", "option");
-      item.setAttribute("data-value", String(exp));
-      item.innerHTML = expOptionLabelHtml(exp);
-      item.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        state.expiration = exp;
-        safeSetSelectValue(sel, exp);
-        if (list) list.hidden = true;
-        if (btn) btn.classList.remove("open");
-        syncExpDropdownLabel();
-        // حدّث تمييز active بدون إعادة بناء كاملة إن أمكن
-        try {
-          var nodes = list.querySelectorAll(".exp-dd-item");
-          for (var i = 0; i < nodes.length; i++) {
-            nodes[i].classList.toggle(
-              "active",
-              nodes[i].getAttribute("data-value") === String(exp)
-            );
-          }
-        } catch (e3) {}
-        renderTable();
-      };
-      list.appendChild(item);
-    }
-  });
-
-  if (!state.expiration || listExps.indexOf(state.expiration) < 0) {
-    state.expiration = listExps[0] || null;
-  }
-  safeSetSelectValue(sel, state.expiration || "");
-  syncExpDropdownLabel();
-
-  if (btn && list) {
-    btn.onclick = function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      var open = list.hidden;
-      list.hidden = !open;
-      btn.classList.toggle("open", open);
-    };
-  }
-}
-
-function riyadhYmd() {
-  try {
-    var parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Riyadh",
-      year: "numeric", month: "2-digit", day: "2-digit",
-    }).formatToParts(new Date());
-    var get = function (t) {
-      for (var i = 0; i < parts.length; i++) if (parts[i].type === t) return parts[i].value;
-      return "01";
-    };
-    return get("year") + "-" + get("month") + "-" + get("day");
-  } catch (e) {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
-
-function expIsoDay(iso) {
-  return String(iso).slice(0, 10);
-}
-
-function isFridayIso(iso) {
-  var d = new Date(String(iso) + "T12:00:00");
-  return !isNaN(d.getTime()) && d.getDay() === 5;
-}
-
-function pickX3Targets(exps) {
-  var list = (exps || []).slice().sort();
-  if (!list.length) return [];
-  var todayStr = riyadhYmd();
-  var iToday = 0;
-  for (var i = 0; i < list.length; i++) {
-    if (expIsoDay(list[i]) >= todayStr) {
-      iToday = i;
-      break;
-    }
-    iToday = i;
-  }
-  var expToday = list[iToday];
-  var expTomorrow = list[iToday + 1] || null;
-  var expWeek = null;
-  for (var j = iToday; j < list.length; j++) {
-    if (isFridayIso(list[j])) {
-      expWeek = list[j];
-      break;
-    }
-  }
-  if (!expWeek) expWeek = list[list.length - 1];
-
-  var out = [];
-  var todayIsWeek = expToday && expWeek && expIsoDay(expToday) === expIsoDay(expWeek);
-  var tomIsWeek = expTomorrow && expWeek && expIsoDay(expTomorrow) === expIsoDay(expWeek);
-
-  if (todayIsWeek) {
-    out.push({ exp: expToday, label: "اليوم · الأسبوع" });
-    if (expTomorrow && expIsoDay(expTomorrow) !== expIsoDay(expToday)) {
-      out.push({ exp: expTomorrow, label: "يوم بعد" });
-    }
-  } else if (tomIsWeek) {
-    out.push({ exp: expToday, label: "اليوم" });
-    out.push({ exp: expWeek, label: "يوم بعد · الأسبوع" });
-  } else {
-    out.push({ exp: expToday, label: "اليوم" });
-    if (expTomorrow) out.push({ exp: expTomorrow, label: "يوم بعد" });
-    if (
-      expWeek &&
-      expIsoDay(expWeek) !== expIsoDay(expToday) &&
-      (!expTomorrow || expIsoDay(expWeek) !== expIsoDay(expTomorrow))
-    ) {
-      var wlab = isThirdFridayExp(expWeek) ? "الأسبوع · OPX" : "الأسبوع";
-      out.push({ exp: expWeek, label: wlab });
-    }
-  }
-  return out;
-}
-
 
 function formatPullDate(s) {
   try {
@@ -463,7 +169,6 @@ function renderTickers() {
       state.ticker = t.symbol;
       state.expiration = null;
       state.livePrice = null;
-      state.sessionClose = null;
       const dd = $("#stocksSelect");
       if (dd) dd.value = "";
       renderTickers();
@@ -531,17 +236,7 @@ function renderChips(rowId, options, key) {
 function getViewRows(data) {
   const block = data.by_expiration[state.expiration];
   if (!block) return null;
-  var basePull = data.pull_dates || [];
-  if (
-    String(state.ticker).toUpperCase() === "SPX" &&
-    state.expiration &&
-    typeof isThirdFridayExp === "function" &&
-    isThirdFridayExp(state.expiration)
-  ) {
-    // من 17-8 فصاعدًا فقط — ما قبله مخفي؛ غدًا 18-8 يتراكم بجانب 17-8
-    basePull = filterSpxMonthlyPullDates(basePull);
-  }
-  var pullDates = lastN(basePull, state.days);
+  const pullDates = lastN(data.pull_dates || [], state.days);
   if (!pullDates.length) return null;
   const fullDates = data.pull_dates || [];
   const idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
@@ -560,46 +255,27 @@ async function refresh() {
   setStatus("جاري التحميل...");
   try {
     const data = await loadTicker(state.ticker);
-    const exps = filterTickerExpirations(state.ticker, data.expirations || []);
-    try {
-      fillExpDropdown(exps);
-    } catch (eFill) {
-      // احتياط: تعبئة select العادي إن فشلت القائمة المخصّصة
-      var sel = $("#expSelect");
-      if (sel) {
-        sel.innerHTML = "";
-        (exps || []).forEach(function (exp) {
-          var o = document.createElement("option");
-          o.value = exp;
-          o.textContent = exp;
-          sel.appendChild(o);
-        });
-        if (!state.expiration || exps.indexOf(state.expiration) < 0) {
-          state.expiration = exps[0] || null;
-        }
-        try { sel.value = state.expiration || ""; } catch (e2) {}
-      }
+    const sel = $("#expSelect");
+    sel.innerHTML = "";
+    const exps = futureExpirations(data.expirations || []);
+    exps.forEach(function (exp) {
+      const o = document.createElement("option");
+      o.value = exp;
+      o.textContent = exp;
+      sel.appendChild(o);
+    });
+    if (!state.expiration || !exps.includes(state.expiration)) {
+      state.expiration = exps[0] || null;
     }
-    var up = $("#updatedAt");
-    if (up) {
-      up.textContent = data.updated_at
-        ? "آخر تحديث: " + formatUpdatedAt(data.updated_at)
-        : "لا يوجد تحديث بعد — شغّل Actions أولاً";
-    }
+    sel.value = state.expiration || "";
+    $("#updatedAt").textContent = data.updated_at
+      ? "آخر تحديث: " + formatUpdatedAt(data.updated_at)
+      : "لا يوجد تحديث بعد — شغّل Actions أولاً";
     renderTable();
     setStatus("جاهز", "ok");
-    // حدّث إغلاق آخر جلسة مكتملة من Yahoo (لا يعتمد على JSON القديم)
-    fetchSessionClose(state.ticker).then(function (px) {
-      if (px != null) {
-        state.sessionClose = px;
-        if (state.cache[state.ticker]) state.cache[state.ticker].close = px;
-        renderTable();
-      }
-    });
   } catch (e) {
     setStatus(String(e.message || e), "err");
-    var host = $("#tableHost");
-    if (host) host.innerHTML = '<p class="status err">' + (e.message || e) + "</p>";
+    $("#tableHost").innerHTML = '<p class="status err">' + (e.message || e) + "</p>";
   }
 }
 
@@ -618,188 +294,9 @@ function greenBarRow(canDelta, n, close) {
   return html + "</tr>";
 }
 
-
-function arabicDayMonth(exp) {
-  try {
-    var parts = String(exp).split("-");
-    if (parts.length < 3) return String(exp);
-    var d = parseInt(parts[2], 10);
-    var m = parseInt(parts[1], 10);
-    var months = {
-      1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل", 5: "مايو", 6: "يونيو",
-      7: "يوليو", 8: "أوغست", 9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر",
-    };
-    return d + " " + (months[m] || parts[1]);
-  } catch (e) {
-    return String(exp);
-  }
-}
-
-function x3PanelTitle(label, exp) {
-  var dm = arabicDayMonth(exp);
-  var lab = String(label || "").replace(/\d{4}-\d{2}-\d{2}/g, "").trim();
-  if (/اليوم|يوم بعد|الأسبوع|OPX/i.test(lab)) return lab + " " + dm;
-  return lab + " " + dm;
-}
-
-function renderOneMiniTable(data, expiration, label, opts) {
-  opts = opts || {};
-  var saved = {
-    expiration: state.expiration,
-    days: state.days,
-    showDelta: state.showDelta,
-  };
-  state.expiration = expiration;
-  state.days = "2";
-  var view = getViewRows(data);
-  state.expiration = saved.expiration;
-  state.days = saved.days;
-  state.showDelta = saved.showDelta;
-
-  var title = x3PanelTitle(label, expiration);
-  if (!view || !view.rows.length) {
-    return (
-      '<div class="x3-col' + (opts.active ? " active" : "") + '">' +
-      '<div class="x3-col-h">' + title + "</div>" +
-      '<p class="status" style="padding:12px">لا بيانات</p></div>'
-    );
-  }
-  var pullDates = view.pullDates;
-  var rows = view.rows;
-  var close = effectiveClose(data);
-  var canDelta = state.showDelta && pullDates.length >= 2;
-  var lastI = pullDates.length - 1;
-  var prevI = pullDates.length - 2;
-
-  var callMax = [], putMax = [];
-  for (var i = 0; i < pullDates.length; i++) {
-    var mc = 0, mp = 0;
-    rows.forEach(function (r) {
-      var cv = r.calls[i] || 0;
-      var pv = r.puts[i] || 0;
-      if (cv > mc) mc = cv;
-      if (pv > mp) mp = pv;
-    });
-    callMax.push(mc);
-    putMax.push(mp);
-  }
-  var deltaCallMax = 0, deltaPutMax = 0;
-  if (canDelta) {
-    rows.forEach(function (r) {
-      var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
-      var dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
-      if (dc != null && dc > deltaCallMax) deltaCallMax = dc;
-      if (dp != null && dp > deltaPutMax) deltaPutMax = dp;
-    });
-  }
-
-  var closeStrike = null;
-  if (close != null && !isNaN(Number(close)) && rows.length) {
-    var best = rows[0].strike, bestD = Math.abs(rows[0].strike - close);
-    rows.forEach(function (r) {
-      var d = Math.abs(r.strike - close);
-      if (d < bestD) { bestD = d; best = r.strike; }
-    });
-    closeStrike = best;
-  }
-
-  var html =
-    '<div class="x3-col' + (opts.active ? " active" : "") + '">' +
-    '<div class="x3-col-h">' + title + "</div>" +
-    '<div class="x3-table-wrap"><table class="oi x3-table"><thead><tr>';
-  if (canDelta) html += '<th class="delta">Δ</th>';
-  for (var hi = pullDates.length - 1; hi >= 0; hi--) {
-    var f = formatPullDate(pullDates[hi]);
-    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
-  }
-  html += '<th class="strike">STRIKE</th>';
-  for (var hj = 0; hj < pullDates.length; hj++) {
-    var f2 = formatPullDate(pullDates[hj]);
-    html += "<th>" + f2.top + '<br><span class="subh">' + f2.sub + "</span></th>";
-  }
-  if (canDelta) html += '<th class="delta">Δ</th>';
-  html += "</tr></thead><tbody>";
-
-  rows.forEach(function (r) {
-    var isCloseRow = closeStrike != null && Number(r.strike) === Number(closeStrike);
-    var above = close != null && r.strike > close;
-    var below = close != null && r.strike < close;
-    var callCls = below || (close != null && r.strike === close) ? "itm" : "otm";
-    var putCls = above || (close != null && r.strike === close) ? "itm" : "otm";
-    html += '<tr class="' + (isCloseRow ? "close-bar" : "") + '">';
-    if (canDelta) {
-      var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
-      var maxD = dc != null && deltaCallMax > 0 && dc === deltaCallMax ? " max-oi" : "";
-      html += '<td class="delta' + maxD + '">' + (dc != null ? dc.toLocaleString() : "") + "</td>";
-    }
-    for (var ci = pullDates.length - 1; ci >= 0; ci--) {
-      var cv = r.calls[ci] || 0;
-      var maxC = callMax[ci] > 0 && cv === callMax[ci] ? " max-oi" : "";
-      html += '<td class="' + callCls + maxC + '">' + cv.toLocaleString() + "</td>";
-    }
-    if (isCloseRow && close != null) {
-      html +=
-        '<td class="strike close-strike">' +
-        Number(close).toLocaleString(undefined, { maximumFractionDigits: 2 }) +
-        "</td>";
-    } else {
-      html += '<td class="strike">' + r.strike + "</td>";
-    }
-    for (var pi = 0; pi < pullDates.length; pi++) {
-      var pv = r.puts[pi] || 0;
-      var maxP = putMax[pi] > 0 && pv === putMax[pi] ? " max-oi" : "";
-      html += '<td class="' + putCls + maxP + '">' + pv.toLocaleString() + "</td>";
-    }
-    if (canDelta) {
-      var dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
-      var maxDp = dp != null && deltaPutMax > 0 && dp === deltaPutMax ? " max-oi" : "";
-      html += '<td class="delta' + maxDp + '">' + (dp != null ? dp.toLocaleString() : "") + "</td>";
-    }
-    html += "</tr>";
-  });
-  html += "</tbody></table></div></div>";
-  return html;
-}
-
-function renderX3() {
-  var data = state.cache[state.ticker];
-  var host = $("#tableHost");
-  if (!data) {
-    host.innerHTML = '<p class="status">لا بيانات</p>';
-    return;
-  }
-  var exps = filterTickerExpirations(state.ticker, data.expirations || []);
-  var targets = pickX3Targets(exps);
-  if (!targets.length) {
-    host.innerHTML = '<p class="status">لا تواريخ لوضع ×3</p>';
-    return;
-  }
-  var tl = '<div class="x3-timeline">';
-  targets.forEach(function (t, i) {
-    if (i > 0) tl += '<div class="x3-line"></div>';
-    tl +=
-      '<div class="x3-node">' +
-      '<div class="x3-dot' + (i === 0 ? " on" : "") + '"></div>' +
-      '<div class="x3-lab">' + x3PanelTitle(t.label, t.exp) + "</div>" +
-      "</div>";
-  });
-  tl += "</div>";
-  var cols = '<div class="x3-cols">';
-  targets.forEach(function (t, i) {
-    cols += renderOneMiniTable(data, t.exp, t.label, { active: i === 0 });
-  });
-  cols += "</div>";
-  host.innerHTML = '<div class="x3-board">' + tl + cols + "</div>";
-}
-
-
 function renderTable() {
   const data = state.cache[state.ticker];
   const host = $("#tableHost");
-  if (state.x3Mode) {
-    renderX3();
-    return;
-  }
   if (!data || !state.expiration) {
     host.innerHTML = '<p class="status">اختر تاريخ انتهاء</p>';
     return;
@@ -942,16 +439,7 @@ function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
   if (!data || !expiration) return null;
   const block = data.by_expiration[expiration];
   if (!block) return null;
-  var basePullFor = data.pull_dates || [];
-  if (
-    String(state.ticker).toUpperCase() === "SPX" &&
-    expiration &&
-    typeof isThirdFridayExp === "function" &&
-    isThirdFridayExp(expiration)
-  ) {
-    basePullFor = filterSpxMonthlyPullDates(basePullFor);
-  }
-  var pullDates = lastN(basePullFor, daysLimit);
+  const pullDates = lastN(data.pull_dates || [], daysLimit);
   if (!pullDates.length) return null;
   const fullDates = data.pull_dates || [];
   const idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
@@ -1411,37 +899,6 @@ function isUsMarketHours() {
   }
 }
 
-
-async function fetchSessionClose(ticker) {
-  try {
-    var symbol = (typeof YAHOO_MAP !== "undefined" && YAHOO_MAP[ticker]) ? YAHOO_MAP[ticker] : ticker;
-    var url =
-      "https://query1.finance.yahoo.com/v8/finance/chart/" +
-      encodeURIComponent(symbol) +
-      "?range=10d&interval=1d";
-    var res = await fetch(url);
-    if (!res.ok) return null;
-    var j = await res.json();
-    var result = j && j.chart && j.chart.result && j.chart.result[0];
-    if (!result) return null;
-    var ts = result.timestamp || [];
-    var quotes = (result.indicators && result.indicators.quote && result.indicators.quote[0]) || {};
-    var closes = quotes.close || [];
-    var best = null;
-    for (var i = 0; i < ts.length; i++) {
-      var c = closes[i];
-      if (c != null && !isNaN(Number(c)) && Number(c) > 0) best = Number(c);
-    }
-    if (best != null) return best;
-    var meta = result.meta || {};
-    var p = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
-    if (p != null && !isNaN(Number(p)) && Number(p) > 0) return Number(p);
-    return null;
-  } catch (e) {
-    return null;
-  }
-}
-
 async function fetchLivePrice(ticker) {
   const sym = YAHOO_MAP[ticker] || ticker;
   const yahoo =
@@ -1475,55 +932,10 @@ async function fetchLivePrice(ticker) {
   }
 }
 
-function estimateCloseFromRows(data) {
-  try {
-    if (!data || !data.by_expiration) return null;
-    var exp = state.expiration || (data.expirations && data.expirations[0]);
-    if (!exp) return null;
-    var block = data.by_expiration[exp];
-    if (!block || !block.rows || !block.rows.length) return null;
-    var bestS = null, bestT = -1;
-    var lastIdx = (data.pull_dates || []).length - 1;
-    if (lastIdx < 0) lastIdx = 0;
-    block.rows.forEach(function (r) {
-      var c = 0, p = 0;
-      if (r.calls && r.calls.length) c = r.calls[Math.min(lastIdx, r.calls.length - 1)] || 0;
-      if (r.puts && r.puts.length) p = r.puts[Math.min(lastIdx, r.puts.length - 1)] || 0;
-      var tot = c + p;
-      if (tot > bestT) {
-        bestT = tot;
-        bestS = r.strike;
-      }
-    });
-    return bestS != null ? Number(bestS) : null;
-  } catch (e) {
-    return null;
-  }
-}
-
 function effectiveClose(data) {
-  if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
-    return Number(state.livePrice);
-  }
-  if (state.sessionClose != null && !isNaN(Number(state.sessionClose))) {
-    return Number(state.sessionClose);
-  }
-  if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
-    return Number(data.close);
-  }
-  if (data && data.closes && typeof data.closes === "object") {
-    var keys = Object.keys(data.closes);
-    for (var i = keys.length - 1; i >= 0; i--) {
-      var v = Number(data.closes[keys[i]]);
-      if (!isNaN(v) && v > 0) return v;
-    }
-  }
-  var est = estimateCloseFromRows(data);
-  if (est != null && !isNaN(est)) return est;
-  return null;
+  if (state.livePrice != null && !isNaN(state.livePrice)) return state.livePrice;
+  return data && data.close != null ? data.close : null;
 }
-
-
 
 async function refreshLivePrice() {
   if (!isUsMarketHours()) {
@@ -1556,22 +968,10 @@ function init() {
   renderTickers();
   renderChips("#daysRow", ["2", "3", "5", "10", "ALL"], "days");
   renderChips("#strikesRow", ["30", "50", "ALL"], "strikes");
-  if ($("#expSelect")) {
-    $("#expSelect").onchange = function (e) {
-      try {
-        state.expiration = e.target.value || null;
-        syncExpDropdownLabel();
-        renderTable();
-      } catch (err) {}
-    };
-  }
-  if ($("#x3Btn")) {
-    $("#x3Btn").onclick = function () {
-      state.x3Mode = !state.x3Mode;
-      $("#x3Btn").classList.toggle("active", state.x3Mode);
-      renderTable();
-    };
-  }
+  $("#expSelect").onchange = function (e) {
+    state.expiration = e.target.value;
+    renderTable();
+  };
   $("#deltaBtn").onclick = function () {
     state.showDelta = !state.showDelta;
     $("#deltaBtn").classList.toggle("active", state.showDelta);
@@ -2320,6 +1720,7 @@ function maxOiNearClose(data, exp, close, nEach, dateIdx) {
 
 async function levelsForMapRange(baseL, range) {
   if (!baseL) return baseL;
+  if (!range || range === "ALL") return baseL;
   var data;
   try { data = await loadTicker(state.ticker); } catch (e) { return baseL; }
   var nEach = mapRangeN(range);
@@ -2328,24 +1729,20 @@ async function levelsForMapRange(baseL, range) {
   var lastIdx = pullDates.length - 1;
   var prevIdx = pullDates.length > 1 ? pullDates.length - 2 : -1;
   var L2 = JSON.parse(JSON.stringify(baseL));
-  L2.mapRange = range || "ALL";
+  L2.mapRange = range;
   L2.close = close;
   ["daily", "tomorrow", "weekly", "opx", "next_opx"].forEach(function (key) {
     var band = L2[key] || {};
     var exp = band.exp;
     if (!exp) return;
-    var useLastOnly =
-      String(state.ticker).toUpperCase() === "SPX" && isThirdFridayExp(exp);
-    var idx = lastIdx;
-    var pidx = useLastOnly ? -1 : prevIdx;
-    var cur = maxOiNearClose(data, exp, close, nEach, idx);
-    var old = pidx >= 0 ? maxOiNearClose(data, exp, close, nEach, pidx) : {};
+    var cur = maxOiNearClose(data, exp, close, nEach, lastIdx);
+    var old = prevIdx >= 0 ? maxOiNearClose(data, exp, close, nEach, prevIdx) : {};
     L2[key] = Object.assign({}, band, {
       support: cur.support,
       resistance: cur.resistance,
       prev_support: old.support != null ? old.support : null,
       prev_resistance: old.resistance != null ? old.resistance : null,
-      range: range || "ALL",
+      range: range,
     });
   });
   return L2;
@@ -2367,8 +1764,6 @@ function mapRangeHint(range) {
 }
 
 async function openMap() {
-  levelsCache = null;
-
   const modal = $("#mapModal");
   const body = $("#mapBody");
   const title = $("#mapTitle");
