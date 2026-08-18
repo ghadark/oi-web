@@ -1435,10 +1435,53 @@ async function fetchLivePrice(ticker) {
   }
 }
 
-function effectiveClose(data) {
-  if (state.livePrice != null && !isNaN(state.livePrice)) return state.livePrice;
-  return data && data.close != null ? data.close : null;
+function estimateCloseFromRows(data) {
+  try {
+    if (!data || !data.by_expiration) return null;
+    var exp = state.expiration || (data.expirations && data.expirations[0]);
+    if (!exp) return null;
+    var block = data.by_expiration[exp];
+    if (!block || !block.rows || !block.rows.length) return null;
+    var bestS = null, bestT = -1;
+    var lastIdx = (data.pull_dates || []).length - 1;
+    if (lastIdx < 0) lastIdx = 0;
+    block.rows.forEach(function (r) {
+      var c = 0, p = 0;
+      if (r.calls && r.calls.length) c = r.calls[Math.min(lastIdx, r.calls.length - 1)] || 0;
+      if (r.puts && r.puts.length) p = r.puts[Math.min(lastIdx, r.puts.length - 1)] || 0;
+      var tot = c + p;
+      if (tot > bestT) {
+        bestT = tot;
+        bestS = r.strike;
+      }
+    });
+    return bestS != null ? Number(bestS) : null;
+  } catch (e) {
+    return null;
+  }
 }
+
+function effectiveClose(data) {
+  if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
+    return Number(state.livePrice);
+  }
+  if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
+    return Number(data.close);
+  }
+  // closes التاريخية إن وُجدت
+  if (data && data.closes && typeof data.closes === "object") {
+    var keys = Object.keys(data.closes);
+    for (var i = keys.length - 1; i >= 0; i--) {
+      var v = Number(data.closes[keys[i]]);
+      if (!isNaN(v) && v > 0) return v;
+    }
+  }
+  // تقدير تقريبي من أعلى OI (حتى لا تختفي الألوان والماب)
+  var est = estimateCloseFromRows(data);
+  if (est != null && !isNaN(est)) return est;
+  return null;
+}
+
 
 async function refreshLivePrice() {
   if (!isUsMarketHours()) {
