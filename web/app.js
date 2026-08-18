@@ -26,7 +26,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
-  expiration: null, showDelta: false, dark: false, cache: {}, livePrice: null, mapRange: "ALL",
+  expiration: null, showDelta: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -463,6 +463,7 @@ function renderTickers() {
       state.ticker = t.symbol;
       state.expiration = null;
       state.livePrice = null;
+      state.sessionClose = null;
       const dd = $("#stocksSelect");
       if (dd) dd.value = "";
       renderTickers();
@@ -587,6 +588,14 @@ async function refresh() {
     }
     renderTable();
     setStatus("جاهز", "ok");
+    // حدّث إغلاق آخر جلسة مكتملة من Yahoo (لا يعتمد على JSON القديم)
+    fetchSessionClose(state.ticker).then(function (px) {
+      if (px != null) {
+        state.sessionClose = px;
+        if (state.cache[state.ticker]) state.cache[state.ticker].close = px;
+        renderTable();
+      }
+    });
   } catch (e) {
     setStatus(String(e.message || e), "err");
     var host = $("#tableHost");
@@ -1402,6 +1411,37 @@ function isUsMarketHours() {
   }
 }
 
+
+async function fetchSessionClose(ticker) {
+  try {
+    var symbol = (typeof YAHOO_MAP !== "undefined" && YAHOO_MAP[ticker]) ? YAHOO_MAP[ticker] : ticker;
+    var url =
+      "https://query1.finance.yahoo.com/v8/finance/chart/" +
+      encodeURIComponent(symbol) +
+      "?range=10d&interval=1d";
+    var res = await fetch(url);
+    if (!res.ok) return null;
+    var j = await res.json();
+    var result = j && j.chart && j.chart.result && j.chart.result[0];
+    if (!result) return null;
+    var ts = result.timestamp || [];
+    var quotes = (result.indicators && result.indicators.quote && result.indicators.quote[0]) || {};
+    var closes = quotes.close || [];
+    var best = null;
+    for (var i = 0; i < ts.length; i++) {
+      var c = closes[i];
+      if (c != null && !isNaN(Number(c)) && Number(c) > 0) best = Number(c);
+    }
+    if (best != null) return best;
+    var meta = result.meta || {};
+    var p = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
+    if (p != null && !isNaN(Number(p)) && Number(p) > 0) return Number(p);
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function fetchLivePrice(ticker) {
   const sym = YAHOO_MAP[ticker] || ticker;
   const yahoo =
@@ -1464,6 +1504,9 @@ function estimateCloseFromRows(data) {
 function effectiveClose(data) {
   if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
     return Number(state.livePrice);
+  }
+  if (state.sessionClose != null && !isNaN(Number(state.sessionClose))) {
+    return Number(state.sessionClose);
   }
   if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
     return Number(data.close);
