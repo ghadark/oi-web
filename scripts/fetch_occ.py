@@ -8,6 +8,7 @@ for static hosting (GitHub Pages / Cloudflare Pages).
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sys
@@ -30,7 +31,22 @@ WEB_DATA_DIR = ROOT / "web" / "data"
 RETENTION_DAYS = 60
 
 
+
+def _json_sanitize(obj: Any) -> Any:
+    """JSON لا يدعم NaN/Infinity — حوّلها إلى null قبل الكتابة."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _json_sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_sanitize(v) for v in obj]
+    return obj
+
+
 def _write_json(path: Path, obj: Any, *, indent: int | None = None) -> None:
+    obj = _json_sanitize(obj)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         if indent is None:
@@ -115,7 +131,12 @@ def session_pull_date(today: date | None = None) -> tuple[str, date]:
     return label, d
 
 
-def get_close(ticker: str) -> float | None:
+
+
+
+
+def get_close_bars(ticker: str) -> list[tuple[date, float]]:
+    """سلسلة (تاريخ, إغلاق) تصاعديًا من Yahoo — بدون NaN."""
     symbol_map = {
         "SPY": "SPY", "QQQ": "QQQ", "IWM": "IWM", "GLD": "GLD", "SPX": "^GSPC",
         "AAPL": "AAPL", "MSFT": "MSFT", "NVDA": "NVDA", "TSLA": "TSLA",
@@ -123,21 +144,108 @@ def get_close(ticker: str) -> float | None:
         "MSTR": "MSTR", "AMD": "AMD", "MU": "MU", "COHR": "COHR",
     }
     symbol = symbol_map.get(ticker, ticker)
-    try:
-        import yfinance as yf
-        hist = yf.Ticker(symbol).history(period="10d")
-        if hist is None or hist.empty:
+    bars: list[tuple[date, float]] = []
+
+    def _ok(v: Any) -> float | None:
+        try:
+            if v is None:
+                return None
+            x = float(v)
+            if math.isnan(x) or math.isinf(x) or x <= 0:
+                return None
+            return x
+        except Exception:
             return None
-        return float(hist["Close"].iloc[-1])
+
+    try:
+        from urllib.parse import quote
+        sym_q = quote(symbol, safe="^")
+        url = (
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{sym_q}"
+            f"?range=1mo&interval=1d"
+        )
+        r = requests.get(url, headers=HEADERS, timeout=25)
+        r.raise_for_status()
+        result = (r.json().get("chart") or {}).get("result") or []
+        if result:
+            ts = result[0].get("timestamp") or []
+            quotes = (result[0].get("indicators") or {}).get("quote") or []
+            closes = (quotes[0].get("close") if quotes else None) or []
+            for i, tsv in enumerate(ts):
+                if i >= len(closes):
+                    break
+                x = _ok(closes[i])
+                if x is None:
+                    continue
+                d = datetime.utcfromtimestamp(int(tsv)).date()
+                bars.append((d, x))
     except Exception as e:
-        print(f"[warn] close {ticker}: {e}", file=sys.stderr)
+        print(f"[warn] yahoo bars {ticker}: {e}", file=sys.stderr)
+
+    if not bars:
+        try:
+            import yfinance as yf
+            hist = yf.Ticker(symbol).history(period="1mo")
+            if hist is not None and not hist.empty and "Close" in hist.columns:
+                for idx, row in hist.iterrows():
+                    x = _ok(row["Close"])
+                    if x is None:
+                        continue
+                    try:
+                        d = idx.date() if hasattr(idx, "date") else date.fromisoformat(str(idx)[:10])
+                    except Exception:
+                        continue
+                    bars.append((d, x))
+        except Exception as e:
+            print(f"[warn] yfinance bars {ticker}: {e}", file=sys.stderr)
+
+    merged: dict[date, float] = {}
+    for d, c in bars:
+        merged[d] = c
+    return [(d, merged[d]) for d in sorted(merged.keys())]
+
+
+def get_close(ticker: str, as_of: date | None = None) -> float | None:
+    """
+    إغلاق آخر جلسة مكتملة في أو قبل as_of.
+    as_of=None → أحدث إغلاق يومي متاح من Yahoo.
+    """
+    bars = get_close_bars(ticker)
+    if not bars:
         return None
+    if as_of is None:
+        return bars[-1][1]
+    best = None
+    for d, c in bars:
+        if d <= as_of:
+            best = c
+    return best if best is not None else bars[-1][1]
 
 
-def _product_matches(product: str, ticker: str) -> bool:
+
+def _is_third_friday(exp: str) -> bool:
+    """ثالث جمعة من الشهر = OpEx الشهري (جذر SPX / تسوية AM)."""
+    try:
+        y, m, d = [int(x) for x in str(exp).split("-")[:3]]
+        dt = date(y, m, d)
+        return dt.weekday() == 4 and 15 <= dt.day <= 21
+    except Exception:
+        return False
+
+
+def _product_matches(product: str, ticker: str, exp: str | None = None) -> bool:
+    """
+    SPX:
+      - ثالث جمعة (أوبيكس الشهري) → من جذر SPX فقط
+      - بقية الأيام → من SPXW فقط
+    """
     p = (product or "").upper().strip()
     t = (ticker or "").upper().strip()
     if t == "SPX":
+        if exp and _is_third_friday(exp):
+            return p == "SPX"
+        if exp:
+            return p == "SPXW"
         return p in ("SPX", "SPXW")
     return p == t
 
@@ -149,10 +257,11 @@ def parse_occ_text(ticker: str, text: str) -> list[dict[str, Any]]:
         parts = line.split()
         if len(parts) < 10:
             continue
-        if not _product_matches(parts[0], ticker):
-            continue
         try:
+            product = parts[0]
             exp = f"{parts[1]}-{parts[2].zfill(2)}-{parts[3].zfill(2)}"
+            if not _product_matches(product, ticker, exp):
+                continue
             strike = float(f"{parts[4]}.{parts[5]}")
             call_oi = int(parts[8])
             put_oi = int(parts[9])
@@ -622,9 +731,26 @@ def main() -> int:
         if pruned:
             print(f"[prune] {ticker}: removed {pruned} day(s) older than {RETENTION_DAYS}d")
 
-        close = get_close(ticker)
+        close = get_close(ticker, min(pull_day, date.today()))
+        # نظّف closes القديمة من NaN
+        closes_map = hist.setdefault("closes", {})
+        for ck in list(closes_map.keys()):
+            try:
+                cv = float(closes_map[ck])
+                if math.isnan(cv) or math.isinf(cv) or cv <= 0:
+                    closes_map.pop(ck, None)
+                else:
+                    closes_map[ck] = cv
+            except Exception:
+                closes_map.pop(ck, None)
         if close is not None:
-            hist.setdefault("closes", {})[pull_date] = close
+            closes_map[pull_date] = close
+        elif closes_map:
+            # احتياط: آخر إغلاق صالح سابق
+            try:
+                close = float(list(closes_map.values())[-1])
+            except Exception:
+                close = None
 
         hist["updated_at"] = now
         _write_json(hist_path, hist)
