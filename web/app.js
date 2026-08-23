@@ -949,7 +949,7 @@ function renderX3() {
     });
   });
   cols += "</div>";
-  host.innerHTML = '<div class="x3-board">' + tl + cols + "</div>";
+  host.innerHTML = '<div class="x3-board' + (state.showDelta ? ' with-delta' : '') + '">' + tl + cols + "</div>";
 }
 
 
@@ -1574,10 +1574,10 @@ function isUsMarketHours() {
 
 async function fetchSessionClose(ticker) {
   /**
-   * إغلاق آخر جلسة مكتملة من Yahoo:
+   * إغلاق آخر جلسة مكتملة من Yahoo (مع وكيل CORS عند الحاجة):
    * - يقرأ الشموع اليومية
    * - إن كان آخر يوم close=null يستخدم regularMarketPrice
-   * - يعيد آخر إغلاق ≤ أمس (جلسة مكتملة) وليس السعر اللحظي أثناء الجلسة إن وُجد شريط أمس
+   * - يعيد آخر إغلاق ≤ أمس (جلسة مكتملة)
    */
   try {
     var symbol = (typeof YAHOO_MAP !== "undefined" && YAHOO_MAP[ticker]) ? YAHOO_MAP[ticker] : ticker;
@@ -1587,9 +1587,20 @@ async function fetchSessionClose(ticker) {
       "https://query1.finance.yahoo.com/v8/finance/chart/" +
       encodeURIComponent(symbol) +
       "?range=15d&interval=1d";
-    var res = await fetch(url);
-    if (!res.ok) return null;
-    var j = await res.json();
+    async function loadJson(u) {
+      try {
+        var r = await fetch(u);
+        if (!r.ok) return null;
+        return await r.json();
+      } catch (e) {
+        return null;
+      }
+    }
+    var j = await loadJson(url);
+    if (!j) {
+      j = await loadJson("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
+    }
+    if (!j) return null;
     var result = j && j.chart && j.chart.result && j.chart.result[0];
     if (!result) return null;
     var ts = result.timestamp || [];
