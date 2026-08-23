@@ -4,6 +4,7 @@ const INDEX_TICKERS = [
   { symbol: "IWM", name: "iShares Russell", color: "#0F172A" },
   { symbol: "GLD", name: "SPDR Gold", color: "#D97706" },
   { symbol: "SPX", name: "S&P 500 Index", color: "#7C3AED" },
+  { symbol: "NDX", name: "Nasdaq 100", color: "#0EA5E9" },
 ];
 
 const STOCKS_TICKERS = [
@@ -126,7 +127,7 @@ function isThirdFridayExp(exp) {
 }
 
 
-/** أدنى يوم سحب نظيف لـ SPX ثالث جمعة (AM) — ما قبله مخفي لأنه مخلوط */
+/** أدنى يوم سحب نظيف لـ SPX ثالث جمعة AM — ما قبله مخفي لأنه مخلوط */
 var SPX_AM_PULL_CUTOFF = "17-8";
 
 function pullDateSortKey(pd) {
@@ -244,19 +245,33 @@ function ensureExpDropdownUI() {
   return dd;
 }
 
+function formatExpDisplay(exp) {
+  try {
+    var s = String(exp || "");
+    var p = s.split("-");
+    if (p.length < 3) return s;
+    var y = parseInt(p[0], 10), m = parseInt(p[1], 10), d = parseInt(p[2], 10);
+    if (!y || !m || !d) return s;
+    var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return months[m - 1] + " " + d + ", " + y;
+  } catch (e) {
+    return String(exp || "");
+  }
+}
+function isAmSettlementTicker(ticker) {
+  var t = String(ticker || state.ticker || "").toUpperCase();
+  return t === "SPX" || t === "NDX";
+}
 function expOptionLabelHtml(exp) {
+  var label = formatExpDisplay(exp);
   var showAm =
-    String(state.ticker).toUpperCase() === "SPX" &&
+    isAmSettlementTicker(state.ticker) &&
     typeof isThirdFridayExp === "function" &&
     isThirdFridayExp(exp);
   if (showAm) {
-    return (
-      '<span class="exp-date">' +
-      exp +
-      '</span> <span class="exp-am">(AM)</span>'
-    );
+    return '<span class="exp-date">' + label + '</span> <span class="exp-am">AM</span>';
   }
-  return '<span class="exp-date">' + exp + "</span>";
+  return '<span class="exp-date">' + label + "</span>";
 }
 
 function syncExpDropdownLabel() {
@@ -514,8 +529,7 @@ function renderTickers() {
       state.expiration = null;
       state.livePrice = null;
       state.sessionClose = null;
-      const dd = $("#stocksSelect");
-      if (dd) dd.value = "";
+      if (typeof renderStocksDropdown === "function") renderStocksDropdown();
       renderTickers();
       refresh();
       refreshLivePrice();
@@ -529,37 +543,64 @@ function renderTickers() {
 function renderStocksDropdown() {
   const host = $("#stocksRow");
   if (!host) return;
-  const cur = isIndexTicker(state.ticker) ? "" : state.ticker;
-  let opts = '<option value="">----</option>';
+  const cur = typeof isIndexTicker === "function" && isIndexTicker(state.ticker) ? "" : state.ticker;
+  var itemsHtml =
+    '<button type="button" class="stocks-dd-item' + (!cur ? " active" : "") +
+    '" data-value="" role="option">----</button>';
   STOCKS_TICKERS.forEach(function (t) {
-    opts +=
-      '<option value="' +
-      t.symbol +
-      '"' +
-      (t.symbol === cur ? " selected" : "") +
-      ">" +
-      t.symbol +
-      "</option>";
+    itemsHtml +=
+      '<button type="button" class="stocks-dd-item' +
+      (t.symbol === cur ? " active" : "") +
+      '" data-value="' + t.symbol + '" role="option">' + t.symbol + "</button>";
   });
   host.innerHTML =
-    '<label class="stocks-label" for="stocksSelect">STOCKS</label>' +
-    '<select id="stocksSelect" class="stocks-select" title="اختر سهمًا">' +
-    opts +
-    "</select>";
-
-  const dd = $("#stocksSelect");
-  if (!dd) return;
-  dd.onchange = function () {
-    const v = dd.value;
-    if (!v) return;
-    state.ticker = v;
-    state.expiration = null;
-    state.livePrice = null;
-    renderTickers();
-    refresh();
-    refreshLivePrice();
+    '<label class="stocks-label">STOCKS</label>' +
+    '<div class="stocks-dd" id="stocksDd">' +
+    '<button type="button" class="stocks-dd-btn" id="stocksDdBtn" aria-haspopup="listbox">' +
+    '<span id="stocksDdLabel">' + (cur || "----") + "</span></button>" +
+    '<div class="stocks-dd-list" id="stocksDdList" role="listbox" hidden>' + itemsHtml + "</div></div>";
+  var btn = $("#stocksDdBtn");
+  var list = $("#stocksDdList");
+  if (!btn || !list) return;
+  btn.onclick = function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var willOpen = list.hidden;
+    list.hidden = !willOpen;
+    btn.classList.toggle("open", willOpen);
   };
+  list.querySelectorAll(".stocks-dd-item").forEach(function (item) {
+    item.onclick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var v = item.getAttribute("data-value") || "";
+      list.hidden = true;
+      btn.classList.remove("open");
+      if (!v) return;
+      state.ticker = v;
+      state.expiration = null;
+      state.livePrice = null;
+      var lab = $("#stocksDdLabel");
+      if (lab) lab.textContent = v;
+      renderTickers();
+      refresh();
+      if (typeof refreshLivePrice === "function") refreshLivePrice();
+    };
+  });
+  if (!window.__stocksDdOutsideBound) {
+    window.__stocksDdOutsideBound = true;
+    document.addEventListener("click", function (e) {
+      var listEl = $("#stocksDdList");
+      var btnEl = $("#stocksDdBtn");
+      var wrap = $("#stocksDd");
+      if (!listEl || !btnEl) return;
+      if (wrap && wrap.contains(e.target)) return;
+      listEl.hidden = true;
+      btnEl.classList.remove("open");
+    });
+  }
 }
+
 
 function renderChips(rowId, options, key) {
   const row = $(rowId);
@@ -578,10 +619,35 @@ function renderChips(rowId, options, key) {
   });
 }
 
+
+function trimLeadingZeroColumns(pullDates, rows) {
+  if (!pullDates || !pullDates.length || !rows || !rows.length) {
+    return { pullDates: pullDates || [], rows: rows || [] };
+  }
+  var n = pullDates.length, first = 0, found = false;
+  for (var i = 0; i < n; i++) {
+    for (var r = 0; r < rows.length; r++) {
+      var c = rows[r].calls && rows[r].calls[i] != null ? rows[r].calls[i] : 0;
+      var p = rows[r].puts && rows[r].puts[i] != null ? rows[r].puts[i] : 0;
+      if (Number(c) > 0 || Number(p) > 0) { first = i; found = true; break; }
+    }
+    if (found) break;
+  }
+  if (!found) first = Math.max(0, n - 1);
+  if (first === 0) return { pullDates: pullDates, rows: rows };
+  return {
+    pullDates: pullDates.slice(first),
+    rows: rows.map(function (row) {
+      return { strike: row.strike, calls: (row.calls || []).slice(first), puts: (row.puts || []).slice(first) };
+    }),
+  };
+}
 function getViewRows(data) {
   const block = data.by_expiration[state.expiration];
   if (!block) return null;
-  var basePull = data.pull_dates || [];
+  var basePull = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates.slice()
+    : (data.pull_dates || []).slice();
   if (
     String(state.ticker).toUpperCase() === "SPX" &&
     state.expiration &&
@@ -591,11 +657,24 @@ function getViewRows(data) {
     // من 17-8 فصاعدًا فقط — ما قبله مخفي؛ غدًا 18-8 يتراكم بجانب 17-8
     basePull = filterSpxMonthlyPullDates(basePull);
   }
+  var fullDates = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates
+    : (data.pull_dates || []);
+  var idxFull = basePull.map(function (d) { return fullDates.indexOf(d); });
+  var rowsAligned = (block.rows || []).map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idxFull.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idxFull.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
+    };
+  });
+  var trimmed = trimLeadingZeroColumns(basePull, rowsAligned);
+  basePull = trimmed.pullDates;
+  rowsAligned = trimmed.rows;
   var pullDates = lastN(basePull, state.days);
   if (!pullDates.length) return null;
-  const fullDates = data.pull_dates || [];
-  const idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
-  let rows = block.rows.map(function (r) {
+  const idx = pullDates.map(function (d) { return basePull.indexOf(d); });
+  let rows = rowsAligned.map(function (r) {
     return {
       strike: r.strike,
       calls: idx.map(function (i) { return i >= 0 ? r.calls[i] : 0; }),
@@ -716,6 +795,18 @@ function renderOneMiniTable(data, expiration, label, opts) {
   }
   var pullDates = view.pullDates;
   var rows = view.rows;
+  if (opts.sharedStrikes && opts.sharedStrikes.length) {
+    var byS = {};
+    rows.forEach(function (r) { byS[String(r.strike)] = r; });
+    rows = opts.sharedStrikes.map(function (sk) {
+      if (byS[String(sk)]) return byS[String(sk)];
+      return {
+        strike: sk,
+        calls: pullDates.map(function () { return 0; }),
+        puts: pullDates.map(function () { return 0; }),
+      };
+    });
+  }
   var close = effectiveClose(data);
   var canDelta = state.showDelta && pullDates.length >= 2;
   var lastI = pullDates.length - 1;
@@ -836,8 +927,26 @@ function renderX3() {
   });
   tl += "</div>";
   var cols = '<div class="x3-cols">';
+  var sharedStrikes = null;
+  try {
+    var t0 = targets[0];
+    if (t0) {
+      var savedExp = state.expiration, savedDays = state.days;
+      state.expiration = t0.exp;
+      state.days = "2";
+      var masterView = getViewRows(data);
+      state.expiration = savedExp;
+      state.days = savedDays;
+      if (masterView && masterView.rows && masterView.rows.length) {
+        sharedStrikes = masterView.rows.map(function (r) { return r.strike; });
+      }
+    }
+  } catch (e0) {}
   targets.forEach(function (t, i) {
-    cols += renderOneMiniTable(data, t.exp, t.label, { active: i === 0 });
+    cols += renderOneMiniTable(data, t.exp, t.label, {
+      active: i === 0,
+      sharedStrikes: sharedStrikes,
+    });
   });
   cols += "</div>";
   host.innerHTML = '<div class="x3-board">' + tl + cols + "</div>";
