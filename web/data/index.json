@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T04:32:34Z",
+  "generated_at": "2026-08-23T07:18:34Z",
   "session_pull_date": "24-8",
   "tickers": [
     "SPY",
@@ -7,6 +7,7 @@
     "IWM",
     "GLD",
     "SPX",
+    "NDX",
     "AAPL",
     "MSFT",
     "NVDA",
