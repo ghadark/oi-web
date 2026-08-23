@@ -69,7 +69,7 @@ html, body {
 }
 .top h2 { margin: 0; font-size: 22px; text-align: center; flex: 1; color: var(--text); }
 .top .sub { color: var(--gray); font-size: 12px; text-align: center; }
-.tickers { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+.tickers { display: flex; gap: 10px; justify-content: center; flex-wrap: nowrap; margin-bottom: 16px; overflow-x: auto; }
 .tcard {
   width: 150px; background: var(--card); border: 1px solid var(--border);
   border-radius: 12px; padding: 10px 12px; cursor: pointer;
@@ -815,25 +815,33 @@ html[data-theme="dark"] .brand-sign-wrap {
 }
 
 
-/* شبكة المؤشرات: 5 بطاقات + STOCKS تحت IWM (العمود 3) */
+/* شبكة المؤشرات: 6 بطاقات في صف واحد */
 .tickers-wrap {
   display: grid;
-  grid-template-columns: repeat(5, 150px);
+  grid-template-columns: repeat(6, minmax(120px, 140px));
   gap: 10px 10px;
   justify-content: center;
   margin-bottom: 16px;
 }
 .tickers-wrap .tickers {
   grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(5, 150px);
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: center;
   gap: 10px;
   margin: 0;
-  justify-content: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.tickers-wrap .tickers .tcard {
+  width: 140px;
+  flex: 0 0 140px;
 }
 .stocks-row {
-  grid-column: 3;
-  width: 150px;
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: auto;
+  max-width: 100%;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -1282,7 +1290,7 @@ html[data-theme="light"] .exp-checks::-webkit-scrollbar-thumb {
   align-items: start;
 }
 @media (max-width: 960px) {
-  .x3-cols { grid-template-columns: 1fr; }
+  /* أُلغي: الإبقاء على 3 أعمدة مع تمرير أفقي */
 }
 .x3-col {
   border: 1px solid var(--border);
@@ -1526,13 +1534,14 @@ html[data-theme="light"] table.oi.x3-table tbody tr.zebra td.otm {
   font-weight: 700 !important;
   padding: 1px 5px !important;
   border-radius: 4px !important;
-  background: #1e3a8a !important;
-  color: #fff !important;
+  background: #dbeafe !important;
+  color: #1e40af !important;
   margin: 0 !important;
+  border: none !important;
 }
 html[data-theme="dark"] .exp-am {
-  background: #1e40af !important;
-  color: #e0e7ff !important;
+  background: #1e3a5f !important;
+  color: #93c5fd !important;
 }
 .stocks-dd {
   position: relative;
@@ -1640,5 +1649,113 @@ table.oi.x3-table td.delta {
     max-height: 92vh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* AM خفيف مثل الخاص */
+span.exp-am, .exp-dd-item .exp-am, .exp-dd-btn .exp-am, .x3-col-h .exp-am {
+  background: #dbeafe !important;
+  color: #1e40af !important;
+  font-size: 9px !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  font-weight: 700 !important;
+}
+html[data-theme="dark"] span.exp-am,
+html[data-theme="dark"] .exp-dd-item .exp-am,
+html[data-theme="dark"] .exp-dd-btn .exp-am,
+html[data-theme="dark"] .x3-col-h .exp-am {
+  background: #1e3a5f !important;
+  color: #93c5fd !important;
+}
+
+.stocks-dd-list {
+  scrollbar-width: thin !important;
+  scrollbar-color: #64748b transparent !important;
+}
+.stocks-dd-list::-webkit-scrollbar { width: 5px !important; }
+.stocks-dd-list::-webkit-scrollbar-track { background: transparent !important; }
+.stocks-dd-list::-webkit-scrollbar-thumb {
+  background: #64748b !important;
+  border-radius: 99px !important;
+}
+.stocks-dd-list::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
+.exp-dd-list {
+  scrollbar-width: thin !important;
+  scrollbar-color: #64748b transparent !important;
+}
+
+/* ×3: إجبار التمرير الأفقي على كل الشاشات الضيقة والمتوسطة */
+@media (max-width: 1400px) {
+  .x3-board {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .x3-cols {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(300px, 1fr)) !important;
+    min-width: 980px !important;
+    gap: 12px !important;
+  }
+  .x3-timeline { min-width: 980px !important; }
+  .x3-table-wrap { overflow-x: visible !important; }
+  table.oi.x3-table {
+    table-layout: auto !important;
+    width: max-content !important;
+    min-width: 100% !important;
+  }
+  table.oi.x3-table th.delta,
+  table.oi.x3-table td.delta {
+    min-width: 56px !important;
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+  table.oi.x3-table th,
+  table.oi.x3-table td {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* ماب تابلت: 6 بطاقات ظاهرة + تمرير النافذة */
+@media (max-width: 1200px) {
+  .map-modal {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px !important;
+  }
+  .map-panel {
+    max-height: none !important;
+    width: min(100%, 960px) !important;
+    margin: 8px auto 24px !important;
+    overflow: visible !important;
+  }
+  .map-h1 .grid-wrap {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .map-h1 .cards {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .map-h1 .card {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    min-height: 52px !important;
   }
 }

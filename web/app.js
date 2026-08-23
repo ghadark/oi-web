@@ -2168,7 +2168,10 @@ function getMapBandDefs(L) {
     !!(t.exp && weekly.exp && String(t.exp) === String(weekly.exp));
 
   function addNextOpx(bands) {
-    if (nextOpx.exp && (!opx.exp || String(nextOpx.exp) !== String(opx.exp))) {
+    // دائمًا بطاقة OPX+ (حتى على التابلت) — القيم — إن نقصت
+    if (!opx.exp || !nextOpx.exp || String(nextOpx.exp) !== String(opx.exp)) {
+      bands.push({ key: "next_opx", label: "OPX+" });
+    } else if (nextOpx.exp) {
       bands.push({ key: "next_opx", label: "OPX+" });
     }
     return bands;
@@ -2315,8 +2318,7 @@ function renderMapPanel(L) {
     const block = L[b.key] || {};
     const peak = block.resistance;
     const floor = block.support;
-    // إخفاء بطاقة بلا بيانات
-    if (peak == null && floor == null && !block.exp) return;
+    // أظهر البطاقة حتى بدون بيانات (قمة/قاع —) — مهم للتابلت OPX+
     const c = cmp[b.key] || {};
     const aR = levelArrow(peak, c.prev_resistance);
     const aS = levelArrow(floor, c.prev_support);
