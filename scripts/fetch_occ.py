@@ -28,7 +28,7 @@ DATA_DIR = ROOT / "data"
 WEB_DATA_DIR = ROOT / "web" / "data"
 
 # حذف أيام أقدم من هذا الحد (حماية حجم المستودع)
-RETENTION_DAYS = 60
+RETENTION_DAYS = 90
 
 
 
@@ -73,6 +73,7 @@ TICKER_URLS = {
     "IWM": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=iwm",
     "GLD": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=gld",
     "SPX": "https://marketdata.theocc.com/series-search?symbolType=U&symbol=spx",
+    "NDX": "https://marketdata.theocc.com/series-search?symbolType=U&symbol=ndx",
     "AAPL": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=aapl",
     "MSFT": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=msft",
     "NVDA": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=nvda",
@@ -295,6 +296,12 @@ def _product_matches(product: str, ticker: str, exp: str | None = None) -> bool:
         if exp:
             return p == "SPXW"
         return p in ("SPX", "SPXW")
+    if t == "NDX":
+        if exp and _is_third_friday(exp):
+            return p == "NDX"
+        if exp:
+            return p in ("NDXP", "NDX")
+        return p in ("NDX", "NDXP")
     return p == t
 
 
@@ -354,7 +361,8 @@ def load_history(path: Path) -> dict[str, Any]:
 
 
 def merge_day(hist: dict[str, Any], pull_date: str, rows: list[dict[str, Any]]) -> None:
-    day = hist.setdefault("days", {}).setdefault(pull_date, {})
+    """استبدال كامل لعمود اليوم."""
+    day: dict[str, Any] = {}
     for rec in rows:
         exp = rec["expiration"]
         strike_key = str(rec["strike"])
@@ -362,6 +370,7 @@ def merge_day(hist: dict[str, Any], pull_date: str, rows: list[dict[str, Any]]) 
             "call_oi": rec["call_oi"],
             "put_oi": rec["put_oi"],
         }
+    hist.setdefault("days", {})[pull_date] = day
 
 
 
@@ -471,7 +480,32 @@ def build_public_snapshot(hist: dict[str, Any], ticker: str) -> dict[str, Any]:
                     row["calls"].append(int(cell.get("call_oi") or 0))
                     row["puts"].append(int(cell.get("put_oi") or 0))
             matrix.append(row)
-        by_exp[exp] = {"strikes": strike_list, "rows": matrix}
+
+        exp_pulls = list(pull_dates)
+        if matrix and exp_pulls:
+            first = 0
+            n = len(exp_pulls)
+            found = False
+            for i in range(n):
+                for row in matrix:
+                    if int(row["calls"][i] or 0) > 0 or int(row["puts"][i] or 0) > 0:
+                        first = i
+                        found = True
+                        break
+                if found:
+                    break
+            else:
+                first = max(0, n - 1)
+            if first > 0:
+                exp_pulls = exp_pulls[first:]
+                for row in matrix:
+                    row["calls"] = row["calls"][first:]
+                    row["puts"] = row["puts"][first:]
+        by_exp[exp] = {
+            "strikes": strike_list,
+            "rows": matrix,
+            "pull_dates": exp_pulls,
+        }
 
     close = None
     closes = hist.get("closes") or {}
@@ -742,6 +776,84 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
     }
 
 
+
+def _session_done_path() -> Path:
+    return DATA_DIR / ".session_done"
+
+
+def day_oi_fingerprint(hist: dict[str, Any], pull_date: str) -> tuple:
+    day = (hist.get("days") or {}).get(pull_date) or {}
+    n = total_c = total_p = 0
+    for _exp, strikes in day.items():
+        if not isinstance(strikes, dict):
+            continue
+        for _sk, v in strikes.items():
+            if not isinstance(v, dict):
+                continue
+            n += 1
+            try:
+                total_c += int(v.get("call_oi") or 0)
+                total_p += int(v.get("put_oi") or 0)
+            except Exception:
+                pass
+    return (n, total_c, total_p)
+
+
+def is_stale_duplicate_of_prev(hist: dict[str, Any], pull_date: str) -> bool:
+    prev = previous_pull_date(hist, pull_date)
+    if not prev:
+        return False
+    fp_new = day_oi_fingerprint(hist, pull_date)
+    fp_old = day_oi_fingerprint(hist, prev)
+    if fp_new == (0, 0, 0):
+        return True
+    return fp_new == fp_old
+
+
+def session_already_synced(pull_date: str) -> bool:
+    marker = _session_done_path()
+    if not marker.exists():
+        return False
+    try:
+        if marker.read_text(encoding="utf-8").strip() != pull_date:
+            return False
+    except Exception:
+        return False
+    core = ["SPY", "QQQ", "IWM", "GLD", "SPX"]
+    ok = stale = 0
+    for tk in core:
+        hist_path = DATA_DIR / f"{tk}_history.json"
+        pub = DATA_DIR / f"{tk}.json"
+        if not pub.exists():
+            return False
+        try:
+            snap = json.loads(pub.read_text(encoding="utf-8"))
+            if pull_date not in (snap.get("pull_dates") or []):
+                return False
+            ok += 1
+            hist = load_history(hist_path)
+            if is_stale_duplicate_of_prev(hist, pull_date):
+                stale += 1
+        except Exception:
+            return False
+    if ok < 4:
+        return False
+    if stale >= 3:
+        print(f"[retry] {pull_date} مطابق لليوم السابق في {stale}/5 — نعيد السحب")
+        return False
+    return True
+
+
+def mark_session_done(pull_date: str) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _session_done_path().write_text(pull_date, encoding="utf-8")
+    try:
+        WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        (WEB_DATA_DIR / ".session_done").write_text(pull_date, encoding="utf-8")
+    except Exception:
+        pass
+
+
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -749,6 +861,11 @@ def main() -> int:
     pull_date, pull_day = session_pull_date()
     now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     print(f"session column: {pull_date} ({pull_day})")
+
+    force = os.environ.get("FORCE_UPDATE", "").strip().lower() in ("1", "true", "yes")
+    if not force and session_already_synced(pull_date):
+        print(f"[skip] عمود الجلسة {pull_date} مكتمل مسبقاً")
+        return 0
 
     index = {
         "generated_at": now,
@@ -772,9 +889,11 @@ def main() -> int:
             continue
 
         if not rows:
-            print(f"[warn] {ticker}: zero rows", file=sys.stderr)
+            print(f"[warn] {ticker}: zero rows — skip merge", file=sys.stderr)
         else:
             merge_day(hist, pull_date, rows)
+            if is_stale_duplicate_of_prev(hist, pull_date):
+                print(f"[warn] {ticker}: {pull_date} مطابق لليوم السابق — OCC قد لا يكون حدّث بعد")
         pruned = prune_old_days(hist)
         if pruned:
             print(f"[prune] {ticker}: removed {pruned} day(s) older than {RETENTION_DAYS}d")
@@ -848,6 +967,22 @@ def main() -> int:
 
     # مهم لـ Cloudflare: نفس الملفات تحت web/data
     mirror_to_web_data()
+
+    core = ["SPY", "QQQ", "IWM", "GLD", "SPX"]
+    merged_ok = 0
+    for tk in core:
+        pub = DATA_DIR / f"{tk}.json"
+        if not pub.exists():
+            continue
+        try:
+            snap = json.loads(pub.read_text(encoding="utf-8"))
+            if pull_date in (snap.get("pull_dates") or []):
+                merged_ok += 1
+        except Exception:
+            pass
+    if merged_ok >= 4:
+        mark_session_done(pull_date)
+        print(f"[done] session {pull_date} marked ({merged_ok}/5)")
 
     print("done.")
     return 0
