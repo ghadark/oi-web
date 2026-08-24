@@ -20,6 +20,7 @@ const STOCKS_TICKERS = [
   { symbol: "AMD", name: "AMD", color: "#ED1C24" },
   { symbol: "MU", name: "Micron", color: "#111827" },
   { symbol: "COHR", name: "Coherent", color: "#00A3E0" },
+  { symbol: "SNDK", name: "SanDisk", color: "#6366F1" },
 ];
 
 /** كل الرموز للبحث/العرض */
