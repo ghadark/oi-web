@@ -1099,27 +1099,55 @@ function renderTable() {
 
 
 function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
+  /* نفس منطق getViewRows: فهرسة على block.pull_dates وليس data.pull_dates العامة
+     (بعد قص أعمدة الأصفار لكل انتهاء تختلف أطوال المصفوفات) */
   if (!data || !expiration) return null;
   const block = data.by_expiration[expiration];
   if (!block) return null;
-  var basePullFor = data.pull_dates || [];
+  var basePull = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates.slice()
+    : (data.pull_dates || []).slice();
   if (
     String(state.ticker).toUpperCase() === "SPX" &&
     expiration &&
     typeof isThirdFridayExp === "function" &&
     isThirdFridayExp(expiration)
   ) {
-    basePullFor = filterSpxMonthlyPullDates(basePullFor);
+    basePull = filterSpxMonthlyPullDates(basePull);
   }
-  var pullDates = lastN(basePullFor, daysLimit);
-  if (!pullDates.length) return null;
-  const fullDates = data.pull_dates || [];
-  const idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
-  let rows = (block.rows || []).map(function (r) {
+  if (
+    String(state.ticker).toUpperCase() === "NDX" &&
+    expiration &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(expiration) &&
+    typeof filterSpxMonthlyPullDates === "function"
+  ) {
+    basePull = filterSpxMonthlyPullDates(basePull);
+  }
+  var fullDates = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates
+    : (data.pull_dates || []);
+  var idxFull = basePull.map(function (d) { return fullDates.indexOf(d); });
+  var rowsAligned = (block.rows || []).map(function (r) {
     return {
       strike: r.strike,
-      calls: idx.map(function (i) { return i >= 0 ? r.calls[i] : 0; }),
-      puts: idx.map(function (i) { return i >= 0 ? r.puts[i] : 0; }),
+      calls: idxFull.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idxFull.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
+    };
+  });
+  if (typeof trimLeadingZeroColumns === "function") {
+    var trimmed = trimLeadingZeroColumns(basePull, rowsAligned);
+    basePull = trimmed.pullDates;
+    rowsAligned = trimmed.rows;
+  }
+  var pullDates = lastN(basePull, daysLimit);
+  if (!pullDates.length) return null;
+  const idx = pullDates.map(function (d) { return basePull.indexOf(d); });
+  let rows = rowsAligned.map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idx.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idx.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
     };
   });
   rows = filterStrikes(rows, data.close, strikesLimit);
