@@ -28,7 +28,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
-  expiration: null, showDelta: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
+  expiration: null, showDelta: false, seriesMode: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -954,11 +954,168 @@ function renderX3() {
 }
 
 
+
+/** جدول «اليوم بالسابق»: أعمدة الأيام تتراكم (25 ثم 26 ثم…) · Δ = آخر يومين فقط مثل الجداول الأخرى */
+function renderSeriesTable() {
+  const data = state.cache[state.ticker];
+  const host = $("#tableHost");
+  if (!data || !state.expiration) {
+    host.innerHTML = '<p class="status">اختر تاريخ انتهاء</p>';
+    return;
+  }
+  const view = getViewRows(data);
+  if (!view) {
+    host.innerHTML = '<p class="status">لا بيانات لهذا الانتهاء / الأيام</p>';
+    return;
+  }
+  const pullDates = view.pullDates;
+  const rows = view.rows;
+  const close = effectiveClose(data);
+  const canDelta = state.showDelta && pullDates.length >= 2;
+  const lastI = pullDates.length - 1;
+  const prevI = pullDates.length - 2;
+
+  let html =
+    '<div class="table-title">' +
+    "<div>" +
+    state.ticker +
+    " · اليوم بالسابق · Exp: " +
+    state.expiration +
+    "</div>";
+  if (close != null) {
+    const liveTag = state.livePrice != null ? " · مباشر" : "";
+    html +=
+      '<div class="close-pill">الإغلاق: ' +
+      Number(close).toLocaleString(undefined, { maximumFractionDigits: 2 }) +
+      liveTag +
+      "</div>";
+  }
+  html +=
+    '</div><p class="series-hint">أرقام كل يوم بجانب اليوم السابق · عند Δ يُقارن آخر يومين فقط</p>';
+  html += '<div class="table-scroll"><table class="oi series-oi"><thead><tr>';
+
+  if (canDelta) html += '<th class="delta">Δ</th>';
+  for (let i = pullDates.length - 1; i >= 0; i--) {
+    const f = formatPullDate(pullDates[i]);
+    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+  }
+  html += '<th class="strike">STRIKE</th>';
+  for (let j = 0; j < pullDates.length; j++) {
+    const f = formatPullDate(pullDates[j]);
+    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+  }
+  if (canDelta) html += '<th class="delta">Δ</th>';
+  html += "</tr></thead><tbody>";
+
+  const callMax = [];
+  const putMax = [];
+  for (let i = 0; i < pullDates.length; i++) {
+    let mc = 0, mp = 0;
+    rows.forEach(function (r) {
+      const cv = r.calls[i] || 0;
+      const pv = r.puts[i] || 0;
+      if (cv > mc) mc = cv;
+      if (pv > mp) mp = pv;
+    });
+    callMax.push(mc);
+    putMax.push(mp);
+  }
+  let deltaCallMax = 0, deltaPutMax = 0;
+  if (canDelta) {
+    rows.forEach(function (r) {
+      const dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      const dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      if (dc != null && dc > deltaCallMax) deltaCallMax = dc;
+      if (dp != null && dp > deltaPutMax) deltaPutMax = dp;
+    });
+  }
+
+  let barDone = false;
+  rows.forEach(function (r, ri) {
+    if (close != null && !barDone && r.strike > close) {
+      if (typeof greenBarRow === "function") {
+        html += greenBarRow(canDelta, pullDates.length, close);
+      } else {
+        html +=
+          '<tr class="close-bar-row"><td colspan="99"><div class="close-bar-line">' +
+          Number(close).toLocaleString(undefined, { maximumFractionDigits: 2 }) +
+          "</div></td></tr>";
+      }
+      barDone = true;
+    }
+    const zebra = ri % 2 === 1 ? " zebra" : "";
+    const above = close != null && r.strike > close;
+    const below = close != null && r.strike < close;
+    const callCls =
+      below || (close != null && r.strike === close) ? "itm" : "otm";
+    const putCls =
+      above || (close != null && r.strike === close) ? "itm" : "otm";
+
+    html += '<tr class="' + zebra + '">';
+    if (canDelta) {
+      const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      const maxCls = d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
+      html +=
+        '<td class="delta' +
+        maxCls +
+        '">' +
+        (d != null ? d.toLocaleString() : "") +
+        "</td>";
+    }
+    for (let i = pullDates.length - 1; i >= 0; i--) {
+      const cv = r.calls[i] || 0;
+      const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
+      html +=
+        '<td class="' +
+        callCls +
+        maxCls +
+        '">' +
+        cv.toLocaleString() +
+        "</td>";
+    }
+    html += '<td class="strike">' + r.strike + "</td>";
+    for (let i = 0; i < pullDates.length; i++) {
+      const pv = r.puts[i] || 0;
+      const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
+      html +=
+        '<td class="' +
+        putCls +
+        maxCls +
+        '">' +
+        pv.toLocaleString() +
+        "</td>";
+    }
+    if (canDelta) {
+      const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      const maxCls = d != null && deltaPutMax > 0 && d === deltaPutMax ? " max-oi" : "";
+      html +=
+        '<td class="delta' +
+        maxCls +
+        '">' +
+        (d != null ? d.toLocaleString() : "") +
+        "</td>";
+    }
+    html += "</tr>";
+  });
+  if (close != null && !barDone) {
+    if (typeof greenBarRow === "function") {
+      html += greenBarRow(canDelta, pullDates.length, close);
+    }
+  }
+  html += "</tbody></table></div>";
+  host.innerHTML = html;
+}
+
+
 function renderTable() {
   const data = state.cache[state.ticker];
   const host = $("#tableHost");
   if (state.x3Mode) {
     renderX3();
+    return;
+  }
+  if (state.seriesMode) {
+    renderSeriesTable();
     return;
   }
   if (!data || !state.expiration) {
@@ -1793,7 +1950,21 @@ function init() {
   renderTickers();
   renderChips("#daysRow", ["2", "3", "5", "10", "ALL"], "days");
   renderChips("#strikesRow", ["30", "50", "ALL"], "strikes");
-  if ($("#expSelect")) {
+  
+  if ($("#seriesBtn")) {
+    $("#seriesBtn").onclick = function () {
+      state.seriesMode = !state.seriesMode;
+      if (state.seriesMode) {
+        state.x3Mode = false;
+        var xb = $("#x3Btn");
+        if (xb) xb.classList.remove("active");
+      }
+      $("#seriesBtn").classList.toggle("active", state.seriesMode);
+      renderTable();
+    };
+  }
+
+if ($("#expSelect")) {
     $("#expSelect").onchange = function (e) {
       try {
         state.expiration = e.target.value || null;
@@ -1805,6 +1976,7 @@ function init() {
   if ($("#x3Btn")) {
     $("#x3Btn").onclick = function () {
       state.x3Mode = !state.x3Mode;
+      if (state.x3Mode) { state.seriesMode = false; var sb = $("#seriesBtn"); if (sb) sb.classList.remove("active"); }
       $("#x3Btn").classList.toggle("active", state.x3Mode);
       renderTable();
     };
