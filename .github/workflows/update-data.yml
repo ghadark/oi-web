@@ -2,8 +2,9 @@ name: Update OCC Data
 
 on:
   schedule:
-    # السعودية UTC+3 → 5:00–7:00 ص = 02:00–04:00 UTC
-    - cron: "*/10 2-3 * * *"
+    # السعودية UTC+3 → 4:00–7:00 ص = 01:00–04:00 UTC
+    # كل 10 دقائق؛ السكربت يتوقف تلقائياً بعد تحديث يوم الجلسة (fingerprint)
+    - cron: "*/10 1-3 * * *"
     - cron: "0 4 * * *"
   workflow_dispatch: {}
 
