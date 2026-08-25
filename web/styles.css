@@ -1224,13 +1224,34 @@ html[data-theme="light"] .exp-checks::-webkit-scrollbar-thumb {
 }
 
 
-/* ×3 — خط زمني + جداول كاملة + شريط إغلاق */
-.x3-btn.active {
-  background: #6366f1 !important;
-  color: #fff !important;
-  border-color: #6366f1 !important;
+/* ×3 — زر ناعم + تفعيل بنفسجي/موف */
+.x3-btn {
+  width: 32px;
+  height: 32px;
+  margin-left: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--chip);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: background .15s, border-color .15s, color .15s;
 }
-.x3-btn { margin-left: 4px; }
+.x3-btn:hover {
+  border-color: #8b5cf6;
+  color: #c4b5fd;
+}
+.x3-btn.active {
+  background: #7c3aed !important;
+  color: #fff !important;
+  border-color: #7c3aed !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.35);
+}
+/* ×3 — لوحة العرض */
 .x3-board {
   background: var(--card);
   border: 1px solid var(--border);
@@ -1761,47 +1782,61 @@ html[data-theme="dark"] .x3-col-h .exp-am {
 }
 
 
-/* يوم×يوم بجانب الانتهاء */
+/* اليوم بالسابق + الانتهاء */
 .exp-series-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
+}
+.exp-series-row .exp-label {
+  margin: 0;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text);
 }
 .exp-series-row #expSelect {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: 140px;
 }
 .series-btn {
   flex: 0 0 auto;
-  height: 34px;
-  padding: 0 10px;
+  height: 32px;
+  padding: 0 12px;
   border-radius: 8px;
-  border: 1px solid var(--border, #334155);
-  background: var(--card, #1e293b);
-  color: var(--text, #e2e8f0);
-  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--chip);
+  color: var(--text);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   transition: background .15s, border-color .15s, color .15s;
 }
 .series-btn:hover {
-  border-color: var(--primary, #3b82f6);
-  color: #fff;
+  border-color: var(--primary);
 }
 .series-btn.active {
-  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
-  border-color: #2563eb;
+  background: var(--primary);
+  border-color: var(--primary);
   color: #fff;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
-}
-.series-hint {
-  margin: 0 0 8px;
-  font-size: 11px;
-  color: var(--gray, #94a3b8);
-  text-align: center;
 }
 table.oi.series-oi th.delta,
 table.oi.series-oi td.delta {
   min-width: 52px;
+}
+
+
+/* ضمان ×3 ناعم وموف عند التفعيل */
+button#x3Btn.x3-btn {
+  border-radius: 8px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--chip) !important;
+  color: var(--text) !important;
+}
+button#x3Btn.x3-btn.active {
+  background: #7c3aed !important;
+  border-color: #7c3aed !important;
+  color: #fff !important;
+  border-radius: 8px !important;
 }

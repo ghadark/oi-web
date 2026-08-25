@@ -979,7 +979,7 @@ function renderSeriesTable() {
     '<div class="table-title">' +
     "<div>" +
     state.ticker +
-    " · اليوم بالسابق · Exp: " +
+    " | Exp: " +
     state.expiration +
     "</div>";
   if (close != null) {
@@ -990,9 +990,7 @@ function renderSeriesTable() {
       liveTag +
       "</div>";
   }
-  html +=
-    '</div><p class="series-hint">أرقام كل يوم بجانب اليوم السابق · عند Δ يُقارن آخر يومين فقط</p>';
-  html += '<div class="table-scroll"><table class="oi series-oi"><thead><tr>';
+  html += '</div><div class="table-scroll"><table class="oi series-oi"><thead><tr>';
 
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (let i = pullDates.length - 1; i >= 0; i--) {
