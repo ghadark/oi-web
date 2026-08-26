@@ -975,53 +975,97 @@ function expSortKey(exp) {
   }
 }
 
+/** مفتاح سحب d-m + سنة → ISO انتهاء YYYY-MM-DD */
+function pullLabelToExpIso(label, year) {
+  try {
+    var parts = String(label).split("-").map(Number);
+    var day = parts[0], month = parts[1];
+    if (!day || !month) return null;
+    var y = year || new Date().getFullYear();
+    return (
+      y +
+      "-" +
+      String(month).padStart(2, "0") +
+      "-" +
+      String(day).padStart(2, "0")
+    );
+  } catch (e) {
+    return null;
+  }
+}
+
+function findExpBlockForPullDay(data, pullLabel, yearHint) {
+  var y = yearHint || new Date().getFullYear();
+  var tries = [y, y - 1, y + 1];
+  for (var i = 0; i < tries.length; i++) {
+    var exp = pullLabelToExpIso(pullLabel, tries[i]);
+    if (exp && data.by_expiration && data.by_expiration[exp]) {
+      return { exp: exp, block: data.by_expiration[exp] };
+    }
+  }
+  return null;
+}
+
 /**
  * جدول «اليوم بالسابق»:
- * كل عمود = تاريخ انتهاء يومي (يومه) بأرقام ذلك اليوم — وليس أيام سحب لنفس الانتهاء.
- * مثال: 25-8 ثم 26-8 ثم 27-8… (عقود تنتهي ذلك اليوم).
+ * الأعمدة = أيام السحب الفعلية (10-8، 11-8، … 25-8).
+ * كل عمود يأخذ أرقام عقد الانتهاء الذي ينتهي في نفس ذلك اليوم (0DTE لذلك اليوم).
+ * مثال: عمود 25-8 ← انتهاء 2026-08-25 | عمود 26-8 ← انتهاء 2026-08-26
+ * لا يُدرج يناير/يونيو البعيدة لأنها ليست أيام سحب في السلسلة.
  */
 function getSeriesPrevDayView(data) {
   if (!data || !data.by_expiration) return null;
-  var session = dataSessionFromPull(data);
-  var sessionKey = session ? pullDateSortKey(session.label) : Date.now();
 
-  var allExps = Object.keys(data.by_expiration);
-  var candidates = allExps
-    .filter(function (exp) {
-      var label = expToPullDateLabel(exp);
-      if (!label) return false;
-      // فقط تواريخ انتهاء حان يومها أو مضى (حسب آخر يوم بيانات)
-      return pullDateSortKey(label) <= sessionKey;
-    })
-    .sort(function (a, b) {
-      return expSortKey(a) - expSortKey(b);
+  var pulls = (data.pull_dates || []).slice();
+  if (!pulls.length) {
+    // احتياط: اجمع أيام السحب من كل الانتهاءات
+    var seen = {};
+    Object.keys(data.by_expiration).forEach(function (exp) {
+      var bp = data.by_expiration[exp].pull_dates || [];
+      bp.forEach(function (pd) {
+        seen[pd] = true;
+      });
     });
+    pulls = Object.keys(seen);
+  }
+  if (!pulls.length) return null;
+
+  pulls.sort(function (a, b) {
+    return pullDateSortKey(a) - pullDateSortKey(b);
+  });
+
+  var session = dataSessionFromPull(data);
+  var yearHint = session ? session.year : new Date().getFullYear();
 
   var columns = [];
-  candidates.forEach(function (exp) {
-    var block = data.by_expiration[exp];
-    if (!block || !block.rows || !block.rows.length) return;
-    var pulls =
+  pulls.forEach(function (pd) {
+    var found = findExpBlockForPullDay(data, pd, yearHint);
+    if (!found) return; // لا عقد ينتهي في هذا اليوم ضمن البيانات
+    var block = found.block;
+    var exp = found.exp;
+    if (!block.rows || !block.rows.length) return;
+
+    var bpulls =
       block.pull_dates && block.pull_dates.length
         ? block.pull_dates
         : data.pull_dates || [];
-    if (!pulls.length) return;
-    var want = expToPullDateLabel(exp);
-    var idx = pulls.indexOf(want);
-    // إن وُجد سحب في نفس يوم الانتهاء نستخدمه؛ وإلا آخر سحب متاح لهذا الانتهاء
-    if (idx < 0) idx = pulls.length - 1;
+    var idx = bpulls.indexOf(pd);
+    // نفس يوم السحب إن وُجد؛ وإلا آخر سحب لهذا الانتهاء
+    if (idx < 0) idx = bpulls.length - 1;
+    if (idx < 0) return;
+
     var strikeMap = {};
     (block.rows || []).forEach(function (r) {
       var c = (r.calls && r.calls[idx]) || 0;
       var p = (r.puts && r.puts[idx]) || 0;
       strikeMap[String(r.strike)] = { c: c, p: p, strike: r.strike };
     });
-    columns.push({ exp: exp, label: want || pulls[idx], strikeMap: strikeMap });
+    columns.push({ exp: exp, label: pd, strikeMap: strikeMap });
   });
 
   if (!columns.length) return null;
 
-  // Days: آخر N أعمدة (تواريخ انتهاء يومية)
+  // Days: آخر N أيام سحب (آخرها = اليوم الحالي في البيانات، مثل 25-8)
   columns = lastN(columns, state.days);
   var pullDates = columns.map(function (c) {
     return c.label;
