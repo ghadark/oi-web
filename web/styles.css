@@ -2100,3 +2100,94 @@ html[data-theme="light"] .controls .series-btn.active {
   color: #0f172a !important;
   border-bottom-color: #0f172a !important;
 }
+
+
+/* =========================================================
+   Map: إظهار البطاقات الخمس كاملة على الجانب (بدون قص OPX+)
+   لا يمس شريط التحكم — فقط نافذة الماب
+   ========================================================= */
+.map-modal .map-panel {
+  max-height: 96vh !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.map-modal .map-body,
+#mapBody {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.map-h1 {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: 100% !important;
+}
+.map-h1 .price-card {
+  flex: 0 0 auto !important;
+  margin-bottom: 10px !important;
+}
+.map-h1 .grid-wrap {
+  display: grid !important;
+  grid-template-columns: 1fr 168px !important;
+  gap: 12px !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  align-items: stretch !important;
+}
+.map-h1 .stage {
+  height: 100% !important;
+  min-height: 260px !important;
+  max-height: none !important;
+}
+.map-h1 .cards {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  gap: 6px !important;
+  justify-content: stretch !important;
+  overflow: visible !important;
+  direction: rtl !important;
+}
+.map-h1 .card {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  padding: 8px 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+.map-h1 .card .t {
+  margin-bottom: 4px !important;
+  font-size: 11px !important;
+}
+.map-h1 .card .r {
+  font-size: 12px !important;
+  margin: 2px 0 !important;
+}
+
+/* تابلت/جوال: البطاقات تحت الشارت صفّ أفقي إن لزم */
+@media (max-width: 700px) {
+  .map-h1 .grid-wrap {
+    grid-template-columns: 1fr !important;
+  }
+  .map-h1 .stage {
+    height: min(42vh, 360px) !important;
+    min-height: 220px !important;
+  }
+  .map-h1 .cards {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    height: auto !important;
+  }
+  .map-h1 .card {
+    flex: 1 1 140px !important;
+    min-height: 64px !important;
+  }
+}
