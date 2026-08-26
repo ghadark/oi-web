@@ -2056,29 +2056,47 @@ button#x3Btn.x3-btn.active {
   border-radius: 0 !important;
 }
 
-/* تعزيز خيار 3 لليوم بالسابق داخل الشريط */
+/* تعزيز خيار 3 لليوم بالسابق — خط سفلي دائم + أوضح + مسافة أكبر عن الانتهاء */
+.controls .exp-series-row {
+  gap: 14px;
+}
 .controls .series-btn {
   height: 32px;
-  padding: 0 6px !important;
+  padding: 0 4px !important;
+  margin-inline-end: 4px;
   border: none !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: var(--gray);
+  color: #cbd5e1 !important;
   font-size: 12px;
   font-weight: 600;
-  border-bottom: 2px solid transparent !important;
+  border-bottom: 2px solid #475569 !important;
+  opacity: 1;
+}
+html[data-theme="light"] .controls .series-btn {
+  color: #475569 !important;
+  border-bottom-color: #94a3b8 !important;
 }
 .controls .series-btn:hover {
-  color: var(--text);
+  color: #f1f5f9 !important;
   background: transparent !important;
+  border-bottom-color: #94a3b8 !important;
+}
+html[data-theme="light"] .controls .series-btn:hover {
+  color: #0f172a !important;
   border-bottom-color: #64748b !important;
 }
 .controls .series-btn.active {
   background: transparent !important;
   border: none !important;
-  border-bottom: 2px solid #94a3b8 !important;
-  color: var(--text) !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+  color: #f8fafc !important;
   box-shadow: none !important;
   border-radius: 0 !important;
+  font-weight: 700;
+}
+html[data-theme="light"] .controls .series-btn.active {
+  color: #0f172a !important;
+  border-bottom-color: #0f172a !important;
 }
