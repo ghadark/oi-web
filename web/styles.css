@@ -1802,7 +1802,7 @@ button#x3Btn.x3-btn.active {
 
 
 
-/* اليوم بالسابق — زر كبسولة minimal رمادي (خيار ج) */
+/* اليوم بالسابق — زر كبسولة أنيق */
 .exp-series-row {
   display: flex;
   align-items: center;
@@ -1828,50 +1828,44 @@ button#x3Btn.x3-btn.active {
   height: 32px;
   padding: 0 14px 0 12px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--chip);
-  color: var(--gray);
+  border: 1px solid rgba(13, 148, 136, 0.35);
+  background: rgba(13, 148, 136, 0.10);
+  color: #5eead4;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
   white-space: nowrap;
-  transition: background .18s, border-color .18s, color .18s, box-shadow .18s;
+  transition: background .18s, border-color .18s, color .18s, box-shadow .18s, transform .12s;
 }
 html[data-theme="light"] .series-btn {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #64748b;
+  background: rgba(13, 148, 136, 0.08);
+  border-color: rgba(13, 148, 136, 0.28);
+  color: #0f766e;
 }
 .series-btn .series-ico {
   font-size: 14px;
   line-height: 1;
-  opacity: 0.75;
+  opacity: 0.9;
 }
 .series-btn .series-txt {
   line-height: 1;
 }
 .series-btn:hover {
-  border-color: #94a3b8;
-  color: var(--text);
-  background: rgba(148, 163, 184, 0.12);
+  background: rgba(13, 148, 136, 0.18);
+  border-color: rgba(45, 212, 191, 0.55);
+  color: #99f6e4;
+  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.15);
 }
 html[data-theme="light"] .series-btn:hover {
-  border-color: #94a3b8;
-  color: #0f172a;
-  background: #e2e8f0;
+  color: #0d9488;
+  background: rgba(13, 148, 136, 0.12);
 }
 .series-btn.active {
-  background: #334155 !important;
-  border-color: #64748b !important;
-  color: #f8fafc !important;
-  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.25);
-}
-html[data-theme="light"] .series-btn.active {
-  background: #475569 !important;
-  border-color: #64748b !important;
+  background: linear-gradient(135deg, #0d9488, #14b8a6) !important;
+  border-color: #0f766e !important;
   color: #fff !important;
-  box-shadow: 0 1px 6px rgba(71, 85, 105, 0.2);
+  box-shadow: 0 2px 10px rgba(13, 148, 136, 0.35);
 }
 .series-btn.active .series-ico {
   opacity: 1;
