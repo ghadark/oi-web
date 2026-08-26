@@ -955,22 +955,139 @@ function renderX3() {
 
 
 
-/** جدول «اليوم بالسابق»: أعمدة الأيام تتراكم (25 ثم 26 ثم…) · Δ = آخر يومين فقط مثل الجداول الأخرى */
+
+/** تحويل انتهاء ISO → مفتاح سحب d-m مثل 25-8 */
+function expToPullDateLabel(exp) {
+  try {
+    var p = String(exp).split("-");
+    if (p.length < 3) return null;
+    return parseInt(p[2], 10) + "-" + parseInt(p[1], 10);
+  } catch (e) {
+    return null;
+  }
+}
+
+function expSortKey(exp) {
+  try {
+    return new Date(String(exp) + "T12:00:00").getTime();
+  } catch (e) {
+    return 0;
+  }
+}
+
+/**
+ * جدول «اليوم بالسابق»:
+ * كل عمود = تاريخ انتهاء يومي (يومه) بأرقام ذلك اليوم — وليس أيام سحب لنفس الانتهاء.
+ * مثال: 25-8 ثم 26-8 ثم 27-8… (عقود تنتهي ذلك اليوم).
+ */
+function getSeriesPrevDayView(data) {
+  if (!data || !data.by_expiration) return null;
+  var session = dataSessionFromPull(data);
+  var sessionKey = session ? pullDateSortKey(session.label) : Date.now();
+
+  var allExps = Object.keys(data.by_expiration);
+  var candidates = allExps
+    .filter(function (exp) {
+      var label = expToPullDateLabel(exp);
+      if (!label) return false;
+      // فقط تواريخ انتهاء حان يومها أو مضى (حسب آخر يوم بيانات)
+      return pullDateSortKey(label) <= sessionKey;
+    })
+    .sort(function (a, b) {
+      return expSortKey(a) - expSortKey(b);
+    });
+
+  var columns = [];
+  candidates.forEach(function (exp) {
+    var block = data.by_expiration[exp];
+    if (!block || !block.rows || !block.rows.length) return;
+    var pulls =
+      block.pull_dates && block.pull_dates.length
+        ? block.pull_dates
+        : data.pull_dates || [];
+    if (!pulls.length) return;
+    var want = expToPullDateLabel(exp);
+    var idx = pulls.indexOf(want);
+    // إن وُجد سحب في نفس يوم الانتهاء نستخدمه؛ وإلا آخر سحب متاح لهذا الانتهاء
+    if (idx < 0) idx = pulls.length - 1;
+    var strikeMap = {};
+    (block.rows || []).forEach(function (r) {
+      var c = (r.calls && r.calls[idx]) || 0;
+      var p = (r.puts && r.puts[idx]) || 0;
+      strikeMap[String(r.strike)] = { c: c, p: p, strike: r.strike };
+    });
+    columns.push({ exp: exp, label: want || pulls[idx], strikeMap: strikeMap });
+  });
+
+  if (!columns.length) return null;
+
+  // Days: آخر N أعمدة (تواريخ انتهاء يومية)
+  columns = lastN(columns, state.days);
+  var pullDates = columns.map(function (c) {
+    return c.label;
+  });
+
+  var strikeSet = {};
+  columns.forEach(function (col) {
+    Object.keys(col.strikeMap).forEach(function (k) {
+      strikeSet[k] = col.strikeMap[k].strike;
+    });
+  });
+  var strikes = Object.keys(strikeSet)
+    .map(Number)
+    .sort(function (a, b) {
+      return a - b;
+    });
+
+  var rows = strikes.map(function (s) {
+    var key = String(s);
+    return {
+      strike: s,
+      calls: columns.map(function (col) {
+        var m = col.strikeMap[key];
+        return m ? m.c : 0;
+      }),
+      puts: columns.map(function (col) {
+        var m = col.strikeMap[key];
+        return m ? m.p : 0;
+      }),
+    };
+  });
+
+  var closePx =
+    data.close != null
+      ? data.close
+      : typeof effectiveClose === "function"
+        ? effectiveClose(data)
+        : null;
+  rows = filterStrikes(rows, closePx, state.strikes);
+  return {
+    pullDates: pullDates,
+    rows: rows,
+    close: closePx,
+    seriesExps: columns.map(function (c) {
+      return c.exp;
+    }),
+  };
+}
+
+/** جدول «اليوم بالسابق»: أعمدة = تواريخ انتهاء يومية متتالية (25 ثم 26 ثم…) وليس أيام سحب لنفس الانتهاء */
 function renderSeriesTable() {
   const data = state.cache[state.ticker];
   const host = $("#tableHost");
-  if (!data || !state.expiration) {
-    host.innerHTML = '<p class="status">اختر تاريخ انتهاء</p>';
+  if (!data) {
+    host.innerHTML = '<p class="status">لا بيانات</p>';
     return;
   }
-  const view = getViewRows(data);
-  if (!view) {
-    host.innerHTML = '<p class="status">لا بيانات لهذا الانتهاء / الأيام</p>';
+  const view = getSeriesPrevDayView(data);
+  if (!view || !view.pullDates.length) {
+    host.innerHTML =
+      '<p class="status">لا تواريخ انتهاء يومية متاحة للمقارنة بعد</p>';
     return;
   }
   const pullDates = view.pullDates;
   const rows = view.rows;
-  const close = effectiveClose(data);
+  const close = view.close != null ? view.close : effectiveClose(data);
   const canDelta = state.showDelta && pullDates.length >= 2;
   const lastI = pullDates.length - 1;
   const prevI = pullDates.length - 2;
@@ -979,9 +1096,7 @@ function renderSeriesTable() {
     '<div class="table-title">' +
     "<div>" +
     state.ticker +
-    " | Exp: " +
-    state.expiration +
-    "</div>";
+    " | اليوم بالسابق</div>";
   if (close != null) {
     const liveTag = state.livePrice != null ? " · مباشر" : "";
     html +=
@@ -1052,7 +1167,8 @@ function renderSeriesTable() {
     html += '<tr class="' + zebra + '">';
     if (canDelta) {
       const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
-      const maxCls = d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
+      const maxCls =
+        d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
       html +=
         '<td class="delta' +
         maxCls +
@@ -1085,7 +1201,8 @@ function renderSeriesTable() {
     }
     if (canDelta) {
       const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
-      const maxCls = d != null && deltaPutMax > 0 && d === deltaPutMax ? " max-oi" : "";
+      const maxCls =
+        d != null && deltaPutMax > 0 && d === deltaPutMax ? " max-oi" : "";
       html +=
         '<td class="delta' +
         maxCls +
@@ -1095,10 +1212,8 @@ function renderSeriesTable() {
     }
     html += "</tr>";
   });
-  if (close != null && !barDone) {
-    if (typeof greenBarRow === "function") {
-      html += greenBarRow(canDelta, pullDates.length, close);
-    }
+  if (close != null && !barDone && typeof greenBarRow === "function") {
+    html += greenBarRow(canDelta, pullDates.length, close);
   }
   html += "</tbody></table></div>";
   host.innerHTML = html;

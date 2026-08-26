@@ -1817,9 +1817,10 @@ html[data-theme="dark"] .x3-col-h .exp-am {
   border-color: var(--primary);
 }
 .series-btn.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
+  background: #ea580c !important;
+  border-color: #c2410c !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 1px rgba(234, 88, 12, 0.35);
 }
 table.oi.series-oi th.delta,
 table.oi.series-oi td.delta {
