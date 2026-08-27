@@ -2459,13 +2459,8 @@ button#x3Btn.x3-btn {
   max-height: min(420px, 70vh) !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  display: block;
 }
-.controls .exp-dd-list:not([hidden]),
-#expDdList:not([hidden]) {
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
+
 .controls .stocks-dd,
 #stocksDd,
 .stocks-dd {
@@ -2495,4 +2490,46 @@ button#x3Btn.x3-btn {
   .controls {
     overflow: visible !important;
   }
+}
+
+
+/* =========================================================
+   قوائم منسدلة: مخفية افتراضيًا — تظهر فقط مع .open
+   ========================================================= */
+.exp-dd-list,
+#expDdList,
+.controls .exp-dd-list,
+.stocks-dd-list,
+#stocksDdList,
+.controls .stocks-dd-list {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
+/* تظهر فقط عندما الزر/الحاوية عليها open */
+.exp-dd.open > .exp-dd-list,
+.exp-dd.open #expDdList,
+#expDropdown.open > .exp-dd-list,
+#expDropdown.open #expDdList,
+.exp-dd-btn.open + .exp-dd-list,
+.exp-dd-btn.open + #expDdList,
+.stocks-dd.open > .stocks-dd-list,
+.stocks-dd.open #stocksDdList,
+#stocksDd.open > .stocks-dd-list,
+.stocks-dd-btn.open + .stocks-dd-list,
+.stocks-dd-btn.open + #stocksDdList {
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  position: absolute !important;
+  z-index: 300 !important;
+  top: calc(100% + 4px) !important;
+  max-height: min(420px, 70vh) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  max-height: min(420px, 70vh) !important;
 }

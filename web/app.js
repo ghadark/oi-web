@@ -238,10 +238,14 @@ function ensureExpDropdownUI() {
   document.addEventListener("click", function (e) {
     var list = $("#expDdList");
     var btn = $("#expDdBtn");
+    var wrap = document.getElementById("expDropdown");
     if (!list || !btn) return;
     if (btn.contains(e.target) || list.contains(e.target)) return;
+    if (wrap && wrap.contains(e.target)) return;
     list.hidden = true;
+    list.setAttribute("hidden", "");
     btn.classList.remove("open");
+    if (wrap) wrap.classList.remove("open");
   });
   return dd;
 }
@@ -348,10 +352,15 @@ function fillExpDropdown(exps) {
         e.stopPropagation();
         state.expiration = exp;
         safeSetSelectValue(sel, exp);
-        if (list) list.hidden = true;
+        if (list) {
+          list.hidden = true;
+          list.setAttribute("hidden", "");
+        }
         if (btn) btn.classList.remove("open");
+        var wrap = document.getElementById("expDropdown");
+        if (wrap) wrap.classList.remove("open");
+        if (list && list.parentElement) list.parentElement.classList.remove("open");
         syncExpDropdownLabel();
-        // حدّث تمييز active بدون إعادة بناء كاملة إن أمكن
         try {
           var nodes = list.querySelectorAll(".exp-dd-item");
           for (var i = 0; i < nodes.length; i++) {
@@ -377,11 +386,37 @@ function fillExpDropdown(exps) {
     btn.onclick = function (e) {
       e.preventDefault();
       e.stopPropagation();
-      var open = list.hidden;
-      list.hidden = !open;
-      btn.classList.toggle("open", open);
+      var wrap = document.getElementById("expDropdown") || (list.parentElement);
+      var isOpen = wrap && wrap.classList.contains("open");
+      // أغلق STOCKS إن كانت مفتوحة
+      try {
+        var sWrap = document.getElementById("stocksDd");
+        var sBtn = document.getElementById("stocksDdBtn");
+        var sList = document.getElementById("stocksDdList");
+        if (sWrap) sWrap.classList.remove("open");
+        if (sBtn) sBtn.classList.remove("open");
+        if (sList) { sList.hidden = true; sList.setAttribute("hidden", ""); }
+      } catch (eS) {}
+      if (isOpen) {
+        if (wrap) wrap.classList.remove("open");
+        btn.classList.remove("open");
+        list.hidden = true;
+        list.setAttribute("hidden", "");
+      } else {
+        if (wrap) wrap.classList.add("open");
+        btn.classList.add("open");
+        list.hidden = false;
+        list.removeAttribute("hidden");
+      }
     };
   }
+  // تأكد أنها مغلقة بعد إعادة البناء
+  try {
+    var wrap0 = document.getElementById("expDropdown");
+    if (wrap0) wrap0.classList.remove("open");
+    if (btn) btn.classList.remove("open");
+    if (list) { list.hidden = true; list.setAttribute("hidden", ""); }
+  } catch (eClose) {}
 }
 
 function riyadhYmd() {
@@ -566,9 +601,28 @@ function renderStocksDropdown() {
   btn.onclick = function (e) {
     e.preventDefault();
     e.stopPropagation();
-    var willOpen = list.hidden;
-    list.hidden = !willOpen;
-    btn.classList.toggle("open", willOpen);
+    var wrap = document.getElementById("stocksDd");
+    var isOpen = wrap && wrap.classList.contains("open");
+    // أغلق قائمة التواريخ
+    try {
+      var eWrap = document.getElementById("expDropdown");
+      var eBtn = document.getElementById("expDdBtn");
+      var eList = document.getElementById("expDdList");
+      if (eWrap) eWrap.classList.remove("open");
+      if (eBtn) eBtn.classList.remove("open");
+      if (eList) { eList.hidden = true; eList.setAttribute("hidden", ""); }
+    } catch (eE) {}
+    if (isOpen) {
+      if (wrap) wrap.classList.remove("open");
+      btn.classList.remove("open");
+      list.hidden = true;
+      list.setAttribute("hidden", "");
+    } else {
+      if (wrap) wrap.classList.add("open");
+      btn.classList.add("open");
+      list.hidden = false;
+      list.removeAttribute("hidden");
+    }
   };
   list.querySelectorAll(".stocks-dd-item").forEach(function (item) {
     item.onclick = function (e) {
@@ -576,7 +630,10 @@ function renderStocksDropdown() {
       e.stopPropagation();
       var v = item.getAttribute("data-value") || "";
       list.hidden = true;
+      list.setAttribute("hidden", "");
       btn.classList.remove("open");
+      var sWrap = document.getElementById("stocksDd");
+      if (sWrap) sWrap.classList.remove("open");
       if (!v) return;
       state.ticker = v;
       state.expiration = null;
@@ -597,7 +654,9 @@ function renderStocksDropdown() {
       if (!listEl || !btnEl) return;
       if (wrap && wrap.contains(e.target)) return;
       listEl.hidden = true;
+      listEl.setAttribute("hidden", "");
       btnEl.classList.remove("open");
+      if (wrap) wrap.classList.remove("open");
     });
   }
 }
