@@ -2284,8 +2284,7 @@ html[data-theme="light"] .controls .series-btn.active {
   -webkit-backdrop-filter: blur(10px);
   box-sizing: border-box !important;
 }
-.controls::-webkit-scrollbar { height: 4px; }
-.controls::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+.controls::-webkit-scrollbar { display: none !important; height: 0 !important; width: 0 !important; }
 .controls > * { flex: 0 0 auto !important; }
 .controls > label {
   font-size: 13px !important;
@@ -2685,8 +2684,7 @@ button#x3Btn.x3-btn {
   scrollbar-width: thin;
   scrollbar-color: #475569 transparent;
 }
-.controls::-webkit-scrollbar { height: 4px; }
-.controls::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+.controls::-webkit-scrollbar { display: none !important; height: 0 !important; width: 0 !important; }
 .controls > * { flex-shrink: 0 !important; }
 
 #expDdList.dd-fixed,
@@ -2744,4 +2742,17 @@ button#x3Btn.x3-btn {
     padding: 4px 8px !important;
     font-size: 11px !important;
   }
+}
+
+
+/* شريط التحكم بدون شريط تمرير ظاهر (مثل الخاص) */
+.controls {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE/Edge legacy */
+}
+.controls::-webkit-scrollbar {
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  background: transparent !important;
 }
