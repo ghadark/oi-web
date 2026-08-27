@@ -2260,17 +2260,17 @@ html[data-theme="light"] .controls .series-btn.active {
 
 
 /* =========================================================
-   شريط التحكم — صف واحد على اللابتوب والتابلت والجوال
-   (تصغير خفيف + تمرير أفقي عند الحاجة، بدون نزول لسطرين)
+   شريط التحكم — صف واحد + حجم مريح على اللابتوب
+   تابلت/جوال: أصغر قليلًا مع تمرير أفقي عند الحاجة
    ========================================================= */
 .controls {
   display: flex !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 8px !important;
-  margin: 0 auto 14px !important;
-  padding: 10px 12px !important;
+  gap: 10px !important;
+  margin: 0 auto 16px !important;
+  padding: 12px 16px !important;
   max-width: 100% !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
@@ -2286,13 +2286,10 @@ html[data-theme="light"] .controls .series-btn.active {
 }
 .controls::-webkit-scrollbar { height: 4px; }
 .controls::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-
-.controls > * {
-  flex: 0 0 auto !important;
-}
+.controls > * { flex: 0 0 auto !important; }
 .controls > label {
-  font-size: 11px !important;
-  font-weight: 600 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
   color: var(--gray) !important;
   white-space: nowrap !important;
 }
@@ -2301,79 +2298,116 @@ html[data-theme="light"] .controls .series-btn.active {
   display: flex !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
-  gap: 10px !important;
+  gap: 14px !important;
 }
 .controls .chip-row {
   display: inline-flex !important;
   flex-wrap: nowrap !important;
   gap: 2px !important;
-  padding: 2px 3px !important;
+  padding: 3px 4px !important;
   background: #111827 !important;
   border: 1px solid #1e293b !important;
   border-radius: 8px !important;
 }
 .controls .chip {
-  min-width: 26px !important;
-  height: 26px !important;
-  padding: 0 8px !important;
-  font-size: 11px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
   white-space: nowrap !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border-bottom: 2px solid transparent !important;
+  cursor: pointer;
+}
+.controls .chip.active {
+  color: #60a5fa !important;
+  border-bottom: 2px solid #3b82f6 !important;
+  font-weight: 700 !important;
+  background: transparent !important;
 }
 .controls #expSelect {
-  height: 30px !important;
-  font-size: 11px !important;
-  max-width: 130px !important;
+  height: 32px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  max-width: 150px !important;
+  border-radius: 8px !important;
+  padding: 0 10px !important;
 }
 .controls .delta-btn {
-  width: 28px !important;
-  height: 28px !important;
-  flex-shrink: 0 !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
 }
 .controls .stocks-inline {
   display: inline-flex !important;
   flex-wrap: nowrap !important;
-  gap: 6px !important;
+  gap: 8px !important;
   margin: 0 !important;
 }
 .controls .stocks-inline .stocks-select,
-.controls .stocks-inline .stocks-dd,
 .controls .stocks-dd-btn {
-  height: 30px !important;
-  font-size: 10px !important;
-  min-width: 64px !important;
-  white-space: nowrap !important;
+  height: 32px !important;
+  font-size: 11px !important;
+  min-width: 72px !important;
+  border-radius: 8px !important;
 }
 .controls .series-btn {
-  white-space: nowrap !important;
-  font-size: 11px !important;
-  height: 30px !important;
+  height: 32px !important;
   padding: 0 4px !important;
+  margin-inline-end: 4px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  color: #cbd5e1 !important;
+  border-bottom: 2px solid #475569 !important;
+  cursor: pointer;
+}
+.controls .series-btn:hover { color: #f1f5f9 !important; border-bottom-color: #94a3b8 !important; }
+.controls .series-btn.active {
+  color: #f8fafc !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+  font-weight: 700 !important;
 }
 .controls .x3-btn,
 button#x3Btn.x3-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #c4b5fd !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
   white-space: nowrap !important;
-  flex-shrink: 0 !important;
+}
+.controls .x3-btn.active {
+  color: #e9d5ff !important;
+  border-bottom: 2px solid #a78bfa !important;
 }
 
-/* تابلت */
 @media (max-width: 900px) {
   .controls {
     gap: 6px !important;
     padding: 8px 10px !important;
     justify-content: flex-start !important;
   }
+  .controls > label { font-size: 10px !important; }
   .controls .chip {
     min-width: 22px !important;
+    height: 24px !important;
     padding: 0 6px !important;
     font-size: 10px !important;
-    height: 24px !important;
   }
-  .controls #expSelect { max-width: 110px !important; font-size: 10px !important; }
-  .controls > label { font-size: 10px !important; }
-  .controls .series-btn { font-size: 10px !important; }
+  .controls #expSelect { max-width: 110px !important; height: 28px !important; font-size: 10px !important; }
+  .controls .series-btn { font-size: 10px !important; height: 28px !important; }
+  .controls .delta-btn { width: 28px !important; height: 28px !important; }
+  .controls .exp-series-row { gap: 8px !important; }
 }
 
-/* جوال — صف واحد مع تمرير أفقي ناعم */
 @media (max-width: 600px) {
   .controls {
     gap: 5px !important;
@@ -2382,13 +2416,10 @@ button#x3Btn.x3-btn {
   }
   .controls .chip {
     min-width: 20px !important;
+    height: 22px !important;
     padding: 0 5px !important;
     font-size: 10px !important;
-    height: 22px !important;
   }
-  .controls .chip-row { padding: 2px !important; }
-  .controls #expSelect { max-width: 96px !important; height: 28px !important; }
-  .controls .delta-btn { width: 26px !important; height: 26px !important; }
-  .controls .series-btn { font-size: 10px !important; margin-inline-end: 2px !important; }
-  .controls .exp-series-row { gap: 8px !important; }
+  .controls #expSelect { max-width: 96px !important; }
+  .controls .series-btn { font-size: 10px !important; }
 }
