@@ -33,6 +33,29 @@ const state = {
 
 const $ = (sel) => document.querySelector(sel);
 
+function positionDdList(btn, list) {
+  try {
+    if (!btn || !list) return;
+    if (window.innerWidth > 1100) {
+      list.style.left = "";
+      list.style.right = "";
+      list.style.top = "";
+      list.style.width = "";
+      list.style.position = "";
+      return;
+    }
+    var r = btn.getBoundingClientRect();
+    list.style.position = "fixed";
+    list.style.zIndex = "9999";
+    list.style.top = Math.round(r.bottom + 4) + "px";
+    list.style.left = Math.round(r.left) + "px";
+    list.style.right = "auto";
+    list.style.width = Math.max(Math.round(r.width), 140) + "px";
+    list.style.maxHeight = Math.min(420, window.innerHeight - r.bottom - 12) + "px";
+  } catch (e) {}
+}
+
+
 function formatUpdatedAt(s) {
   try {
     var d = new Date(s);
@@ -238,10 +261,14 @@ function ensureExpDropdownUI() {
   document.addEventListener("click", function (e) {
     var list = $("#expDdList");
     var btn = $("#expDdBtn");
+    var wrap = document.getElementById("expDropdown");
     if (!list || !btn) return;
     if (btn.contains(e.target) || list.contains(e.target)) return;
+    if (wrap && wrap.contains(e.target)) return;
     list.hidden = true;
+    list.setAttribute("hidden", "");
     btn.classList.remove("open");
+    if (wrap) wrap.classList.remove("open");
   });
   return dd;
 }
@@ -353,8 +380,10 @@ function fillExpDropdown(exps) {
           list.setAttribute("hidden", "");
         }
         if (btn) btn.classList.remove("open");
+        var wrap = document.getElementById("expDropdown");
+        if (wrap) wrap.classList.remove("open");
+        if (list && list.parentElement) list.parentElement.classList.remove("open");
         syncExpDropdownLabel();
-        // حدّث تمييز active بدون إعادة بناء كاملة إن أمكن
         try {
           var nodes = list.querySelectorAll(".exp-dd-item");
           for (var i = 0; i < nodes.length; i++) {
@@ -380,18 +409,38 @@ function fillExpDropdown(exps) {
     btn.onclick = function (e) {
       e.preventDefault();
       e.stopPropagation();
-      var willOpen = list.hidden || list.hasAttribute("hidden");
-      if (willOpen) {
-        list.hidden = false;
-        list.removeAttribute("hidden");
-        btn.classList.add("open");
-      } else {
+      var wrap = document.getElementById("expDropdown") || (list.parentElement);
+      var isOpen = wrap && wrap.classList.contains("open");
+      // أغلق STOCKS إن كانت مفتوحة
+      try {
+        var sWrap = document.getElementById("stocksDd");
+        var sBtn = document.getElementById("stocksDdBtn");
+        var sList = document.getElementById("stocksDdList");
+        if (sWrap) sWrap.classList.remove("open");
+        if (sBtn) sBtn.classList.remove("open");
+        if (sList) { sList.hidden = true; sList.setAttribute("hidden", ""); }
+      } catch (eS) {}
+      if (isOpen) {
+        if (wrap) wrap.classList.remove("open");
+        btn.classList.remove("open");
         list.hidden = true;
         list.setAttribute("hidden", "");
-        btn.classList.remove("open");
+      } else {
+        if (wrap) wrap.classList.add("open");
+        btn.classList.add("open");
+        list.hidden = false;
+        list.removeAttribute("hidden");
+        if (typeof positionDdList === "function") positionDdList(btn, list);
       }
     };
   }
+  // تأكد أنها مغلقة بعد إعادة البناء
+  try {
+    var wrap0 = document.getElementById("expDropdown");
+    if (wrap0) wrap0.classList.remove("open");
+    if (btn) btn.classList.remove("open");
+    if (list) { list.hidden = true; list.setAttribute("hidden", ""); }
+  } catch (eClose) {}
 }
 
 function riyadhYmd() {
@@ -576,9 +625,29 @@ function renderStocksDropdown() {
   btn.onclick = function (e) {
     e.preventDefault();
     e.stopPropagation();
-    var willOpen = list.hidden;
-    list.hidden = !willOpen;
-    btn.classList.toggle("open", willOpen);
+    var wrap = document.getElementById("stocksDd");
+    var isOpen = wrap && wrap.classList.contains("open");
+    // أغلق قائمة التواريخ
+    try {
+      var eWrap = document.getElementById("expDropdown");
+      var eBtn = document.getElementById("expDdBtn");
+      var eList = document.getElementById("expDdList");
+      if (eWrap) eWrap.classList.remove("open");
+      if (eBtn) eBtn.classList.remove("open");
+      if (eList) { eList.hidden = true; eList.setAttribute("hidden", ""); }
+    } catch (eE) {}
+    if (isOpen) {
+      if (wrap) wrap.classList.remove("open");
+      btn.classList.remove("open");
+      list.hidden = true;
+      list.setAttribute("hidden", "");
+    } else {
+      if (wrap) wrap.classList.add("open");
+      btn.classList.add("open");
+      list.hidden = false;
+      list.removeAttribute("hidden");
+      if (typeof positionDdList === "function") positionDdList(btn, list);
+    }
   };
   list.querySelectorAll(".stocks-dd-item").forEach(function (item) {
     item.onclick = function (e) {
@@ -586,7 +655,10 @@ function renderStocksDropdown() {
       e.stopPropagation();
       var v = item.getAttribute("data-value") || "";
       list.hidden = true;
+      list.setAttribute("hidden", "");
       btn.classList.remove("open");
+      var sWrap = document.getElementById("stocksDd");
+      if (sWrap) sWrap.classList.remove("open");
       if (!v) return;
       state.ticker = v;
       state.expiration = null;
@@ -607,7 +679,9 @@ function renderStocksDropdown() {
       if (!listEl || !btnEl) return;
       if (wrap && wrap.contains(e.target)) return;
       listEl.hidden = true;
+      listEl.setAttribute("hidden", "");
       btnEl.classList.remove("open");
+      if (wrap) wrap.classList.remove("open");
     });
   }
 }

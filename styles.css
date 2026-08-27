@@ -2460,11 +2460,7 @@ button#x3Btn.x3-btn {
   overflow-y: auto !important;
   overflow-x: hidden !important;
 }
-.controls .exp-dd-list:not([hidden]),
-#expDdList:not([hidden]) {
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
+
 .controls .stocks-dd,
 #stocksDd,
 .stocks-dd {
@@ -2498,32 +2494,183 @@ button#x3Btn.x3-btn {
 
 
 /* =========================================================
-   إخفاء قائمة التواريخ/STOCKS عند [hidden] — لا تبقى مفتوحة دائمًا
+   قوائم منسدلة: مخفية افتراضيًا — تظهر فقط مع .open
    ========================================================= */
-.exp-dd-list[hidden],
-#expDdList[hidden],
-.stocks-dd-list[hidden],
-#stocksDdList[hidden],
-.controls .exp-dd-list[hidden],
-.controls .stocks-dd-list[hidden] {
+.exp-dd-list,
+#expDdList,
+.controls .exp-dd-list,
+.stocks-dd-list,
+#stocksDdList,
+.controls .stocks-dd-list {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
   opacity: 0 !important;
-  height: 0 !important;
-  max-height: 0 !important;
-  overflow: hidden !important;
-  border: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
 }
-.exp-dd-list:not([hidden]),
-#expDdList:not([hidden]),
-.stocks-dd-list:not([hidden]),
-#stocksDdList:not([hidden]) {
+
+/* تظهر فقط عندما الزر/الحاوية عليها open */
+.exp-dd.open > .exp-dd-list,
+.exp-dd.open #expDdList,
+#expDropdown.open > .exp-dd-list,
+#expDropdown.open #expDdList,
+.exp-dd-btn.open + .exp-dd-list,
+.exp-dd-btn.open + #expDdList,
+.stocks-dd.open > .stocks-dd-list,
+.stocks-dd.open #stocksDdList,
+#stocksDd.open > .stocks-dd-list,
+.stocks-dd-btn.open + .stocks-dd-list,
+.stocks-dd-btn.open + #stocksDdList {
   display: block !important;
   visibility: visible !important;
   pointer-events: auto !important;
   opacity: 1 !important;
+  position: absolute !important;
+  z-index: 300 !important;
+  top: calc(100% + 4px) !important;
+  max-height: min(420px, 70vh) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   height: auto !important;
+  max-height: min(420px, 70vh) !important;
+}
+
+
+/* =========================================================
+   جوال / تابلت / آيباد فقط:
+   توسيع شريط التحكم ليشمل «اليوم بالسابق» و ×3 بالكامل
+   بدون قصّ من الحواف — اللابتوب بدون تغيير
+   ========================================================= */
+@media (max-width: 1100px) {
+  /* إلغاء الحد الأدنى العريض اللي يقص الشريط على التابلت */
+  .app {
+    min-width: 0 !important;
+    grid-template-columns: 200px minmax(0, 1fr) !important;
+  }
+  .main {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+  .controls {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    padding: 8px 12px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    /* تمرير أفقي داخل الشريط إن لزم — مع حواف ظاهرة */
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-inline: 12px;
+    overscroll-behavior-x: contain;
+  }
+  .controls > * {
+    flex: 0 0 auto !important;
+  }
+  /* مساحة في أول وآخر الشريط حتى لا يُقص اليوم بالسابق و ×3 */
+  .controls::before,
+  .controls::after {
+    content: "";
+    flex: 0 0 4px;
+  }
+  .controls .series-btn {
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+    height: auto !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  .controls .exp-series-row,
+  .controls .select-exp-series {
+    flex-shrink: 0 !important;
+    gap: 6px !important;
+  }
+  .controls .exp-dd,
+  .controls #expDropdown,
+  .controls .exp-dd-btn {
+    min-width: 118px !important;
+    max-width: 140px !important;
+    flex-shrink: 0 !important;
+  }
+  .controls .chip-row {
+    flex-shrink: 0 !important;
+    gap: 3px !important;
+  }
+  .controls .chip {
+    min-width: 22px !important;
+    height: 26px !important;
+    padding: 0 6px !important;
+    font-size: 10px !important;
+  }
+  .controls .delta-btn {
+    width: 28px !important;
+    height: 28px !important;
+    flex-shrink: 0 !important;
+  }
+  .controls .stocks-inline {
+    flex-shrink: 0 !important;
+    gap: 4px !important;
+  }
+  .controls .stocks-dd-btn,
+  .controls .stocks-inline .stocks-select {
+    min-width: 64px !important;
+    height: 28px !important;
+    font-size: 11px !important;
+  }
+  .controls .x3-btn,
+  button#x3Btn.x3-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 4px 10px !important;
+    font-size: 12px !important;
+    min-width: 36px !important;
+  }
+  .controls > label {
+    font-size: 10px !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+  /* القوائم المنسدلة تبقى فوق ولا تُقص */
+  .controls .exp-dd-list,
+  .controls .stocks-dd-list {
+    position: fixed !important; /* على الشاشات الضيقة: ثابتة حتى لا تُقص بالتمرير */
+    z-index: 9999 !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .app {
+    grid-template-columns: 1fr !important; /* سايدبار فوق أو يتكيّف حسب التنسيق الحالي */
+  }
+  .sidebar {
+    /* إن كان التخطيط عموديًا على الجوال يبقى كما هو */
+  }
+  .controls {
+    gap: 5px !important;
+    padding: 7px 10px !important;
+  }
+  .controls .series-btn {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+  }
+  .controls .exp-dd-btn {
+    min-width: 100px !important;
+    max-width: 120px !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+  }
+}
+
+/* اللابتوب: أعد تأكيد أن الشريط كما كان (مريح وكبير) */
+@media (min-width: 1101px) {
+  .app {
+    min-width: 1100px;
+  }
+  .controls {
+    overflow: visible !important;
+  }
 }
