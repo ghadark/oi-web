@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ar" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1200" />
+  <title>Oi | BY GEE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+</head>
+<body data-data-base="../data">
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">Oi</div>
+        <span class="brand-divider brand-divider-light"></span>
+        <div class="brand-left">
+          <div class="brand-oi">Oi</div>
+          <div class="brand-sub">Open Interest</div>
+        </div>
+        <span class="brand-sign">BY GEE</span>
+      </div>
+      <div class="meta">
+        <div id="updatedAt">—</div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="top">
+        <div style="width:120px"></div>
+        <div>
+          <h2>المؤشرات</h2>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="exportBtn" class="btn btn-excel" type="button">Excel</button>
+          <button id="mapBtn" class="btn btn-map" type="button">Map</button>
+          <button id="feedbackBtn" class="btn btn-feedback" type="button" title="تعليق خاص">💬</button>
+        </div>
+      </div>
+      <div class="tickers-wrap">
+        <div id="tickers" class="tickers"></div>
+              </div>
+      <div class="controls">
+        <div class="select select-exp-series">
+          <div class="exp-series-row">
+            <button id="seriesBtn" class="series-btn" type="button" title="اليوم بالسابق">اليوم بالسابق</button>
+            <label for="expSelect" class="exp-label">الانتهاء</label>
+            <select id="expSelect"></select>
+          </div>
+        </div>
+        <label>Days</label>
+        <div id="daysRow" class="chip-row"></div>
+        <label>Strikes</label>
+        <div id="strikesRow" class="chip-row"></div>
+        <button id="deltaBtn" class="delta-btn" type="button" title="التزايد">Δ</button>
+        <div id="stocksRow" class="stocks-inline"></div>
+        <button id="x3Btn" class="x3-btn" type="button" title="عرض ثلاثي">×3</button>
+      </div>
+      <div class="panel">
+        <div id="tableHost"></div>
+        <div id="status" class="status"></div>
+      </div>
+    </main>
+  </div>
+  <div id="mapModal" class="map-modal hidden" role="dialog" aria-modal="true">
+    <div class="map-panel">
+      <div class="map-head">
+        <div>
+          <h3 id="mapTitle">Levels Map</h3>
+          <p id="mapSub" class="map-sub">—</p>
+        </div>
+        <button id="mapClose" class="btn" type="button">إغلاق</button>
+      </div>
+      <div id="mapBody" class="map-body"></div>
+    </div>
+  </div>
+  <div id="exportModal" class="map-modal hidden" role="dialog" aria-modal="true">
+    <div class="map-panel export-panel">
+      <div class="map-head">
+        <div>
+          <h3>Excel</h3>
+        </div>
+        <button id="exportClose" class="btn" type="button">إغلاق</button>
+      </div>
+      <div id="exportBody" class="map-body export-body"></div>
+    </div>
+  </div>
+  <div id="feedbackModal" class="map-modal hidden" role="dialog" aria-modal="true">
+    <div class="map-panel feedback-panel">
+      <div class="map-head">
+        <div>
+          <h3>تعليق خاص</h3>
+          
+        </div>
+        <button id="feedbackClose" class="btn" type="button">إغلاق</button>
+      </div>
+      <form id="feedbackForm" class="feedback-form">
+        <label>الاسم <span class="opt">(اختياري)</span></label>
+        <input id="fbName" type="text" maxlength="80" placeholder="—" autocomplete="name" />
+        <label>التعليق</label>
+        <textarea id="fbMsg" rows="4" maxlength="2000" required placeholder="اكتب ملاحظتك…"></textarea>
+        <p id="fbStatus" class="exp-status"></p>
+        <div class="exp-export-actions">
+          <button type="submit" class="btn btn-teal" id="fbSend">إرسال</button>
+          <button type="button" class="btn" id="fbCancel">إلغاء</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script src="app.js"></script>
+  <!-- Cloudflare Web Analytics -->
+  <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b3b1b9ffbbd74d1d902173c2f92ce3a7"}'></script>
+  <!-- End Cloudflare Web Analytics -->
+</body>
+</html>
