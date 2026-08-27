@@ -2103,112 +2103,138 @@ html[data-theme="light"] .controls .series-btn.active {
 
 
 /* =========================================================
-   Map: بطاقات جانبية مريحة + الخمس ظاهرة بدون ضغط
-   الشارت بارتفاع مناسب يساوي عمود البطاقات
+   ماب العام = منطق/تنسيق الخاص (لابتوب: 5 بطاقات كاملة بجانب الشارت، بدون قص)
    ========================================================= */
-.map-modal {
-  overflow: hidden !important;
-  align-items: center !important;
-  justify-content: center !important;
+.map-modal.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  z-index: -1 !important;
 }
-.map-modal .map-panel {
-  width: min(1100px, 96vw) !important;
-  max-height: 94vh !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  display: block !important;
+.map-modal.hidden * {
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
-.map-modal .map-body,
-#mapBody {
-  overflow: visible !important;
-  max-height: none !important;
-  display: block !important;
-  flex: none !important;
-  min-height: 0 !important;
-}
-.map-h1 {
-  display: block !important;
-  height: auto !important;
-  max-height: none !important;
-  min-height: 0 !important;
-}
-.map-h1 .price-card {
-  flex: none !important;
-  margin-bottom: 12px !important;
-  padding: 16px !important;
-}
-.map-h1 .grid-wrap {
-  display: grid !important;
-  grid-template-columns: 1fr 176px !important;
-  gap: 14px !important;
-  align-items: start !important;
-  min-height: 0 !important;
-  flex: none !important;
-}
-.map-h1 .stage {
-  height: 420px !important;
-  min-height: 420px !important;
-  max-height: 420px !important;
-}
-.map-h1 .cards {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-  height: auto !important;
-  min-height: 0 !important;
-  justify-content: flex-start !important;
-  overflow: visible !important;
-  direction: rtl !important;
-}
-.map-h1 .card {
-  flex: 0 0 auto !important;
-  min-height: 72px !important;
-  height: auto !important;
-  padding: 12px 14px !important;
-  display: block !important;
-  justify-content: unset !important;
-  box-sizing: border-box !important;
-}
-.map-h1 .card .t {
-  display: block !important;
-  margin-bottom: 8px !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  color: #94a3b8 !important;
-  line-height: 1.3 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-.map-h1 .card .r {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  font-size: 13px !important;
-  margin: 4px 0 !important;
-  line-height: 1.35 !important;
-  gap: 8px !important;
-}
-.map-h1 .card .r span:first-child {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
+#mapClose {
+  position: static !important;
 }
 
-@media (max-width: 700px) {
+@media (min-width: 901px) {
+  .map-modal {
+    align-items: center !important;
+    justify-content: center !important;
+    overflow-y: auto !important;
+    padding: 20px !important;
+  }
+  .map-modal .map-panel,
+  .map-panel {
+    max-height: none !important;
+    overflow: visible !important;
+    width: min(960px, 94vw) !important;
+    display: block !important;
+  }
+  .map-modal .map-body,
+  #mapBody {
+    overflow: visible !important;
+    max-height: none !important;
+    display: block !important;
+    flex: none !important;
+  }
+  .map-h1 {
+    height: auto !important;
+    display: block !important;
+  }
+  .map-h1 .grid-wrap {
+    display: grid !important;
+    grid-template-columns: 1fr 176px !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+    min-height: 0 !important;
+  }
+  .map-h1 .stage {
+    height: auto !important;
+    min-height: 380px !important;
+    max-height: 440px !important;
+  }
+  .map-h1 .cards {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 176px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    justify-content: space-between !important;
+    direction: rtl !important;
+  }
+  .map-h1 .card {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-height: 64px !important;
+    height: auto !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box !important;
+  }
+  .map-h1 .card .t {
+    display: block !important;
+    margin-bottom: 6px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #94a3b8 !important;
+    line-height: 1.3 !important;
+    white-space: nowrap !important;
+  }
+  .map-h1 .card .r {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 13px !important;
+    margin: 3px 0 !important;
+    line-height: 1.35 !important;
+  }
+  .map-h1 .price-card {
+    padding: 14px !important;
+    margin-bottom: 12px !important;
+  }
+  .map-h1 .price-card b {
+    font-size: 28px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .map-modal {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px !important;
+  }
+  .map-modal .map-panel,
+  .map-panel {
+    max-height: none !important;
+    width: min(100%, 960px) !important;
+    overflow: visible !important;
+  }
   .map-h1 .grid-wrap {
     grid-template-columns: 1fr !important;
   }
   .map-h1 .stage {
-    height: min(42vh, 340px) !important;
+    height: min(42vh, 360px) !important;
     min-height: 240px !important;
     max-height: none !important;
   }
   .map-h1 .cards {
+    width: 100% !important;
     flex-direction: row !important;
     flex-wrap: wrap !important;
+    height: auto !important;
   }
   .map-h1 .card {
     flex: 1 1 140px !important;
+    display: block !important;
     min-height: 70px !important;
   }
 }
