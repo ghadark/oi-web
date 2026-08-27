@@ -1,16 +1,14 @@
-name: Update OCC Data
+name: Update OCC Data Backup
 
-# جدولة كثيفة صباح السعودية — يقلل فوات اليوم بسبب تخطّي GitHub للـ cron
-# 4:00–7:50 ص = 01:00–04:50 UTC كل 10 دقائق + احتياطيات
+# نسخة احتياطية بإزاحة 5 دقائق — إذا تخطّى GitHub الـ workflow الأساسي
 on:
   schedule:
-    - cron: "*/10 1-4 * * *"
-    - cron: "0 5 * * *"
-    - cron: "30 5 * * *"
+    - cron: "5-59/10 1-4 * * *"
+    - cron: "15 5 * * *"
   workflow_dispatch: {}
 
 concurrency:
-  group: update-occ-data-${{ github.workflow }}
+  group: update-occ-data-backup
   cancel-in-progress: false
 
 permissions:
@@ -21,26 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Install deps
-        run: |
+      - run: |
           python -m pip install --upgrade pip
           pip install requests yfinance
-
-      - name: Fetch OCC → JSON
+      - name: Fetch OCC
         env:
           FORCE_UPDATE: ${{ github.event_name == 'workflow_dispatch' }}
         run: python scripts/fetch_occ.py
-
       - name: Commit if changed
         run: |
           set -e
@@ -50,7 +41,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No data changes"
           else
-            git commit -m "data: OCC snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+            git commit -m "data: OCC snapshot backup $(date -u +%Y-%m-%dT%H:%MZ)"
             git push
-            echo "Pushed"
           fi
