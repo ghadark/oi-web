@@ -1,12 +1,22 @@
 name: Update OCC Data
 
+# جدولة قوية: كل 10 دقائق من 4–7 ص السعودية + احتياطي 7:00 و 7:30
+# GitHub أحيانًا يتخطى schedule — التكرار يقلل فرصة فوات اليوم كاملًا
 on:
   schedule:
-    # السعودية UTC+3 → 4:00–7:00 ص = 01:00–04:00 UTC
-    # كل 10 دقائق؛ السكربت يتوقف تلقائياً بعد تحديث يوم الجلسة (fingerprint)
+    # 4:00–6:50 ص السعودية = 01:00–03:50 UTC
     - cron: "*/10 1-3 * * *"
+    # 7:00 ص
     - cron: "0 4 * * *"
+    # 7:30 ص احتياطي
+    - cron: "30 4 * * *"
+    # 8:00 ص احتياطي أخير لو تأخر OCC أو فات GitHub الصباح
+    - cron: "0 5 * * *"
   workflow_dispatch: {}
+
+concurrency:
+  group: update-occ-data
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -14,9 +24,12 @@ permissions:
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -37,10 +50,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data web/data
+          git add data web/data || true
           if git diff --staged --quiet; then
-            echo "No data changes"
+            echo "No data changes (fingerprint match or OCC not ready yet)"
           else
             git commit -m "data: OCC snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
             git push
+            echo "Data committed and pushed"
           fi
