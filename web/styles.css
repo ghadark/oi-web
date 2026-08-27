@@ -2257,3 +2257,138 @@ html[data-theme="light"] .controls .series-btn.active {
     max-height: 360px !important;
   }
 }
+
+
+/* =========================================================
+   شريط التحكم — صف واحد على اللابتوب والتابلت والجوال
+   (تصغير خفيف + تمرير أفقي عند الحاجة، بدون نزول لسطرين)
+   ========================================================= */
+.controls {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  margin: 0 auto 14px !important;
+  padding: 10px 12px !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #475569 transparent;
+  background: rgba(15, 23, 42, 0.72) !important;
+  border: 1px solid rgba(51, 65, 85, 0.55) !important;
+  border-radius: 14px !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-sizing: border-box !important;
+}
+.controls::-webkit-scrollbar { height: 4px; }
+.controls::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+
+.controls > * {
+  flex: 0 0 auto !important;
+}
+.controls > label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--gray) !important;
+  white-space: nowrap !important;
+}
+.controls .select-exp-series,
+.controls .exp-series-row {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+.controls .chip-row {
+  display: inline-flex !important;
+  flex-wrap: nowrap !important;
+  gap: 2px !important;
+  padding: 2px 3px !important;
+  background: #111827 !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 8px !important;
+}
+.controls .chip {
+  min-width: 26px !important;
+  height: 26px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+  white-space: nowrap !important;
+}
+.controls #expSelect {
+  height: 30px !important;
+  font-size: 11px !important;
+  max-width: 130px !important;
+}
+.controls .delta-btn {
+  width: 28px !important;
+  height: 28px !important;
+  flex-shrink: 0 !important;
+}
+.controls .stocks-inline {
+  display: inline-flex !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  margin: 0 !important;
+}
+.controls .stocks-inline .stocks-select,
+.controls .stocks-inline .stocks-dd,
+.controls .stocks-dd-btn {
+  height: 30px !important;
+  font-size: 10px !important;
+  min-width: 64px !important;
+  white-space: nowrap !important;
+}
+.controls .series-btn {
+  white-space: nowrap !important;
+  font-size: 11px !important;
+  height: 30px !important;
+  padding: 0 4px !important;
+}
+.controls .x3-btn,
+button#x3Btn.x3-btn {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* تابلت */
+@media (max-width: 900px) {
+  .controls {
+    gap: 6px !important;
+    padding: 8px 10px !important;
+    justify-content: flex-start !important;
+  }
+  .controls .chip {
+    min-width: 22px !important;
+    padding: 0 6px !important;
+    font-size: 10px !important;
+    height: 24px !important;
+  }
+  .controls #expSelect { max-width: 110px !important; font-size: 10px !important; }
+  .controls > label { font-size: 10px !important; }
+  .controls .series-btn { font-size: 10px !important; }
+}
+
+/* جوال — صف واحد مع تمرير أفقي ناعم */
+@media (max-width: 600px) {
+  .controls {
+    gap: 5px !important;
+    padding: 6px 8px !important;
+    border-radius: 12px !important;
+  }
+  .controls .chip {
+    min-width: 20px !important;
+    padding: 0 5px !important;
+    font-size: 10px !important;
+    height: 22px !important;
+  }
+  .controls .chip-row { padding: 2px !important; }
+  .controls #expSelect { max-width: 96px !important; height: 28px !important; }
+  .controls .delta-btn { width: 26px !important; height: 26px !important; }
+  .controls .series-btn { font-size: 10px !important; margin-inline-end: 2px !important; }
+  .controls .exp-series-row { gap: 8px !important; }
+}
