@@ -33,6 +33,55 @@ const state = {
 
 const $ = (sel) => document.querySelector(sel);
 
+function placeFixedDropdown(btn, list) {
+  if (!btn || !list) return;
+  try {
+    if (!list._ddHome) list._ddHome = list.parentElement;
+    if (list.parentElement !== document.body) document.body.appendChild(list);
+    var r = btn.getBoundingClientRect();
+    var w = Math.max(1, Math.round(r.width));
+    var left = r.left;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+    if (left < 8) left = 8;
+    var top = r.bottom + 4;
+    if (top + 120 > window.innerHeight) {
+      top = Math.max(8, r.top - 4 - Math.min(320, window.innerHeight * 0.5));
+    }
+    list.classList.add("dd-fixed");
+    list.hidden = false;
+    list.removeAttribute("hidden");
+    list.style.setProperty("display", "block", "important");
+    list.style.setProperty("visibility", "visible", "important");
+    list.style.setProperty("pointer-events", "auto", "important");
+    list.style.setProperty("opacity", "1", "important");
+    list.style.setProperty("position", "fixed", "important");
+    list.style.setProperty("top", Math.round(top) + "px", "important");
+    list.style.setProperty("left", Math.round(left) + "px", "important");
+    list.style.setProperty("width", Math.round(w) + "px", "important");
+    list.style.setProperty("right", "auto", "important");
+    list.style.setProperty("bottom", "auto", "important");
+    list.style.setProperty("z-index", "10050", "important");
+    list.style.setProperty("max-height", "min(420px, 70vh)", "important");
+    list.style.setProperty("overflow-y", "auto", "important");
+  } catch (e) {}
+}
+function clearFixedDropdown(list) {
+  if (!list) return;
+  try {
+    list.classList.remove("dd-fixed");
+    ["display","visibility","pointer-events","opacity","position","top","left","width","right","bottom","z-index","max-height","overflow-y"].forEach(function (p) {
+      try { list.style.removeProperty(p); } catch (e0) {}
+    });
+    list.hidden = true;
+    list.setAttribute("hidden", "");
+    if (list._ddHome && list.parentElement === document.body) list._ddHome.appendChild(list);
+  } catch (e) {}
+}
+function positionDdList(btn, list) {
+  placeFixedDropdown(btn, list);
+}
+
+
 function formatUpdatedAt(s) {
   try {
     var d = new Date(s);
@@ -246,6 +295,7 @@ function ensureExpDropdownUI() {
     list.setAttribute("hidden", "");
     btn.classList.remove("open");
     if (wrap) wrap.classList.remove("open");
+    clearFixedDropdown(list);
   });
   return dd;
 }
@@ -355,6 +405,7 @@ function fillExpDropdown(exps) {
         if (list) {
           list.hidden = true;
           list.setAttribute("hidden", "");
+          clearFixedDropdown(list);
         }
         if (btn) btn.classList.remove("open");
         var wrap = document.getElementById("expDropdown");
@@ -395,18 +446,20 @@ function fillExpDropdown(exps) {
         var sList = document.getElementById("stocksDdList");
         if (sWrap) sWrap.classList.remove("open");
         if (sBtn) sBtn.classList.remove("open");
-        if (sList) { sList.hidden = true; sList.setAttribute("hidden", ""); }
+        if (sList) { sList.hidden = true; sList.setAttribute("hidden", ""); clearFixedDropdown(sList); }
       } catch (eS) {}
       if (isOpen) {
         if (wrap) wrap.classList.remove("open");
         btn.classList.remove("open");
         list.hidden = true;
         list.setAttribute("hidden", "");
+        clearFixedDropdown(list);
       } else {
         if (wrap) wrap.classList.add("open");
         btn.classList.add("open");
         list.hidden = false;
         list.removeAttribute("hidden");
+        placeFixedDropdown(btn, list);
       }
     };
   }
@@ -610,18 +663,20 @@ function renderStocksDropdown() {
       var eList = document.getElementById("expDdList");
       if (eWrap) eWrap.classList.remove("open");
       if (eBtn) eBtn.classList.remove("open");
-      if (eList) { eList.hidden = true; eList.setAttribute("hidden", ""); }
+      if (eList) { eList.hidden = true; eList.setAttribute("hidden", ""); clearFixedDropdown(eList); }
     } catch (eE) {}
     if (isOpen) {
       if (wrap) wrap.classList.remove("open");
       btn.classList.remove("open");
       list.hidden = true;
       list.setAttribute("hidden", "");
-    } else {
+        clearFixedDropdown(list);
+      } else {
       if (wrap) wrap.classList.add("open");
       btn.classList.add("open");
       list.hidden = false;
       list.removeAttribute("hidden");
+      placeFixedDropdown(btn, list);
     }
   };
   list.querySelectorAll(".stocks-dd-item").forEach(function (item) {
@@ -634,6 +689,7 @@ function renderStocksDropdown() {
       btn.classList.remove("open");
       var sWrap = document.getElementById("stocksDd");
       if (sWrap) sWrap.classList.remove("open");
+      clearFixedDropdown(list);
       if (!v) return;
       state.ticker = v;
       state.expiration = null;
@@ -652,11 +708,13 @@ function renderStocksDropdown() {
       var btnEl = $("#stocksDdBtn");
       var wrap = $("#stocksDd");
       if (!listEl || !btnEl) return;
+      if (btnEl.contains(e.target) || listEl.contains(e.target)) return;
       if (wrap && wrap.contains(e.target)) return;
       listEl.hidden = true;
       listEl.setAttribute("hidden", "");
       btnEl.classList.remove("open");
       if (wrap) wrap.classList.remove("open");
+      clearFixedDropdown(listEl);
     });
   }
 }
@@ -3110,5 +3168,21 @@ async function submitFeedback(e) {
     if (st) st.textContent = "خطأ شبكة — حاولي لاحقًا";
   }
 }
+
+
+(function bindDdReposition() {
+  function repo() {
+    try {
+      var eBtn = document.getElementById("expDdBtn");
+      var eList = document.getElementById("expDdList");
+      if (eBtn && eList && eBtn.classList.contains("open") && !eList.hidden) placeFixedDropdown(eBtn, eList);
+      var sBtn = document.getElementById("stocksDdBtn");
+      var sList = document.getElementById("stocksDdList");
+      if (sBtn && sList && sBtn.classList.contains("open") && !sList.hidden) placeFixedDropdown(sBtn, sList);
+    } catch (e) {}
+  }
+  window.addEventListener("resize", repo);
+  window.addEventListener("scroll", repo, true);
+})();
 
 document.addEventListener("DOMContentLoaded", init);
