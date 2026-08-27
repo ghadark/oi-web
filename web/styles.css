@@ -2590,11 +2590,7 @@ button#x3Btn.x3-btn {
   }
   .controls .exp-dd,
   .controls #expDropdown,
-  .controls .exp-dd-btn {
-    min-width: 118px !important;
-    max-width: 140px !important;
-    flex-shrink: 0 !important;
-  }
+  .controls .exp-dd-btn { min-width: 0 !important; max-width: 120px !important; flex-shrink: 0 !important; }
   .controls .chip-row {
     flex-shrink: 0 !important;
     gap: 3px !important;
@@ -2656,12 +2652,7 @@ button#x3Btn.x3-btn {
     font-size: 10px !important;
     padding: 3px 6px !important;
   }
-  .controls .exp-dd-btn {
-    min-width: 100px !important;
-    max-width: 120px !important;
-    font-size: 11px !important;
-    padding: 4px 8px !important;
-  }
+  .controls .exp-dd-btn { min-width: 0 !important; max-width: 110px !important; font-size: 11px !important; padding: 4px 8px !important; }
 }
 
 /* اللابتوب: أعد تأكيد أن الشريط كما كان (مريح وكبير) */
@@ -2755,4 +2746,142 @@ button#x3Btn.x3-btn {
   height: 0 !important;
   width: 0 !important;
   background: transparent !important;
+}
+
+
+/* ===== ملاءمة شريط التحكم للجوال/التابلت مثل الخاص: كل العناصر ظاهرة بدون سحب ===== */
+@media (max-width: 1100px) {
+  .main {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+  .controls {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+    padding: 6px 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  .controls::-webkit-scrollbar {
+    display: none !important;
+    height: 0 !important;
+    width: 0 !important;
+  }
+  .controls > * { flex: 0 0 auto !important; flex-shrink: 0 !important; }
+
+  .controls > label,
+  .controls .exp-label,
+  .controls .stocks-label {
+    font-size: 9px !important;
+    margin: 0 2px !important;
+    padding: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .controls .series-btn {
+    font-size: 9px !important;
+    padding: 2px 3px !important;
+    height: auto !important;
+    line-height: 1.2 !important;
+    margin-inline-end: 2px !important;
+    white-space: nowrap !important;
+  }
+
+  .controls .exp-series-row,
+  .controls .select-exp-series,
+  .controls .select {
+    gap: 3px !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .controls .exp-dd,
+  .controls #expDropdown {
+    min-width: 0 !important;
+    max-width: none !important;
+    flex-shrink: 0 !important;
+  }
+  .controls .exp-dd-btn {
+    min-width: 0 !important;
+    max-width: 108px !important;
+    width: auto !important;
+    padding: 3px 6px !important;
+    font-size: 10px !important;
+    height: 26px !important;
+  }
+  .controls .exp-dd-btn #expDdLabel {
+    font-size: 10px !important;
+    white-space: nowrap !important;
+  }
+
+  .controls .chip-row {
+    gap: 1px !important;
+    padding: 2px 3px !important;
+  }
+  .controls .chip {
+    min-width: 26px !important;
+    width: auto !important;
+    height: 24px !important;
+    padding: 0 5px !important;
+    font-size: 10px !important;
+  }
+
+  .controls .delta-btn {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    font-size: 11px !important;
+    padding: 0 !important;
+  }
+
+  .controls .stocks-inline {
+    gap: 3px !important;
+  }
+  .controls .stocks-dd-btn,
+  .controls .stocks-inline .stocks-select {
+    min-width: 48px !important;
+    max-width: 64px !important;
+    height: 24px !important;
+    font-size: 10px !important;
+    padding: 2px 5px !important;
+  }
+
+  .controls .x3-btn,
+  button#x3Btn.x3-btn {
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+    min-width: 0 !important;
+    height: auto !important;
+    white-space: nowrap !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .controls {
+    gap: 3px !important;
+    padding: 5px 6px !important;
+  }
+  .controls .series-btn { font-size: 8.5px !important; padding: 2px 2px !important; }
+  .controls .exp-dd-btn {
+    max-width: 96px !important;
+    font-size: 9px !important;
+    padding: 2px 5px !important;
+    height: 24px !important;
+  }
+  .controls .chip {
+    min-width: 22px !important;
+    height: 22px !important;
+    padding: 0 4px !important;
+    font-size: 9px !important;
+  }
+  .controls > label,
+  .controls .stocks-label { font-size: 8px !important; }
 }
