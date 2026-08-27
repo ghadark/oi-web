@@ -2423,3 +2423,76 @@ button#x3Btn.x3-btn {
   .controls #expSelect { max-width: 96px !important; }
   .controls .series-btn { font-size: 10px !important; }
 }
+
+
+/* =========================================================
+   إصلاح القوائم المنسدلة (تواريخ + STOCKS) — لا تُقص داخل الشريط
+   ========================================================= */
+.controls {
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  position: relative;
+  z-index: 40;
+}
+.controls .select,
+.controls .select-exp-series,
+.controls .exp-series-row,
+.controls .stocks-inline {
+  overflow: visible !important;
+  position: relative;
+  z-index: 45;
+}
+.controls .exp-dd,
+.controls #expDropdown,
+.exp-dd {
+  position: relative !important;
+  z-index: 90 !important;
+  overflow: visible !important;
+}
+.controls .exp-dd-list,
+#expDdList,
+.exp-dd-list {
+  position: absolute !important;
+  z-index: 200 !important;
+  top: calc(100% + 4px) !important;
+  max-height: min(420px, 70vh) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  display: block;
+}
+.controls .exp-dd-list:not([hidden]),
+#expDdList:not([hidden]) {
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+.controls .stocks-dd,
+#stocksDd,
+.stocks-dd {
+  position: relative !important;
+  z-index: 90 !important;
+  overflow: visible !important;
+}
+.controls .stocks-dd-list,
+#stocksDdList,
+.stocks-dd-list {
+  position: absolute !important;
+  z-index: 200 !important;
+  top: calc(100% + 4px) !important;
+  max-height: min(320px, 60vh) !important;
+  overflow-y: auto !important;
+  background: var(--card, #1e293b);
+  border: 1px solid var(--border, #334155);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.35);
+  padding: 4px;
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
+/* على الشاشات الضيقة: إن احتجت تمرير الشريط، استخدم تمرير الصفحة لا قص القوائم */
+@media (max-width: 900px) {
+  .controls {
+    overflow: visible !important;
+  }
+}
