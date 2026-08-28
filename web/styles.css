@@ -3465,3 +3465,131 @@ html[data-theme="light"] .exp-unified-bar .chip {
   background: #fff;
   color: #0f172a;
 }
+
+
+/* ===== Excel modal polish v2 ===== */
+.map-modal .export-panel,
+.export-panel {
+  width: min(720px, 96vw) !important;
+  max-width: 720px !important;
+  direction: rtl;
+}
+.export-body {
+  direction: rtl;
+  text-align: right;
+}
+.exp-export-top {
+  text-align: center;
+  margin-bottom: 10px;
+  padding-top: 4px;
+}
+.exp-export-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e0e7ff;
+}
+.exp-export-sub { display: none !important; }
+.exp-select-all {
+  position: absolute;
+  top: 0;
+  right: 0; /* يمين في RTL */
+  left: auto !important;
+  font-size: 11px !important;
+}
+.exp-month-list {
+  direction: rtl;
+  max-height: 300px;
+}
+.exp-month {
+  direction: rtl;
+  text-align: right;
+}
+.exp-month-title {
+  text-align: right;
+  font-size: 12px;
+  color: #a5b4fc;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.exp-month-dates {
+  direction: rtl;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  justify-items: stretch;
+}
+@media (max-width: 640px) {
+  .exp-month-dates { grid-template-columns: repeat(4, 1fr); }
+  .map-modal .export-panel, .export-panel {
+    width: min(96vw, 520px) !important;
+  }
+}
+.exp-date-chip {
+  padding: 6px 4px !important;
+  border-radius: 8px !important;
+  border: 1px solid #2a3548 !important;
+  background: #162032 !important;
+  color: #cbd5e1 !important;
+}
+.exp-date-chip .d {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+.exp-date-chip .s {
+  font-size: 9px !important;
+  color: #64748b !important;
+}
+/* تحديد هادئ — بدون توهج قوي */
+.exp-date-chip.on {
+  background: #1e3a4c !important;
+  border-color: #3d7a8c !important;
+  color: #e2e8f0 !important;
+  box-shadow: none !important;
+}
+.exp-date-chip.on .s {
+  color: #7dd3c0 !important;
+}
+.exp-date-chip:hover {
+  border-color: #475569 !important;
+}
+
+/* شريط موحّد بسطر واحد قدر الإمكان */
+.exp-unified-bar {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding: 8px 10px !important;
+  direction: rtl;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.exp-unified-bar .lab {
+  font-size: 10px !important;
+  color: #64748b !important;
+  flex-shrink: 0;
+}
+.exp-unified-bar .chip {
+  padding: 5px 9px !important;
+  font-size: 11px !important;
+  border-radius: 8px !important;
+  flex-shrink: 0;
+  background: #162032 !important;
+  border: 1px solid #2a3548 !important;
+  color: #cbd5e1 !important;
+}
+.exp-unified-bar .chip.on {
+  background: #1e3a4c !important;
+  border-color: #3d7a8c !important;
+  color: #e2e8f0 !important;
+  box-shadow: none !important;
+}
+.exp-unified-bar .exp-do-inline {
+  padding: 5px 12px !important;
+  font-size: 11px !important;
+  flex-shrink: 0;
+  background: #0f766e !important;
+  border: 1px solid #14b8a6 !important;
+  color: #ecfdf5 !important;
+}

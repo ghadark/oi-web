@@ -1818,7 +1818,7 @@ function formatExpExportChip(exp) {
       monShort: d.toLocaleString("en", { month: "short" }),
       weekday: d.toLocaleString("en", { weekday: "short" }),
       monthKey: d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"),
-      monthLabel: monthsAr[d.getMonth()] || "",
+      monthLabel: (monthsAr[d.getMonth()] || "") + " " + d.getFullYear(),
       sub: isOpx ? "OPX" : d.toLocaleString("en", { weekday: "short" }),
     };
   } catch (e) {
@@ -1864,8 +1864,7 @@ function openExportDialog() {
 
   let html = "";
   html += '<div class="exp-export-top">';
-  html += '<div class="exp-export-title">تصدير Excel — ' + (state.ticker || "") + "</div>";
-  html += '<div class="exp-export-sub">التواريخ مجمّعة حسب الشهر</div>';
+  html += '<div class="exp-export-title">Excel — ' + (state.ticker || "") + "</div>";
   html += '<button type="button" class="btn-sm exp-select-all" id="expSelectAll">تحديد الكل</button>';
   html += "</div>";
 
