@@ -1,16 +1,16 @@
 name: Update OCC Data
 
-# جدولة كثيفة صباح السعودية — يقلل فوات اليوم بسبب تخطّي GitHub للـ cron
-# 4:00–7:50 ص = 01:00–04:50 UTC كل 10 دقائق + احتياطيات
+# 4:00–7:50 ص السعودية = 01:00–04:50 UTC كل 10 دقائق
+# + محاولات متأخرة حتى ~10 ص إذا تأخر OCC
 on:
   schedule:
     - cron: "*/10 1-4 * * *"
-    - cron: "0 5 * * *"
-    - cron: "30 5 * * *"
+    - cron: "0,20,40 5 * * *"
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 concurrency:
-  group: update-occ-data-${{ github.workflow }}
+  group: update-occ-data
   cancel-in-progress: false
 
 permissions:
@@ -25,6 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -36,21 +37,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests yfinance
 
+      - name: Show trigger
+        run: |
+          echo "event=${{ github.event_name }}"
+          echo "utc=$(date -u +%Y-%m-%dT%H:%MZ)"
+          echo "riyadh=$(TZ=Asia/Riyadh date +%Y-%m-%dT%H:%M)"
+
       - name: Fetch OCC → JSON
         env:
-          FORCE_UPDATE: ${{ github.event_name == 'workflow_dispatch' }}
+          FORCE_UPDATE: ${{ github.event_name == 'workflow_dispatch' && 'true' || '' }}
         run: python scripts/fetch_occ.py
 
-      - name: Commit if changed
+      - name: Commit & push if changed
         run: |
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data web/data 2>/dev/null || git add data/ web/data/ 2>/dev/null || true
+          git add data/ web/data/ || true
+          git add data web/data 2>/dev/null || true
           if git diff --staged --quiet; then
-            echo "No data changes"
+            echo "No data changes to commit"
           else
-            git commit -m "data: OCC snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
-            git push
-            echo "Pushed"
+            git commit -m "data: OCC snapshot $(date -u +%Y-%m-%dT%H:%MZ) [${{ github.event_name }}]"
+            git push origin HEAD:${{ github.ref_name }}
+            echo "Pushed OK"
           fi
