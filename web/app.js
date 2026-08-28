@@ -21,6 +21,7 @@ const STOCKS_TICKERS = [
   { symbol: "MU", name: "Micron", color: "#111827" },
   { symbol: "COHR", name: "Coherent", color: "#00A3E0" },
   { symbol: "SNDK", name: "SanDisk", color: "#6366F1" },
+  { symbol: "VOO", name: "Vanguard S&P 500", color: "#C41230" },
 ];
 
 /** كل الرموز للبحث/العرض */
@@ -1826,6 +1827,14 @@ function formatExpExportChip(exp) {
   }
 }
 
+
+/** أول اثنين من الشهر الميلادي (بتاريخ الجهاز) */
+function isFirstMondayOfMonth(d) {
+  d = d || new Date();
+  if (d.getDay() !== 1) return false;
+  return d.getDate() <= 7;
+}
+
 function openExportDialog() {
   const data = state.cache[state.ticker];
   if (!data) {
@@ -1864,7 +1873,12 @@ function openExportDialog() {
 
   let html = "";
   html += '<div class="exp-export-top">';
-  html += '<div class="exp-export-title">Excel — ' + (state.ticker || "") + "</div>";
+  html += '<div class="exp-export-heading">';
+  html += '<div class="exp-export-title">' + (state.ticker || "") + "</div>";
+  if (isFirstMondayOfMonth(new Date())) {
+    html += '<div class="exp-month-tip">بداية شهر جديد — مناسبة لتصدير ما يهمّك</div>';
+  }
+  html += "</div>";
   html += '<button type="button" class="btn-sm exp-select-all" id="expSelectAll">تحديد الكل</button>';
   html += "</div>";
 
