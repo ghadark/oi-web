@@ -3593,3 +3593,84 @@ html[data-theme="light"] .exp-unified-bar .chip {
   border: 1px solid #14b8a6 !important;
   color: #ecfdf5 !important;
 }
+
+
+/* ===== Excel = نفس مقاس الماب + تمرير بلا شريط + رسالة هادئة ===== */
+.map-modal .export-panel,
+.export-panel {
+  width: min(960px, 96vw) !important;
+  min-width: min(720px, 96vw) !important;
+  max-width: 960px !important;
+  max-height: 92vh !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+}
+.export-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 18px 14px !important;
+}
+.exp-month-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;          /* Firefox */
+  -ms-overflow-style: none !important;       /* IE/Edge legacy */
+}
+.exp-month-list::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+.exp-unified-bar {
+  flex-wrap: wrap !important;
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 10px 12px !important;
+  margin-top: 8px;
+}
+.exp-unified-bar::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+.exp-status {
+  text-align: center;
+  margin-top: 8px;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #64748b !important;   /* هادئ رمادي */
+  min-height: 1.2em;
+}
+#expStatus {
+  color: #64748b !important;
+}
+/* بعد النجاح يبقى هادئًا */
+.exp-status:not(:empty) {
+  color: #5b7c8a !important;
+}
+html[data-theme="light"] .exp-status,
+html[data-theme="light"] #expStatus {
+  color: #64748b !important;
+}
+@media (max-width: 700px) {
+  .map-modal .export-panel,
+  .export-panel {
+    width: min(96vw, 960px) !important;
+    min-width: 0 !important;
+  }
+  .exp-month-dates {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}

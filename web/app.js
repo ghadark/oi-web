@@ -2077,8 +2077,8 @@ function runExportFromDialog(emode, edays, estrikes) {
         a.click();
         URL.revokeObjectURL(a.href);
       }
-      if (st) st.textContent = "✅ تم التصدير: " + fname;
-      setStatus("✅ تم التصدير: " + fname, "ok");
+      if (st) st.textContent = "تم التصدير";
+      setStatus("تم التصدير", "ok");
     }).catch(function (err) {
       if (st) st.textContent = "خطأ: " + (err && err.message ? err.message : err);
       setStatus("خطأ تصدير: " + (err && err.message ? err.message : err), "err");
@@ -2903,7 +2903,7 @@ async function exportArchiveExcel() {
     a.click();
     URL.revokeObjectURL(a.href);
   }
-  setStatus("✅ تم تصدير الأرشيف: " + fname, "ok");
+  setStatus("تم التصدير", "ok");
 }
 
 
