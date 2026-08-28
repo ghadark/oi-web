@@ -3257,3 +3257,37 @@ button#x3Btn.x3-btn {
 .archive-export-row .btn-excel {
   min-width: 100px;
 }
+
+
+/* archive v5 polish */
+.btn-archive {
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  background: linear-gradient(165deg, #1e293b 0%, #334155 100%) !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.35) !important;
+}
+.btn-archive:hover {
+  border-color: rgba(165, 180, 252, 0.55) !important;
+  color: #c7d2fe !important;
+}
+.archive-head-center h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #e0e7ff;
+  text-align: center;
+}
+.archive-toolbar-center .arch-select {
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.archive-toolbar-center .btn-excel {
+  min-width: 88px;
+  height: 32px;
+  padding: 0 14px;
+}
+.arch-select-hint { display: none !important; }

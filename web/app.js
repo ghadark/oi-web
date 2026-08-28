@@ -2538,14 +2538,7 @@ function renderArchChips() {
 }
 
 function updateArchSelectHint() {
-  var hint = $("#archSelectHint");
-  if (!hint) return;
-  var n = (state.archSelected || []).length;
-  if (!n) {
-    hint.textContent = "حدّد يومًا أو أكثر للتصدير · اضغط «الكل» لتحديد الجميع";
-  } else {
-    hint.textContent = "محدّد: " + n + " يوم — جاهز للتصدير";
-  }
+  /* hint removed by design */
 }
 
 function renderArchDateRow(exps) {
