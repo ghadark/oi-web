@@ -36,7 +36,12 @@
         <div style="display:flex;gap:8px;align-items:center">
           <button id="exportBtn" class="btn btn-excel" type="button">Excel</button>
           <button id="mapBtn" class="btn btn-map" type="button">Map</button>
-          <button id="archiveBtn" class="btn btn-archive" type="button" title="أرشيف الأسبوع">🗂</button>
+          <button id="archiveBtn" class="btn btn-archive" type="button" title="أرشيف الأسبوع">
+            <svg class="arch-ico" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path fill="currentColor" d="M4 7h16v2H4V7zm2 3h12v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-9zm3 2v6h2v-6H9zm4 0v6h2v-6h-2z"/>
+              <path fill="currentColor" d="M3 5.5A1.5 1.5 0 0 1 4.5 4h15A1.5 1.5 0 0 1 21 5.5V7H3V5.5z"/>
+            </svg>
+          </button>
           <button id="feedbackBtn" class="btn btn-feedback" type="button" title="تعليق خاص">💬</button>
         </div>
       </div>
@@ -114,7 +119,7 @@
     <div class="map-panel archive-panel">
       <div class="map-head">
         <div>
-          <h3 id="archiveTitle">🗂 أرشيف الأسبوع</h3>
+          <h3 id="archiveTitle">أرشيف الأسبوع</h3>
           <p id="archiveSub" class="map-sub">—</p>
         </div>
         <button id="archiveClose" class="btn" type="button">إغلاق</button>

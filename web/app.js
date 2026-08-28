@@ -29,7 +29,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
   expiration: null, showDelta: false, seriesMode: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
-  archDays: "ALL", archStrikes: "30", archShowDelta: true, archExportMode: "multi",
+  archDays: "2", archStrikes: "30", archShowDelta: true, archExportMode: "multi",
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -2551,7 +2551,7 @@ function renderArchiveBody() {
   var exps = archiveExpirations(data);
   var title = $("#archiveTitle");
   var sub = $("#archiveSub");
-  if (title) title.textContent = "🗂 أرشيف الأسبوع";
+  if (title) title.textContent = "أرشيف الأسبوع";
   if (sub) {
     sub.textContent =
       state.ticker +
@@ -2570,7 +2570,13 @@ function renderArchiveBody() {
   var html = "";
   exps.forEach(function (exp) {
     var view = getViewRowsForExp(data, exp, state.archDays, state.archStrikes);
-    html += buildOneArchiveTableHtml(exp, view, state.archShowDelta);
+    if (!view) {
+      var t = formatArchDayTitle(exp);
+      html += '<div class="archive-day"><div class="archive-day-head"><span>' +
+        t.top + '</span><em>' + t.sub + '</em></div><div class="archive-empty">لا بيانات لهذا اليوم</div></div>';
+    } else {
+      html += buildOneArchiveTableHtml(exp, view, state.archShowDelta);
+    }
   });
   body.innerHTML = html;
 }

@@ -275,18 +275,18 @@ html[data-theme="dark"] .brand-sign-wrap {
 .btn-map:hover { filter: brightness(1.08); }
 
 .btn-archive {
-  width: 36px !important;
-  min-width: 36px !important;
+  width: 40px !important;
+  min-width: 40px !important;
   height: 36px !important;
   padding: 0 !important;
   border-radius: 10px !important;
-  border: 1px solid #a78bfa !important;
-  background: linear-gradient(145deg, #5b21b6, #7c3aed) !important;
-  color: #fff !important;
-  font-size: 16px !important;
-  display: inline-grid !important;
-  place-items: center !important;
-  box-shadow: 0 0 14px rgba(124, 58, 237, 0.4) !important;
+  border: 1px solid rgba(167,139,250,0.55) !important;
+  background: linear-gradient(160deg, #4c1d95 0%, #6d28d9 55%, #7c3aed 100%) !important;
+  color: #ede9fe !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 14px rgba(109, 40, 217, 0.4) !important;
   cursor: pointer;
 }
 .btn-archive:hover { filter: brightness(1.1); }
@@ -2955,3 +2955,90 @@ button#x3Btn.x3-btn {
   .controls > label,
   .controls .stocks-label { font-size: 8px !important; }
 }
+
+.btn-archive .arch-ico { display: block; opacity: 0.95; }
+.btn-archive:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.archive-panel {
+  width: min(1000px, 100%);
+  background: #0b1220;
+  border: 1px solid #312e81;
+}
+.archive-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid #1e293b;
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+.archive-toolbar .arch-lab { color: #94a3b8; font-size: 11px; margin-inline-start: 4px; }
+.archive-toolbar .arch-select {
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.archive-body {
+  max-height: 70vh;
+  overflow: auto;
+  padding-inline-end: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.archive-day {
+  background: #111827;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+.archive-day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, #1e1b4b, #1e293b);
+  border-bottom: 1px solid #312e81;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0e7ff;
+}
+.archive-day-head em {
+  font-style: normal;
+  color: #c4b5fd;
+  font-weight: 500;
+  font-size: 11px;
+  background: rgba(124,58,237,0.2);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.archive-day .table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.archive-day table.oi {
+  width: max-content;
+  min-width: 100%;
+  font-size: 11px;
+}
+.archive-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 36px 16px;
+  font-size: 13px;
+  border: 1px dashed #334155;
+  border-radius: 12px;
+}
+
+#archiveModal { z-index: 1100; }
+#archiveModal .archive-panel {
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+#archiveModal .archive-body { flex: 1; min-height: 0; }
