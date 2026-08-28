@@ -29,7 +29,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
   expiration: null, showDelta: false, seriesMode: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
-  archDays: "2", archStrikes: "30", archShowDelta: true, archExportMode: "multi",
+  archDays: "2", archStrikes: "30", archShowDelta: false, archExportMode: "multi", archExp: null,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -2502,6 +2502,7 @@ function buildOneArchiveTableHtml(exp, view, showDelta) {
   return html;
 }
 
+
 function renderArchChips() {
   var daysHost = $("#archDaysRow");
   var strikesHost = $("#archStrikesRow");
@@ -2539,6 +2540,29 @@ function renderArchChips() {
   if (db) db.classList.toggle("active", !!state.archShowDelta);
 }
 
+function renderArchDateRow(exps) {
+  var row = $("#archDateRow");
+  if (!row) return;
+  row.innerHTML = "";
+  if (!exps || !exps.length) {
+    row.innerHTML = '<span class="archive-empty" style="border:none;padding:8px">لا تواريخ هذا الأسبوع</span>';
+    return;
+  }
+  exps.forEach(function (exp) {
+    var t = formatArchDayTitle(exp);
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "arch-date-chip" + (state.archExp === exp ? " active" : "");
+    b.innerHTML = '<span class="d-top">' + t.top + '</span><span class="d-sub">' + t.sub + "</span>";
+    b.onclick = function () {
+      state.archExp = exp;
+      renderArchDateRow(exps);
+      renderArchiveBody();
+    };
+    row.appendChild(b);
+  });
+}
+
 function renderArchiveBody() {
   var body = $("#archiveBody");
   if (!body) return;
@@ -2547,53 +2571,56 @@ function renderArchiveBody() {
     body.innerHTML = '<div class="archive-empty">لا بيانات — اختر مؤشرًا وانتظر التحميل</div>';
     return;
   }
-  var bounds = getArchiveWeekBounds(data);
-  var exps = archiveExpirations(data);
-  var title = $("#archiveTitle");
-  var sub = $("#archiveSub");
-  if (title) title.textContent = "أرشيف الأسبوع";
-  if (sub) {
-    sub.textContent =
-      state.ticker +
-      " · " +
-      bounds.monIso.slice(5) +
-      " → " +
-      bounds.friIso.slice(5) +
-      " · " +
-      (exps.length ? exps.length + " يوم" : "لا أيام");
-  }
-  if (!exps.length) {
-    body.innerHTML =
-      '<div class="archive-empty">لا توجد تواريخ انتهاء ضمن أسبوع التداول الحالي في البيانات.</div>';
+  if (!state.archExp) {
+    body.innerHTML = '<div class="archive-empty">اختر تاريخ انتهاء من الصف أعلاه لعرض الجدول</div>';
     return;
   }
-  var html = "";
-  exps.forEach(function (exp) {
-    var view = getViewRowsForExp(data, exp, state.archDays, state.archStrikes);
-    if (!view) {
-      var t = formatArchDayTitle(exp);
-      html += '<div class="archive-day"><div class="archive-day-head"><span>' +
-        t.top + '</span><em>' + t.sub + '</em></div><div class="archive-empty">لا بيانات لهذا اليوم</div></div>';
-    } else {
-      html += buildOneArchiveTableHtml(exp, view, state.archShowDelta);
-    }
-  });
-  body.innerHTML = html;
+  var view = getViewRowsForExp(data, state.archExp, state.archDays, state.archStrikes);
+  if (!view) {
+    body.innerHTML = '<div class="archive-empty">لا بيانات لهذا التاريخ مع Days/Strikes الحالية</div>';
+    return;
+  }
+  body.innerHTML = buildOneArchiveTableHtml(state.archExp, view, state.archShowDelta);
 }
 
 function openArchive() {
   var modal = $("#archiveModal");
   if (!modal) return;
+  state.archExp = null;
+  state.archShowDelta = false;
   modal.classList.remove("hidden");
+  var data = state.cache[state.ticker];
+  var bounds = data ? getArchiveWeekBounds(data) : null;
+  var exps = data ? archiveExpirations(data) : [];
+  var title = $("#archiveTitle");
+  var sub = $("#archiveSub");
+  if (title) title.textContent = "أرشيف الأسبوع";
+  if (sub) {
+    if (bounds) {
+      sub.textContent =
+        state.ticker +
+        " · " +
+        bounds.monIso.slice(5) +
+        " → " +
+        bounds.friIso.slice(5) +
+        " · اختر تاريخًا";
+    } else {
+      sub.textContent = "اختر تاريخًا لعرض جدوله";
+    }
+  }
   renderArchChips();
+  renderArchDateRow(exps);
   var modeSel = $("#archExportMode");
   if (modeSel) modeSel.value = state.archExportMode || "multi";
+  var db = $("#archDeltaBtn");
+  if (db) db.classList.remove("active");
   renderArchiveBody();
 }
 
 function closeArchive() {
   var modal = $("#archiveModal");
   if (modal) modal.classList.add("hidden");
+  state.archExp = null;
 }
 
 async function exportArchiveExcel() {

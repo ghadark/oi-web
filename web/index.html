@@ -115,15 +115,16 @@
       </form>
     </div>
   </div>
-  <div id="archiveModal" class="map-modal hidden" role="dialog" aria-modal="true">
+    <div id="archiveModal" class="map-modal hidden" role="dialog" aria-modal="true">
     <div class="map-panel archive-panel">
-      <div class="map-head">
+      <div class="map-head archive-head">
         <div>
           <h3 id="archiveTitle">أرشيف الأسبوع</h3>
-          <p id="archiveSub" class="map-sub">—</p>
+          <p id="archiveSub" class="map-sub">اختر تاريخًا لعرض جدوله</p>
         </div>
         <button id="archiveClose" class="btn" type="button">إغلاق</button>
       </div>
+      <div id="archDateRow" class="arch-date-row"></div>
       <div class="archive-toolbar">
         <span class="arch-lab">Days</span>
         <div id="archDaysRow" class="chip-row"></div>
@@ -137,9 +138,12 @@
         </select>
         <button id="archExportBtn" class="btn btn-excel" type="button">Excel</button>
       </div>
-      <div id="archiveBody" class="map-body archive-body"></div>
+      <div id="archiveBody" class="map-body archive-body">
+        <div class="archive-empty">اختر تاريخ انتهاء من الصف أعلاه لعرض الجدول</div>
+      </div>
     </div>
   </div>
+
   <script src="app.js"></script>
   <!-- Cloudflare Web Analytics -->
   <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "b3b1b9ffbbd74d1d902173c2f92ce3a7"}'></script>

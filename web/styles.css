@@ -3042,3 +3042,52 @@ button#x3Btn.x3-btn {
   flex-direction: column;
 }
 #archiveModal .archive-body { flex: 1; min-height: 0; }
+
+.archive-head { flex-shrink: 0; }
+.arch-date-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0 12px;
+  border-bottom: 1px solid #1e293b;
+  margin-bottom: 8px;
+}
+.arch-date-chip {
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-width: 72px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.25;
+  transition: background .15s, border-color .15s, box-shadow .15s;
+}
+.arch-date-chip .d-top { font-weight: 700; display: block; }
+.arch-date-chip .d-sub { font-size: 10px; color: #94a3b8; }
+.arch-date-chip:hover {
+  border-color: #7c3aed;
+  background: #1e1b4b;
+}
+.arch-date-chip.active {
+  background: linear-gradient(145deg, #5b21b6, #7c3aed);
+  border-color: #a78bfa;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(124,58,237,.35);
+}
+.arch-date-chip.active .d-sub { color: #ddd6fe; }
+.archive-toolbar { flex-shrink: 0; }
+.archive-body {
+  flex: 1;
+  min-height: 200px;
+  max-height: 58vh;
+  overflow: auto;
+}
+#archiveModal .archive-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  width: min(960px, 96vw);
+}
