@@ -866,7 +866,8 @@ def main() -> int:
 
     force = os.environ.get("FORCE_UPDATE", "").strip().lower() in ("1", "true", "yes")
     if not force and session_already_synced(pull_date):
-        print(f"[skip] عمود الجلسة {pull_date} مكتمل مسبقاً")
+        print(f"[skip] عمود الجلسة {pull_date} مكتمل مسبقاً — لا إعادة سحب (FORCE_UPDATE لإجبار)")
+        # مهم: الخروج 0 بدون تعديل ملفات → workflow لا يعمل commit (طبيعي)
         return 0
 
     index = {
@@ -972,19 +973,32 @@ def main() -> int:
 
     core = ["SPY", "QQQ", "IWM", "GLD", "SPX"]
     merged_ok = 0
+    stale_ok = 0
     for tk in core:
         pub = DATA_DIR / f"{tk}.json"
+        hist_path = DATA_DIR / f"{tk}_history.json"
         if not pub.exists():
             continue
         try:
             snap = json.loads(pub.read_text(encoding="utf-8"))
-            if pull_date in (snap.get("pull_dates") or []):
-                merged_ok += 1
+            if pull_date not in (snap.get("pull_dates") or []):
+                continue
+            merged_ok += 1
+            hist = load_history(hist_path)
+            if is_stale_duplicate_of_prev(hist, pull_date):
+                stale_ok += 1
         except Exception:
             pass
-    if merged_ok >= 4:
+    # لا نُغلق الجلسة إذا كانت أغلب البيانات نسخة من اليوم السابق (OCC لم يحدّث بعد)
+    # حتى تستمر محاولات الـ cron كل 10 دقائق
+    if merged_ok >= 4 and stale_ok < 3:
         mark_session_done(pull_date)
-        print(f"[done] session {pull_date} marked ({merged_ok}/5)")
+        print(f"[done] session {pull_date} marked ({merged_ok}/5, stale={stale_ok})")
+    else:
+        print(
+            f"[wait] لا إغلاق للجلسة بعد — merged={merged_ok}/5 stale={stale_ok}/5 "
+            f"(OCC قد يتأخر؛ المحاولة التالية من Actions)"
+        )
 
     print("done.")
     return 0
