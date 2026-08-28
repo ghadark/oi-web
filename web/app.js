@@ -1805,6 +1805,27 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   return headerEnd;
 }
 
+function formatExpExportChip(exp) {
+  try {
+    var d = new Date(String(exp) + "T12:00:00");
+    var monthsAr = {
+      0: "يناير", 1: "فبراير", 2: "مارس", 3: "أبريل", 4: "مايو", 5: "يونيو",
+      6: "يوليو", 7: "أغسطس", 8: "سبتمبر", 9: "أكتوبر", 10: "نوفمبر", 11: "ديسمبر"
+    };
+    var isOpx = typeof isThirdFridayExp === "function" && isThirdFridayExp(exp);
+    return {
+      day: d.getDate(),
+      monShort: d.toLocaleString("en", { month: "short" }),
+      weekday: d.toLocaleString("en", { weekday: "short" }),
+      monthKey: d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"),
+      monthLabel: monthsAr[d.getMonth()] || "",
+      sub: isOpx ? "OPX" : d.toLocaleString("en", { weekday: "short" }),
+    };
+  } catch (e) {
+    return { day: exp, monShort: "", weekday: "", monthKey: "x", monthLabel: "", sub: "" };
+  }
+}
+
 function openExportDialog() {
   const data = state.cache[state.ticker];
   if (!data) {
@@ -1828,51 +1849,106 @@ function openExportDialog() {
     return;
   }
   const curExp = state.expiration;
-  let html = "";
-  html += '<div class="exp-export-block">';
-  html += '<div class="exp-export-head"><b>تواريخ الانتهاء</b>';
-  html += '<button type="button" class="btn btn-sm" id="expSelectAll">تحديد الكل</button></div>';
-  html += '<div class="exp-checks">';
+
+  // تجميع حسب الشهر
+  const groups = {};
+  const order = [];
   exps.forEach(function (exp) {
-    const chk = exp === curExp ? " checked" : "";
-    html +=
-      '<label class="exp-check"><input type="checkbox" data-exp="' +
-      exp +
-      '"' +
-      chk +
-      "/> " +
-      exp +
-      "</label>";
+    const meta = formatExpExportChip(exp);
+    if (!groups[meta.monthKey]) {
+      groups[meta.monthKey] = { label: meta.monthLabel, items: [] };
+      order.push(meta.monthKey);
+    }
+    groups[meta.monthKey].items.push({ exp: exp, meta: meta });
   });
-  html += "</div></div>";
-  html += '<div class="exp-export-row"><span>الوضع</span>';
-  html += '<button type="button" class="chip on" data-emode="single">صفحة واحدة</button>';
-  html += '<button type="button" class="chip" data-emode="multi">صفحات متعددة</button></div>';
-  html += '<div class="exp-export-row"><span>Days</span>';
+
+  let html = "";
+  html += '<div class="exp-export-top">';
+  html += '<div class="exp-export-title">تصدير Excel — ' + (state.ticker || "") + "</div>";
+  html += '<div class="exp-export-sub">التواريخ مجمّعة حسب الشهر</div>';
+  html += '<button type="button" class="btn-sm exp-select-all" id="expSelectAll">تحديد الكل</button>';
+  html += "</div>";
+
+  html += '<div class="exp-month-list">';
+  order.forEach(function (key) {
+    const g = groups[key];
+    html += '<div class="exp-month">';
+    html += '<div class="exp-month-title">' + (g.label || key) + "</div>";
+    html += '<div class="exp-month-dates">';
+    g.items.forEach(function (it) {
+      const on = it.exp === curExp ? " on" : "";
+      html +=
+        '<button type="button" class="exp-date-chip' +
+        on +
+        '" data-exp="' +
+        it.exp +
+        '">' +
+        '<span class="d">' +
+        it.meta.day +
+        (it.meta.monShort ? " " + it.meta.monShort : "") +
+        "</span>" +
+        '<span class="s">' +
+        it.meta.sub +
+        "</span></button>";
+    });
+    html += "</div></div>";
+  });
+  html += "</div>";
+
+  // شريط موحّد: Days + Strikes + الوضع + Excel
+  html += '<div class="exp-unified-bar">';
+  html += '<span class="lab">Days</span>';
   ["2", "3", "5", "10", "ALL"].forEach(function (d) {
     const on = String(state.days) === d ? " on" : "";
-    html += '<button type="button" class="chip' + on + '" data-edays="' + d + '">' + d + "</button>";
+    html +=
+      '<button type="button" class="chip' +
+      on +
+      '" data-edays="' +
+      d +
+      '">' +
+      d +
+      "</button>";
   });
-  html += "</div>";
-  html += '<div class="exp-export-row"><span>Strikes</span>';
+  html += '<span class="lab">Strikes</span>';
   ["50", "100", "ALL"].forEach(function (s) {
-    const curS = ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0 ? String(state.strikes) : "50";
+    const curS =
+      ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
+        ? String(state.strikes)
+        : "50";
     const on = curS === s ? " on" : "";
-    html += '<button type="button" class="chip' + on + '" data-estrikes="' + s + '">' + s + "</button>";
+    html +=
+      '<button type="button" class="chip' +
+      on +
+      '" data-estrikes="' +
+      s +
+      '">' +
+      s +
+      "</button>";
   });
+  html +=
+    '<button type="button" class="chip on" data-emode="single">صفحة واحدة</button>';
+  html +=
+    '<button type="button" class="chip" data-emode="multi">متعددة</button>';
+  html +=
+    '<button type="button" class="btn btn-teal exp-do-inline" id="expDoBtn">Excel</button>';
   html += "</div>";
-  html += '<div class="exp-footer">';
   html += '<p id="expStatus" class="exp-status"></p>';
-  html += '<div class="exp-export-actions">';
-  html += '<button type="button" class="btn btn-teal" id="expDoBtn">تصدير Excel</button>';
-  html += '<button type="button" class="btn" id="expCancelBtn">إلغاء</button></div>';
-  html += '</div>';
+
   body.innerHTML = html;
   modal.classList.remove("hidden");
 
   let emode = "single";
   let edays = String(state.days || "2");
-  let estrikes = ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0 ? String(state.strikes) : "50";
+  let estrikes =
+    ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
+      ? String(state.strikes)
+      : "50";
+
+  body.querySelectorAll(".exp-date-chip").forEach(function (btn) {
+    btn.onclick = function () {
+      btn.classList.toggle("on");
+    };
+  });
 
   body.querySelectorAll("[data-emode]").forEach(function (btn) {
     btn.onclick = function () {
@@ -1898,16 +1974,20 @@ function openExportDialog() {
       });
     };
   });
+
   const selAll = $("#expSelectAll");
   if (selAll) {
     selAll.onclick = function () {
-      body.querySelectorAll("input[data-exp]").forEach(function (cb) {
-        cb.checked = true;
+      const chips = body.querySelectorAll(".exp-date-chip");
+      const allOn = Array.prototype.every.call(chips, function (c) {
+        return c.classList.contains("on");
+      });
+      chips.forEach(function (c) {
+        c.classList.toggle("on", !allOn);
       });
     };
   }
-  const cancel = $("#expCancelBtn");
-  if (cancel) cancel.onclick = closeExportDialog;
+
   const doBtn = $("#expDoBtn");
   if (doBtn) {
     doBtn.onclick = function () {
@@ -1927,9 +2007,15 @@ function runExportFromDialog(emode, edays, estrikes) {
   const st = $("#expStatus");
   const chosen = [];
   if (body) {
-    body.querySelectorAll("input[data-exp]:checked").forEach(function (cb) {
-      chosen.push(cb.getAttribute("data-exp"));
+    body.querySelectorAll(".exp-date-chip.on").forEach(function (chip) {
+      chosen.push(chip.getAttribute("data-exp"));
     });
+    // توافق قديم إن وُجدت checkboxes
+    if (!chosen.length) {
+      body.querySelectorAll("input[data-exp]:checked").forEach(function (cb) {
+        chosen.push(cb.getAttribute("data-exp"));
+      });
+    }
   }
   if (!chosen.length) {
     if (st) st.textContent = "اختر تاريخ انتهاء واحدًا على الأقل";
