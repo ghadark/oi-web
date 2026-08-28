@@ -2600,7 +2600,7 @@ function openArchive() {
   var exps = data ? archiveExpirations(data) : [];
   var title = $("#archiveTitle");
   var sub = $("#archiveSub");
-  if (title) title.textContent = "أرشيف الأسبوع";
+  if (title) title.textContent = "أرشيف الأسبوع — " + (state.ticker || "");
   if (sub) sub.textContent = "اختر تاريخًا";
   renderArchChips();
   renderArchDateRow(exps);
@@ -2639,164 +2639,45 @@ async function exportArchiveExcel() {
     setStatus("مكتبة Excel غير محمّلة", "err");
     return;
   }
-  var mode = state.archExportMode || "multi";
-  var wb = new ExcelJS.Workbook();
-  wb.creator = "Oi Archive";
-  var font = { name: "Calibri", size: 11 };
-  var headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
-  var headerFont = { name: "Calibri", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
-  var deltaFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
-  var maxFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
-  var align = { horizontal: "center", vertical: "middle" };
-
-  function writeTable(ws, startRow, startCol, exp, view) {
-    if (!view || !view.rows || !view.rows.length) return startRow;
-    var pullDates = view.pullDates;
-    var rows = view.rows;
-    var showD = state.archShowDelta && pullDates.length >= 2;
-    var lastI = pullDates.length - 1;
-    var prevI = pullDates.length - 2;
-    var col = startCol; // 2 = B
-    var r0 = startRow;
-
-    // title
-    ws.getCell(r0, col).value = state.ticker + " | " + exp;
-    ws.getCell(r0, col).font = { name: "Calibri", size: 12, bold: true };
-    r0 += 1;
-
-    // header row
-    var c = col;
-    if (showD) {
-      var cell = ws.getCell(r0, c);
-      cell.value = "Δ";
-      cell.fill = headerFill;
-      cell.font = headerFont;
-      cell.alignment = align;
-      c++;
-    }
-    for (var i = pullDates.length - 1; i >= 0; i--) {
-      var f = formatPullDate(pullDates[i]);
-      var cell = ws.getCell(r0, c);
-      cell.value = f.top;
-      cell.fill = headerFill;
-      cell.font = headerFont;
-      cell.alignment = align;
-      c++;
-    }
-    var sc = ws.getCell(r0, c);
-    sc.value = "STRIKE";
-    sc.fill = headerFill;
-    sc.font = headerFont;
-    sc.alignment = align;
-    c++;
-    for (var j = 0; j < pullDates.length; j++) {
-      var f2 = formatPullDate(pullDates[j]);
-      var cell2 = ws.getCell(r0, c);
-      cell2.value = f2.top;
-      cell2.fill = headerFill;
-      cell2.font = headerFont;
-      cell2.alignment = align;
-      c++;
-    }
-    if (showD) {
-      var cell3 = ws.getCell(r0, c);
-      cell3.value = "Δ";
-      cell3.fill = headerFill;
-      cell3.font = headerFont;
-      cell3.alignment = align;
-      c++;
-    }
-    var lastCol = c - 1;
-
-    // max for highlight (call/put only)
-    var callMax = [], putMax = [];
-    for (var ci = 0; ci < pullDates.length; ci++) {
-      var mc = 0, mp = 0;
-      rows.forEach(function (row) {
-        var cv = row.calls[ci] || 0, pv = row.puts[ci] || 0;
-        if (cv > mc) mc = cv;
-        if (pv > mp) mp = pv;
-      });
-      callMax.push(mc);
-      putMax.push(mp);
-    }
-
-    var rr = r0 + 1;
-    rows.forEach(function (row) {
-      var cc = col;
-      if (showD) {
-        var d = positiveDelta(row.calls[lastI], row.calls[prevI]);
-        var cell = ws.getCell(rr, cc);
-        cell.value = d != null ? d : "";
-        cell.fill = deltaFill;
-        cell.font = font;
-        cell.alignment = align;
-        cell.numFmt = "#,##0";
-        cc++;
-      }
-      for (var ii = pullDates.length - 1; ii >= 0; ii--) {
-        var cv = row.calls[ii] || 0;
-        var cell = ws.getCell(rr, cc);
-        cell.value = cv;
-        cell.font = font;
-        cell.alignment = align;
-        cell.numFmt = "#,##0";
-        if (callMax[ii] > 0 && cv === callMax[ii]) cell.fill = maxFill;
-        cc++;
-      }
-      var st = ws.getCell(rr, cc);
-      st.value = row.strike;
-      st.font = { name: "Calibri", size: 11, bold: true };
-      st.alignment = align;
-      st.numFmt = "#,##0.#";
-      cc++;
-      for (var pi = 0; pi < pullDates.length; pi++) {
-        var pv = row.puts[pi] || 0;
-        var cellp = ws.getCell(rr, cc);
-        cellp.value = pv;
-        cellp.font = font;
-        cellp.alignment = align;
-        cellp.numFmt = "#,##0";
-        if (putMax[pi] > 0 && pv === putMax[pi]) cellp.fill = maxFill;
-        cc++;
-      }
-      if (showD) {
-        var dp = positiveDelta(row.puts[lastI], row.puts[prevI]);
-        var celld = ws.getCell(rr, cc);
-        celld.value = dp != null ? dp : "";
-        celld.fill = deltaFill;
-        celld.font = font;
-        celld.alignment = align;
-        celld.numFmt = "#,##0";
-        cc++;
-      }
-      rr++;
-    });
-
-    for (var w = col; w <= lastCol; w++) {
-      ws.getColumn(w).width = 11;
-    }
-    try { ws.views = [{ rightToLeft: true }]; } catch (e) {}
-    return rr + 2;
+  if (typeof writeOiTableToSheet !== "function" || typeof getViewRowsFor !== "function") {
+    setStatus("دوال التصدير غير متوفرة", "err");
+    return;
   }
 
-  if (mode === "single") {
-    var ws = wb.addWorksheet("Archive");
-    try { ws.views = [{ rightToLeft: true }]; } catch (e) {}
-    var row = 2;
-    var col = 2;
+  var mode = state.archExportMode || "multi";
+  var showDelta = !!state.archShowDelta;
+  var edays = state.archDays || "2";
+  var estrikes = state.archStrikes || "30";
+  var GAP = 4;
+
+  var wb = new ExcelJS.Workbook();
+  wb.creator = "Oi Archive";
+
+  if (mode === "multi") {
     exps.forEach(function (exp) {
-      var view = getViewRowsForExp(data, exp, state.archDays, state.archStrikes);
-      row = writeTable(ws, row, col, exp, view);
+      var view = getViewRowsFor(data, exp, edays, estrikes);
+      if (!view) return;
+      var ws = wb.addWorksheet(String(exp).slice(0, 31), {
+        views: [{ rightToLeft: true }],
+      });
+      writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta);
     });
   } else {
-    exps.forEach(function (exp) {
-      var name = String(exp).slice(5).replace("-", "") || exp;
-      name = name.substring(0, 31);
-      var ws = wb.addWorksheet(name);
-      var view = getViewRowsForExp(data, exp, state.archDays, state.archStrikes);
-      writeTable(ws, 2, 2, exp, view);
+    var ws = wb.addWorksheet("Archive", {
+      views: [{ rightToLeft: true }],
     });
+    var col = 2;
+    exps.forEach(function (exp) {
+      var view = getViewRowsFor(data, exp, edays, estrikes);
+      if (!view) return;
+      var last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta);
+      col = last + 1 + GAP;
+    });
+  }
+
+  if (!wb.worksheets.length) {
+    setStatus("لا بيانات للجداول المختارة", "err");
+    return;
   }
 
   var buf = await wb.xlsx.writeBuffer();
@@ -2804,9 +2685,27 @@ async function exportArchiveExcel() {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   var stamp = new Date().toISOString().slice(0, 10);
-  saveAs(blob, state.ticker + "_Archive_" + stamp + ".xlsx");
-  setStatus("تم تصدير الأرشيف", "ok");
+  var fname =
+    state.ticker +
+    "_Archive_D" +
+    edays +
+    "_S" +
+    estrikes +
+    "_" +
+    stamp +
+    ".xlsx";
+  if (typeof saveAs === "function") {
+    saveAs(blob, fname);
+  } else {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  setStatus("✅ تم تصدير الأرشيف: " + fname, "ok");
 }
+
 
 
 // ========== Levels Map (3 phases) ==========
