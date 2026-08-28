@@ -2617,6 +2617,121 @@ function closeArchive() {
   state.archSelected = [];
 }
 
+
+function expIsoSortKey(exp) {
+  try {
+    var p = String(exp).split("-").map(Number);
+    if (p.length < 3) return 0;
+    return new Date(p[0], p[1] - 1, p[2]).getTime();
+  } catch (e) {
+    return 0;
+  }
+}
+
+/** إزالة أعمدة الأصفار من نهاية الجدول */
+function trimTrailingZeroColumns(pullDates, rows) {
+  if (!pullDates || !pullDates.length || !rows || !rows.length) {
+    return { pullDates: pullDates || [], rows: rows || [] };
+  }
+  var n = pullDates.length, last = n - 1, found = false;
+  for (var i = n - 1; i >= 0; i--) {
+    for (var r = 0; r < rows.length; r++) {
+      var c = rows[r].calls && rows[r].calls[i] != null ? Number(rows[r].calls[i]) : 0;
+      var pt = rows[r].puts && rows[r].puts[i] != null ? Number(rows[r].puts[i]) : 0;
+      if (c > 0 || pt > 0) { last = i; found = true; break; }
+    }
+    if (found) break;
+  }
+  if (!found) last = 0;
+  if (last === n - 1) return { pullDates: pullDates, rows: rows };
+  return {
+    pullDates: pullDates.slice(0, last + 1),
+    rows: rows.map(function (row) {
+      return {
+        strike: row.strike,
+        calls: (row.calls || []).slice(0, last + 1),
+        puts: (row.puts || []).slice(0, last + 1),
+      };
+    }),
+  };
+}
+
+/**
+ * عرض أرشيف لتاريخ انتهاء:
+ * - أعمدة السحب فقط حتى يوم الانتهاء (شاملًا) بدون أيام لاحقة
+ * - بدون أعمدة أصفار في البداية أو النهاية
+ * - Days = آخر N أيام سحب حقيقية لهذا الانتهاء
+ * - Δ = آخر عمود مقابل الذي قبله
+ */
+function getArchiveViewRows(data, exp, daysLimit, strikesLimit) {
+  if (!data || !exp) return null;
+  var block = data.by_expiration[exp];
+  if (!block) return null;
+
+  var basePull = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates.slice()
+    : (data.pull_dates || []).slice();
+
+  if (
+    String(state.ticker).toUpperCase() === "SPX" &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(exp)
+  ) {
+    basePull = filterSpxMonthlyPullDates(basePull);
+  }
+  if (
+    String(state.ticker).toUpperCase() === "NDX" &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(exp) &&
+    typeof filterSpxMonthlyPullDates === "function"
+  ) {
+    basePull = filterSpxMonthlyPullDates(basePull);
+  }
+
+  // فقط أيام السحب في أو قبل تاريخ الانتهاء
+  var expKey = expIsoSortKey(exp);
+  basePull = basePull.filter(function (pd) {
+    return pullDateSortKey(pd) <= expKey;
+  });
+  if (!basePull.length) return null;
+
+  var fullDates = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates
+    : (data.pull_dates || []);
+  var idxFull = basePull.map(function (d) { return fullDates.indexOf(d); });
+  var rowsAligned = (block.rows || []).map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idxFull.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idxFull.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
+    };
+  });
+
+  if (typeof trimLeadingZeroColumns === "function") {
+    var t1 = trimLeadingZeroColumns(basePull, rowsAligned);
+    basePull = t1.pullDates;
+    rowsAligned = t1.rows;
+  }
+  var t2 = trimTrailingZeroColumns(basePull, rowsAligned);
+  basePull = t2.pullDates;
+  rowsAligned = t2.rows;
+  if (!basePull.length) return null;
+
+  var pullDates = lastN(basePull, daysLimit);
+  if (!pullDates.length) return null;
+  var idx = pullDates.map(function (d) { return basePull.indexOf(d); });
+  var rows = rowsAligned.map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idx.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idx.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
+    };
+  });
+  rows = filterStrikes(rows, data.close, strikesLimit);
+  if (!rows.length) return null;
+  return { pullDates: pullDates, rows: rows, close: data.close, expiration: exp };
+}
+
 async function exportArchiveExcel() {
   var data = state.cache[state.ticker];
   if (!data) {
@@ -2639,7 +2754,7 @@ async function exportArchiveExcel() {
     setStatus("مكتبة Excel غير محمّلة", "err");
     return;
   }
-  if (typeof writeOiTableToSheet !== "function" || typeof getViewRowsFor !== "function") {
+  if (typeof writeOiTableToSheet !== "function" || typeof getArchiveViewRows !== "function") {
     setStatus("دوال التصدير غير متوفرة", "err");
     return;
   }
@@ -2655,7 +2770,7 @@ async function exportArchiveExcel() {
 
   if (mode === "multi") {
     exps.forEach(function (exp) {
-      var view = getViewRowsFor(data, exp, edays, estrikes);
+      var view = getArchiveViewRows(data, exp, edays, estrikes);
       if (!view) return;
       var ws = wb.addWorksheet(String(exp).slice(0, 31), {
         views: [{ rightToLeft: true }],
@@ -2668,7 +2783,7 @@ async function exportArchiveExcel() {
     });
     var col = 2;
     exps.forEach(function (exp) {
-      var view = getViewRowsFor(data, exp, edays, estrikes);
+      var view = getArchiveViewRows(data, exp, edays, estrikes);
       if (!view) return;
       var last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta);
       col = last + 1 + GAP;
