@@ -36,6 +36,7 @@
         <div style="display:flex;gap:8px;align-items:center">
           <button id="exportBtn" class="btn btn-excel" type="button">Excel</button>
           <button id="mapBtn" class="btn btn-map" type="button">Map</button>
+          <button id="archiveBtn" class="btn btn-archive" type="button" title="أرشيف الأسبوع">🗂</button>
           <button id="feedbackBtn" class="btn btn-feedback" type="button" title="تعليق خاص">💬</button>
         </div>
       </div>
@@ -107,6 +108,31 @@
           <button type="button" class="btn" id="fbCancel">إلغاء</button>
         </div>
       </form>
+    </div>
+  </div>
+  <div id="archiveModal" class="map-modal hidden" role="dialog" aria-modal="true">
+    <div class="map-panel archive-panel">
+      <div class="map-head">
+        <div>
+          <h3 id="archiveTitle">🗂 أرشيف الأسبوع</h3>
+          <p id="archiveSub" class="map-sub">—</p>
+        </div>
+        <button id="archiveClose" class="btn" type="button">إغلاق</button>
+      </div>
+      <div class="archive-toolbar">
+        <span class="arch-lab">Days</span>
+        <div id="archDaysRow" class="chip-row"></div>
+        <span class="arch-lab">Strikes</span>
+        <div id="archStrikesRow" class="chip-row"></div>
+        <button id="archDeltaBtn" class="delta-btn" type="button" title="التزايد">Δ</button>
+        <span class="arch-lab">تصدير</span>
+        <select id="archExportMode" class="arch-select">
+          <option value="multi">صفحات متعددة</option>
+          <option value="single">صفحة واحدة</option>
+        </select>
+        <button id="archExportBtn" class="btn btn-excel" type="button">Excel</button>
+      </div>
+      <div id="archiveBody" class="map-body archive-body"></div>
     </div>
   </div>
   <script src="app.js"></script>

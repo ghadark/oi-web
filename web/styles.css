@@ -274,6 +274,76 @@ html[data-theme="dark"] .brand-sign-wrap {
 }
 .btn-map:hover { filter: brightness(1.08); }
 
+.btn-archive {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  border: 1px solid #a78bfa !important;
+  background: linear-gradient(145deg, #5b21b6, #7c3aed) !important;
+  color: #fff !important;
+  font-size: 16px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  box-shadow: 0 0 14px rgba(124, 58, 237, 0.4) !important;
+  cursor: pointer;
+}
+.btn-archive:hover { filter: brightness(1.1); }
+.archive-panel { width: min(980px, 100%); }
+.archive-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid #1e293b;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+.archive-toolbar .arch-lab { color: #94a3b8; font-size: 11px; }
+.archive-toolbar .arch-select {
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.archive-body { max-height: 68vh; overflow: auto; }
+.archive-day {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.archive-day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #1e1b4b;
+  border-bottom: 1px solid #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+.archive-day-head em {
+  font-style: normal;
+  color: #c4b5fd;
+  font-weight: 500;
+  font-size: 11px;
+}
+.archive-day .table-scroll { overflow-x: auto; }
+.archive-day table.oi { width: 100%; }
+.archive-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 28px 12px;
+  font-size: 13px;
+}
+
+
 .map-modal {
   position: fixed; inset: 0;
   background: rgba(2, 6, 23, 0.72);

@@ -29,6 +29,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
   expiration: null, showDelta: false, seriesMode: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
+  archDays: "ALL", archStrikes: "30", archShowDelta: true, archExportMode: "multi",
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -2270,6 +2271,26 @@ if ($("#expSelect")) {
   };
   if ($("#themeSwitch")) $("#themeSwitch").onclick = toggleTheme;
   if ($("#mapBtn")) $("#mapBtn").onclick = function () { openMap(); };
+
+  if ($("#archiveBtn")) $("#archiveBtn").onclick = function () { openArchive(); };
+  if ($("#archiveClose")) $("#archiveClose").onclick = closeArchive;
+  if ($("#archiveModal")) $("#archiveModal").addEventListener("click", function (e) {
+    if (e.target.id === "archiveModal") closeArchive();
+  });
+  if ($("#archDeltaBtn")) $("#archDeltaBtn").onclick = function () {
+    state.archShowDelta = !state.archShowDelta;
+    renderArchChips();
+    renderArchiveBody();
+  };
+  if ($("#archExportBtn")) $("#archExportBtn").onclick = function () {
+    try { exportArchiveExcel(); } catch (err) {
+      setStatus("خطأ تصدير الأرشيف: " + (err && err.message ? err.message : err), "err");
+    }
+  };
+  if ($("#archExportMode")) $("#archExportMode").onchange = function (e) {
+    state.archExportMode = e.target.value || "multi";
+  };
+
   if ($("#mapClose")) $("#mapClose").onclick = closeMap;
   if ($("#exportClose")) $("#exportClose").onclick = closeExportDialog;
   if ($("#feedbackBtn")) $("#feedbackBtn").onclick = openFeedback;
@@ -2294,6 +2315,464 @@ if ($("#expSelect")) {
   startLivePriceLoop();
 }
 
+
+
+
+// ========== أرشيف الأسبوع (جداول الانتهاء الأساسية) ==========
+function isoFromDate(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function getArchiveWeekBounds(data) {
+  var s = dataSessionFromPull(data);
+  var d;
+  if (s) {
+    d = new Date(s.year, s.month - 1, s.day);
+  } else {
+    d = dataSessionCutoffDate(data);
+  }
+  d.setHours(12, 0, 0, 0);
+  var day = d.getDay(); // 0 Sun .. 5 Fri
+  var toMon = day === 0 ? -6 : 1 - day;
+  var mon = new Date(d);
+  mon.setDate(d.getDate() + toMon);
+  mon.setHours(0, 0, 0, 0);
+  var fri = new Date(mon);
+  fri.setDate(mon.getDate() + 4);
+  fri.setHours(23, 59, 59, 999);
+  return { mon: mon, fri: fri, monIso: isoFromDate(mon), friIso: isoFromDate(fri) };
+}
+
+function archiveExpirations(data) {
+  if (!data) return [];
+  var bounds = getArchiveWeekBounds(data);
+  var by = data.by_expiration || {};
+  var all = (data.expirations || Object.keys(by) || []).slice();
+  var out = [];
+  all.forEach(function (exp) {
+    var dt = new Date(String(exp) + "T12:00:00");
+    if (isNaN(dt.getTime())) return;
+    if (dt < bounds.mon || dt > bounds.fri) return;
+    if (!by[exp]) return;
+    out.push(exp);
+  });
+  out.sort();
+  return out;
+}
+
+function formatArchDayTitle(exp) {
+  try {
+    var d = new Date(String(exp) + "T12:00:00");
+    var top = d.getDate() + " " + d.toLocaleString("en", { month: "short" });
+    var sub = d.toLocaleString("en", { weekday: "short" });
+    return { top: top, sub: sub };
+  } catch (e) {
+    return { top: exp, sub: "" };
+  }
+}
+
+function getViewRowsForExp(data, exp, daysLimit, strikesLimit) {
+  if (!data || !exp || !data.by_expiration || !data.by_expiration[exp]) return null;
+  var block = data.by_expiration[exp];
+  var basePull = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates.slice()
+    : (data.pull_dates || []).slice();
+  if (
+    String(state.ticker).toUpperCase() === "SPX" &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(exp)
+  ) {
+    basePull = filterSpxMonthlyPullDates(basePull);
+  }
+  var fullDates = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates
+    : (data.pull_dates || []);
+  var idxFull = basePull.map(function (d) { return fullDates.indexOf(d); });
+  var rowsAligned = (block.rows || []).map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idxFull.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idxFull.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
+    };
+  });
+  var trimmed = trimLeadingZeroColumns(basePull, rowsAligned);
+  basePull = trimmed.pullDates;
+  rowsAligned = trimmed.rows;
+  var pullDates = lastN(basePull, daysLimit);
+  if (!pullDates.length) return null;
+  var idx = pullDates.map(function (d) { return basePull.indexOf(d); });
+  var rows = rowsAligned.map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idx.map(function (i) { return i >= 0 ? r.calls[i] : 0; }),
+      puts: idx.map(function (i) { return i >= 0 ? r.puts[i] : 0; }),
+    };
+  });
+  var close = effectiveClose(data);
+  rows = filterStrikes(rows, close, strikesLimit);
+  return { pullDates: pullDates, rows: rows, close: close };
+}
+
+function buildOneArchiveTableHtml(exp, view, showDelta) {
+  if (!view || !view.rows || !view.rows.length) {
+    return '<div class="archive-empty">لا بيانات</div>';
+  }
+  var pullDates = view.pullDates;
+  var rows = view.rows;
+  var close = view.close;
+  var canDelta = showDelta && pullDates.length >= 2;
+  var lastI = pullDates.length - 1;
+  var prevI = pullDates.length - 2;
+  var title = formatArchDayTitle(exp);
+  var html = '<div class="archive-day">';
+  html += '<div class="archive-day-head"><span>' + title.top + '</span><em>' + title.sub + '</em></div>';
+  html += '<div class="table-scroll"><table class="oi"><thead><tr>';
+  if (canDelta) html += '<th class="delta">Δ</th>';
+  for (var i = pullDates.length - 1; i >= 0; i--) {
+    var f = formatPullDate(pullDates[i]);
+    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+  }
+  html += '<th class="strike">STRIKE</th>';
+  for (var j = 0; j < pullDates.length; j++) {
+    var f2 = formatPullDate(pullDates[j]);
+    html += "<th>" + f2.top + '<br><span class="subh">' + f2.sub + "</span></th>";
+  }
+  if (canDelta) html += '<th class="delta">Δ</th>';
+  html += "</tr></thead><tbody>";
+
+  var callMax = [], putMax = [];
+  for (var ci = 0; ci < pullDates.length; ci++) {
+    var mc = 0, mp = 0;
+    rows.forEach(function (r) {
+      var cv = r.calls[ci] || 0, pv = r.puts[ci] || 0;
+      if (cv > mc) mc = cv;
+      if (pv > mp) mp = pv;
+    });
+    callMax.push(mc);
+    putMax.push(mp);
+  }
+  var deltaCallMax = 0, deltaPutMax = 0;
+  if (canDelta) {
+    rows.forEach(function (r) {
+      var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      var dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      if (dc != null && dc > deltaCallMax) deltaCallMax = dc;
+      if (dp != null && dp > deltaPutMax) deltaPutMax = dp;
+    });
+  }
+  var barDone = false;
+  rows.forEach(function (r, ri) {
+    if (close != null && !barDone && r.strike > close) {
+      html += greenBarRow(canDelta, pullDates.length, close);
+      barDone = true;
+    }
+    var zebra = ri % 2 === 1 ? " zebra" : "";
+    var above = close != null && r.strike > close;
+    var below = close != null && r.strike < close;
+    var callCls = below || (close != null && r.strike === close) ? "itm" : "otm";
+    var putCls = above || (close != null && r.strike === close) ? "itm" : "otm";
+    html += '<tr class="' + zebra + '">';
+    if (canDelta) {
+      var d = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      var maxCls = d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
+      html += '<td class="delta' + maxCls + '">' + (d != null ? d.toLocaleString() : "") + "</td>";
+    }
+    for (var ii = pullDates.length - 1; ii >= 0; ii--) {
+      var cv = r.calls[ii] || 0;
+      var maxC = callMax[ii] > 0 && cv === callMax[ii] ? " max-oi" : "";
+      html += '<td class="' + callCls + maxC + '">' + cv.toLocaleString() + "</td>";
+    }
+    html += '<td class="strike">' + r.strike + "</td>";
+    for (var pi = 0; pi < pullDates.length; pi++) {
+      var pv = r.puts[pi] || 0;
+      var maxP = putMax[pi] > 0 && pv === putMax[pi] ? " max-oi" : "";
+      html += '<td class="' + putCls + maxP + '">' + pv.toLocaleString() + "</td>";
+    }
+    if (canDelta) {
+      var dp2 = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      var maxDp = dp2 != null && deltaPutMax > 0 && dp2 === deltaPutMax ? " max-oi" : "";
+      html += '<td class="delta' + maxDp + '">' + (dp2 != null ? dp2.toLocaleString() : "") + "</td>";
+    }
+    html += "</tr>";
+  });
+  if (close != null && !barDone) {
+    html += greenBarRow(canDelta, pullDates.length, close);
+  }
+  html += "</tbody></table></div></div>";
+  return html;
+}
+
+function renderArchChips() {
+  var daysHost = $("#archDaysRow");
+  var strikesHost = $("#archStrikesRow");
+  if (daysHost) {
+    daysHost.innerHTML = "";
+    ["2", "3", "5", "10", "ALL"].forEach(function (opt) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (String(state.archDays) === opt ? " active" : "");
+      b.textContent = opt;
+      b.onclick = function () {
+        state.archDays = opt;
+        renderArchChips();
+        renderArchiveBody();
+      };
+      daysHost.appendChild(b);
+    });
+  }
+  if (strikesHost) {
+    strikesHost.innerHTML = "";
+    ["30", "50", "ALL"].forEach(function (opt) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (String(state.archStrikes) === opt ? " active" : "");
+      b.textContent = opt;
+      b.onclick = function () {
+        state.archStrikes = opt;
+        renderArchChips();
+        renderArchiveBody();
+      };
+      strikesHost.appendChild(b);
+    });
+  }
+  var db = $("#archDeltaBtn");
+  if (db) db.classList.toggle("active", !!state.archShowDelta);
+}
+
+function renderArchiveBody() {
+  var body = $("#archiveBody");
+  if (!body) return;
+  var data = state.cache[state.ticker];
+  if (!data) {
+    body.innerHTML = '<div class="archive-empty">لا بيانات — اختر مؤشرًا وانتظر التحميل</div>';
+    return;
+  }
+  var bounds = getArchiveWeekBounds(data);
+  var exps = archiveExpirations(data);
+  var title = $("#archiveTitle");
+  var sub = $("#archiveSub");
+  if (title) title.textContent = "🗂 أرشيف الأسبوع";
+  if (sub) {
+    sub.textContent =
+      state.ticker +
+      " · " +
+      bounds.monIso.slice(5) +
+      " → " +
+      bounds.friIso.slice(5) +
+      " · " +
+      (exps.length ? exps.length + " يوم" : "لا أيام");
+  }
+  if (!exps.length) {
+    body.innerHTML =
+      '<div class="archive-empty">لا توجد تواريخ انتهاء ضمن أسبوع التداول الحالي في البيانات.</div>';
+    return;
+  }
+  var html = "";
+  exps.forEach(function (exp) {
+    var view = getViewRowsForExp(data, exp, state.archDays, state.archStrikes);
+    html += buildOneArchiveTableHtml(exp, view, state.archShowDelta);
+  });
+  body.innerHTML = html;
+}
+
+function openArchive() {
+  var modal = $("#archiveModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  renderArchChips();
+  var modeSel = $("#archExportMode");
+  if (modeSel) modeSel.value = state.archExportMode || "multi";
+  renderArchiveBody();
+}
+
+function closeArchive() {
+  var modal = $("#archiveModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function exportArchiveExcel() {
+  var data = state.cache[state.ticker];
+  if (!data) {
+    setStatus("لا بيانات للتصدير", "err");
+    return;
+  }
+  var exps = archiveExpirations(data);
+  if (!exps.length) {
+    setStatus("الأرشيف فارغ", "err");
+    return;
+  }
+  if (typeof ExcelJS === "undefined") {
+    setStatus("مكتبة Excel غير محمّلة", "err");
+    return;
+  }
+  var mode = state.archExportMode || "multi";
+  var wb = new ExcelJS.Workbook();
+  wb.creator = "Oi Archive";
+  var font = { name: "Calibri", size: 11 };
+  var headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+  var headerFont = { name: "Calibri", size: 11, bold: true, color: { argb: "FFFFFFFF" } };
+  var deltaFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
+  var maxFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
+  var align = { horizontal: "center", vertical: "middle" };
+
+  function writeTable(ws, startRow, startCol, exp, view) {
+    if (!view || !view.rows || !view.rows.length) return startRow;
+    var pullDates = view.pullDates;
+    var rows = view.rows;
+    var showD = state.archShowDelta && pullDates.length >= 2;
+    var lastI = pullDates.length - 1;
+    var prevI = pullDates.length - 2;
+    var col = startCol; // 2 = B
+    var r0 = startRow;
+
+    // title
+    ws.getCell(r0, col).value = state.ticker + " | " + exp;
+    ws.getCell(r0, col).font = { name: "Calibri", size: 12, bold: true };
+    r0 += 1;
+
+    // header row
+    var c = col;
+    if (showD) {
+      var cell = ws.getCell(r0, c);
+      cell.value = "Δ";
+      cell.fill = headerFill;
+      cell.font = headerFont;
+      cell.alignment = align;
+      c++;
+    }
+    for (var i = pullDates.length - 1; i >= 0; i--) {
+      var f = formatPullDate(pullDates[i]);
+      var cell = ws.getCell(r0, c);
+      cell.value = f.top;
+      cell.fill = headerFill;
+      cell.font = headerFont;
+      cell.alignment = align;
+      c++;
+    }
+    var sc = ws.getCell(r0, c);
+    sc.value = "STRIKE";
+    sc.fill = headerFill;
+    sc.font = headerFont;
+    sc.alignment = align;
+    c++;
+    for (var j = 0; j < pullDates.length; j++) {
+      var f2 = formatPullDate(pullDates[j]);
+      var cell2 = ws.getCell(r0, c);
+      cell2.value = f2.top;
+      cell2.fill = headerFill;
+      cell2.font = headerFont;
+      cell2.alignment = align;
+      c++;
+    }
+    if (showD) {
+      var cell3 = ws.getCell(r0, c);
+      cell3.value = "Δ";
+      cell3.fill = headerFill;
+      cell3.font = headerFont;
+      cell3.alignment = align;
+      c++;
+    }
+    var lastCol = c - 1;
+
+    // max for highlight (call/put only)
+    var callMax = [], putMax = [];
+    for (var ci = 0; ci < pullDates.length; ci++) {
+      var mc = 0, mp = 0;
+      rows.forEach(function (row) {
+        var cv = row.calls[ci] || 0, pv = row.puts[ci] || 0;
+        if (cv > mc) mc = cv;
+        if (pv > mp) mp = pv;
+      });
+      callMax.push(mc);
+      putMax.push(mp);
+    }
+
+    var rr = r0 + 1;
+    rows.forEach(function (row) {
+      var cc = col;
+      if (showD) {
+        var d = positiveDelta(row.calls[lastI], row.calls[prevI]);
+        var cell = ws.getCell(rr, cc);
+        cell.value = d != null ? d : "";
+        cell.fill = deltaFill;
+        cell.font = font;
+        cell.alignment = align;
+        cell.numFmt = "#,##0";
+        cc++;
+      }
+      for (var ii = pullDates.length - 1; ii >= 0; ii--) {
+        var cv = row.calls[ii] || 0;
+        var cell = ws.getCell(rr, cc);
+        cell.value = cv;
+        cell.font = font;
+        cell.alignment = align;
+        cell.numFmt = "#,##0";
+        if (callMax[ii] > 0 && cv === callMax[ii]) cell.fill = maxFill;
+        cc++;
+      }
+      var st = ws.getCell(rr, cc);
+      st.value = row.strike;
+      st.font = { name: "Calibri", size: 11, bold: true };
+      st.alignment = align;
+      st.numFmt = "#,##0.#";
+      cc++;
+      for (var pi = 0; pi < pullDates.length; pi++) {
+        var pv = row.puts[pi] || 0;
+        var cellp = ws.getCell(rr, cc);
+        cellp.value = pv;
+        cellp.font = font;
+        cellp.alignment = align;
+        cellp.numFmt = "#,##0";
+        if (putMax[pi] > 0 && pv === putMax[pi]) cellp.fill = maxFill;
+        cc++;
+      }
+      if (showD) {
+        var dp = positiveDelta(row.puts[lastI], row.puts[prevI]);
+        var celld = ws.getCell(rr, cc);
+        celld.value = dp != null ? dp : "";
+        celld.fill = deltaFill;
+        celld.font = font;
+        celld.alignment = align;
+        celld.numFmt = "#,##0";
+        cc++;
+      }
+      rr++;
+    });
+
+    for (var w = col; w <= lastCol; w++) {
+      ws.getColumn(w).width = 11;
+    }
+    try { ws.views = [{ rightToLeft: true }]; } catch (e) {}
+    return rr + 2;
+  }
+
+  if (mode === "single") {
+    var ws = wb.addWorksheet("Archive");
+    try { ws.views = [{ rightToLeft: true }]; } catch (e) {}
+    var row = 2;
+    var col = 2;
+    exps.forEach(function (exp) {
+      var view = getViewRowsForExp(data, exp, state.archDays, state.archStrikes);
+      row = writeTable(ws, row, col, exp, view);
+    });
+  } else {
+    exps.forEach(function (exp) {
+      var name = String(exp).slice(5).replace("-", "") || exp;
+      name = name.substring(0, 31);
+      var ws = wb.addWorksheet(name);
+      var view = getViewRowsForExp(data, exp, state.archDays, state.archStrikes);
+      writeTable(ws, 2, 2, exp, view);
+    });
+  }
+
+  var buf = await wb.xlsx.writeBuffer();
+  var blob = new Blob([buf], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  var stamp = new Date().toISOString().slice(0, 10);
+  saveAs(blob, state.ticker + "_Archive_" + stamp + ".xlsx");
+  setStatus("تم تصدير الأرشيف", "ok");
+}
 
 
 // ========== Levels Map (3 phases) ==========
