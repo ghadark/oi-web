@@ -1,11 +1,11 @@
 {
-  "updated_at": "2026-08-28T19:25:32.934426Z",
+  "updated_at": "2026-08-28T23:05:07.003597Z",
   "tickers": {
     "SPY": {
       "ticker": "SPY",
-      "close": 771.0999755859375,
+      "close": 769.3499755859375,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -120,15 +120,15 @@
         },
         {
           "date": "28-8",
-          "close": 771.0999755859375
+          "close": 769.3499755859375
         }
       ]
     },
     "QQQ": {
       "ticker": "QQQ",
-      "close": 721.1099853515625,
+      "close": 716.4299926757812,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -243,15 +243,15 @@
         },
         {
           "date": "28-8",
-          "close": 721.1099853515625
+          "close": 716.4299926757812
         }
       ]
     },
     "IWM": {
       "ticker": "IWM",
-      "close": 299.80999755859375,
+      "close": 295.75,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -366,15 +366,15 @@
         },
         {
           "date": "28-8",
-          "close": 299.80999755859375
+          "close": 295.75
         }
       ]
     },
     "GLD": {
       "ticker": "GLD",
-      "close": 422.6000061035156,
+      "close": 408.8900146484375,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -489,15 +489,15 @@
         },
         {
           "date": "28-8",
-          "close": 422.6000061035156
+          "close": 408.8900146484375
         }
       ]
     },
     "SPX": {
       "ticker": "SPX",
-      "close": 7730.990234375,
+      "close": 7711.759765625,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -528,8 +528,8 @@
       "opx": {
         "exp": "2026-09-18",
         "pull_date": "28-8",
-        "support": 7000.0,
-        "resistance": 7000.0,
+        "support": 800.0,
+        "resistance": 7650.0,
         "prev_support": 7000.0,
         "prev_resistance": 7000.0,
         "prev_as_of": "27-8"
@@ -537,8 +537,8 @@
       "next_opx": {
         "exp": "2026-10-16",
         "pull_date": "28-8",
-        "support": 7000.0,
-        "resistance": 8000.0,
+        "support": 2600.0,
+        "resistance": 1000.0,
         "prev_support": 7000.0,
         "prev_resistance": 8000.0,
         "prev_as_of": "27-8"
@@ -612,15 +612,15 @@
         },
         {
           "date": "28-8",
-          "close": 7730.990234375
+          "close": 7711.759765625
         }
       ]
     },
     "NDX": {
       "ticker": "NDX",
-      "close": 29641.560546875,
+      "close": 29433.427734375,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -651,7 +651,7 @@
       "opx": {
         "exp": "2026-09-18",
         "pull_date": "28-8",
-        "support": 27000.0,
+        "support": 29475.0,
         "resistance": 29275.0,
         "prev_support": 27000.0,
         "prev_resistance": 29275.0,
@@ -660,8 +660,8 @@
       "next_opx": {
         "exp": "2026-10-16",
         "pull_date": "28-8",
-        "support": 22000.0,
-        "resistance": 30000.0,
+        "support": 27250.0,
+        "resistance": 35500.0,
         "prev_support": 25500.0,
         "prev_resistance": 30000.0,
         "prev_as_of": "27-8"
@@ -695,15 +695,15 @@
         },
         {
           "date": "28-8",
-          "close": 29641.560546875
+          "close": 29433.427734375
         }
       ]
     },
     "AAPL": {
       "ticker": "AAPL",
-      "close": 314.5799865722656,
+      "close": 319.70001220703125,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -810,15 +810,15 @@
         },
         {
           "date": "28-8",
-          "close": 314.5799865722656
+          "close": 319.70001220703125
         }
       ]
     },
     "MSFT": {
       "ticker": "MSFT",
-      "close": 505.05999755859375,
+      "close": 513.530029296875,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -925,15 +925,15 @@
         },
         {
           "date": "28-8",
-          "close": 505.05999755859375
+          "close": 513.530029296875
         }
       ]
     },
     "NVDA": {
       "ticker": "NVDA",
-      "close": 227.97999572753906,
+      "close": 217.5500030517578,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -1040,15 +1040,15 @@
         },
         {
           "date": "28-8",
-          "close": 227.97999572753906
+          "close": 217.5500030517578
         }
       ]
     },
     "TSLA": {
       "ticker": "TSLA",
-      "close": 354.80999755859375,
+      "close": 348.75,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -1155,15 +1155,15 @@
         },
         {
           "date": "28-8",
-          "close": 354.80999755859375
+          "close": 348.75
         }
       ]
     },
     "AMZN": {
       "ticker": "AMZN",
-      "close": 256.260009765625,
+      "close": 266.42999267578125,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -1270,15 +1270,15 @@
         },
         {
           "date": "28-8",
-          "close": 256.260009765625
+          "close": 266.42999267578125
         }
       ]
     },
     "META": {
       "ticker": "META",
-      "close": 571.0999755859375,
+      "close": 578.02001953125,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -1385,15 +1385,15 @@
         },
         {
           "date": "28-8",
-          "close": 571.0999755859375
+          "close": 578.02001953125
         }
       ]
     },
     "GOOGL": {
       "ticker": "GOOGL",
-      "close": 340.6499938964844,
+      "close": 346.5899963378906,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -1500,15 +1500,15 @@
         },
         {
           "date": "28-8",
-          "close": 340.6499938964844
+          "close": 346.5899963378906
         }
       ]
     },
     "AVGO": {
       "ticker": "AVGO",
-      "close": 371.5400085449219,
+      "close": 368.7900085449219,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -1615,15 +1615,15 @@
         },
         {
           "date": "28-8",
-          "close": 371.5400085449219
+          "close": 368.7900085449219
         }
       ]
     },
     "MSTR": {
       "ticker": "MSTR",
-      "close": 137.39999389648438,
+      "close": 127.30999755859375,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -1730,15 +1730,15 @@
         },
         {
           "date": "28-8",
-          "close": 137.39999389648438
+          "close": 127.30999755859375
         }
       ]
     },
     "AMD": {
       "ticker": "AMD",
-      "close": 476.6700134277344,
+      "close": 465.5799865722656,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -1845,15 +1845,15 @@
         },
         {
           "date": "28-8",
-          "close": 476.6700134277344
+          "close": 465.5799865722656
         }
       ]
     },
     "MU": {
       "ticker": "MU",
-      "close": 935.3900146484375,
+      "close": 932.8599853515625,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -1960,15 +1960,15 @@
         },
         {
           "date": "28-8",
-          "close": 935.3900146484375
+          "close": 932.8599853515625
         }
       ]
     },
     "COHR": {
       "ticker": "COHR",
-      "close": 295.3900146484375,
+      "close": 279.20001220703125,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -2075,15 +2075,15 @@
         },
         {
           "date": "28-8",
-          "close": 295.3900146484375
+          "close": 279.20001220703125
         }
       ]
     },
     "SNDK": {
       "ticker": "SNDK",
-      "close": 1484.949951171875,
+      "close": 1484.97998046875,
       "as_of": "28-8",
-      "updated_at": "2026-08-28T19:25:07Z",
+      "updated_at": "2026-08-28T23:04:48Z",
       "daily": {
         "exp": "2026-08-28",
         "pull_date": "28-8",
@@ -2158,7 +2158,74 @@
         },
         {
           "date": "28-8",
-          "close": 1484.949951171875
+          "close": 1484.97998046875
+        }
+      ]
+    },
+    "VOO": {
+      "ticker": "VOO",
+      "close": 707.239990234375,
+      "as_of": "28-8",
+      "updated_at": "2026-08-28T23:04:48Z",
+      "daily": {
+        "exp": "2026-08-28",
+        "pull_date": "28-8",
+        "support": 700.0,
+        "resistance": 710.0,
+        "prev_support": null,
+        "prev_resistance": null,
+        "prev_as_of": null
+      },
+      "tomorrow": {
+        "exp": "2026-09-04",
+        "pull_date": "28-8",
+        "support": 655.0,
+        "resistance": 692.5,
+        "prev_support": null,
+        "prev_resistance": null,
+        "prev_as_of": null
+      },
+      "weekly": {
+        "exp": "2026-08-28",
+        "pull_date": "28-8",
+        "support": 700.0,
+        "resistance": 710.0,
+        "prev_support": null,
+        "prev_resistance": null,
+        "prev_as_of": null
+      },
+      "opx": {
+        "exp": "2026-09-18",
+        "pull_date": "28-8",
+        "support": 670.0,
+        "resistance": 715.0,
+        "prev_support": null,
+        "prev_resistance": null,
+        "prev_as_of": null
+      },
+      "next_opx": {
+        "exp": "2026-10-16",
+        "pull_date": "28-8",
+        "support": 680.0,
+        "resistance": 635.0,
+        "prev_support": null,
+        "prev_resistance": null,
+        "prev_as_of": null
+      },
+      "meta": {
+        "today": "2026-08-28",
+        "daily_ref": "2026-08-28",
+        "tomorrow_cal": "2026-08-29",
+        "tomorrow_session": "2026-08-31",
+        "weekly_friday": "2026-08-28",
+        "today_is_weekly": true,
+        "tomorrow_merged_weekly": false,
+        "weekly_is_next_week": false
+      },
+      "path": [
+        {
+          "date": "28-8",
+          "close": 707.239990234375
         }
       ]
     }
