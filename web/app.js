@@ -29,7 +29,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
   expiration: null, showDelta: false, seriesMode: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
-  archDays: "2", archStrikes: "30", archShowDelta: false, archExportMode: "multi", archExp: null,
+  archDays: "2", archStrikes: "30", archShowDelta: false, archExportMode: "multi", archSelected: [],
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -2280,7 +2280,6 @@ if ($("#expSelect")) {
   if ($("#archDeltaBtn")) $("#archDeltaBtn").onclick = function () {
     state.archShowDelta = !state.archShowDelta;
     renderArchChips();
-    renderArchiveBody();
   };
   if ($("#archExportBtn")) $("#archExportBtn").onclick = function () {
     try { exportArchiveExcel(); } catch (err) {
@@ -2516,7 +2515,6 @@ function renderArchChips() {
       b.onclick = function () {
         state.archDays = opt;
         renderArchChips();
-        renderArchiveBody();
       };
       daysHost.appendChild(b);
     });
@@ -2531,7 +2529,6 @@ function renderArchChips() {
       b.onclick = function () {
         state.archStrikes = opt;
         renderArchChips();
-        renderArchiveBody();
       };
       strikesHost.appendChild(b);
     });
@@ -2540,87 +2537,91 @@ function renderArchChips() {
   if (db) db.classList.toggle("active", !!state.archShowDelta);
 }
 
+function updateArchSelectHint() {
+  var hint = $("#archSelectHint");
+  if (!hint) return;
+  var n = (state.archSelected || []).length;
+  if (!n) {
+    hint.textContent = "حدّد يومًا أو أكثر للتصدير · اضغط «الكل» لتحديد الجميع";
+  } else {
+    hint.textContent = "محدّد: " + n + " يوم — جاهز للتصدير";
+  }
+}
+
 function renderArchDateRow(exps) {
   var row = $("#archDateRow");
   if (!row) return;
   row.innerHTML = "";
   if (!exps || !exps.length) {
-    row.innerHTML = '<span class="archive-empty" style="border:none;padding:8px">لا تواريخ هذا الأسبوع</span>';
+    row.innerHTML = '<span class="archive-empty-inline">لا تواريخ هذا الأسبوع</span>';
+    updateArchSelectHint();
     return;
   }
+  // زر تحديد الكل
+  var allBtn = document.createElement("button");
+  allBtn.type = "button";
+  allBtn.className = "arch-date-chip arch-all-chip";
+  allBtn.innerHTML = '<span class="d-top">الكل</span><span class="d-sub">تحديد</span>';
+  allBtn.onclick = function () {
+    var selected = state.archSelected || [];
+    if (selected.length === exps.length) {
+      state.archSelected = [];
+    } else {
+      state.archSelected = exps.slice();
+    }
+    renderArchDateRow(exps);
+  };
+  if ((state.archSelected || []).length === exps.length && exps.length) {
+    allBtn.classList.add("active");
+  }
+  row.appendChild(allBtn);
+
   exps.forEach(function (exp) {
     var t = formatArchDayTitle(exp);
     var b = document.createElement("button");
     b.type = "button";
-    b.className = "arch-date-chip" + (state.archExp === exp ? " active" : "");
+    var on = (state.archSelected || []).indexOf(exp) >= 0;
+    b.className = "arch-date-chip" + (on ? " active" : "");
     b.innerHTML = '<span class="d-top">' + t.top + '</span><span class="d-sub">' + t.sub + "</span>";
     b.onclick = function () {
-      state.archExp = exp;
+      var arr = (state.archSelected || []).slice();
+      var i = arr.indexOf(exp);
+      if (i >= 0) arr.splice(i, 1);
+      else arr.push(exp);
+      arr.sort();
+      state.archSelected = arr;
       renderArchDateRow(exps);
-      renderArchiveBody();
     };
     row.appendChild(b);
   });
-}
-
-function renderArchiveBody() {
-  var body = $("#archiveBody");
-  if (!body) return;
-  var data = state.cache[state.ticker];
-  if (!data) {
-    body.innerHTML = '<div class="archive-empty">لا بيانات — اختر مؤشرًا وانتظر التحميل</div>';
-    return;
-  }
-  if (!state.archExp) {
-    body.innerHTML = '<div class="archive-empty">اختر تاريخ انتهاء من الصف أعلاه لعرض الجدول</div>';
-    return;
-  }
-  var view = getViewRowsForExp(data, state.archExp, state.archDays, state.archStrikes);
-  if (!view) {
-    body.innerHTML = '<div class="archive-empty">لا بيانات لهذا التاريخ مع Days/Strikes الحالية</div>';
-    return;
-  }
-  body.innerHTML = buildOneArchiveTableHtml(state.archExp, view, state.archShowDelta);
+  updateArchSelectHint();
 }
 
 function openArchive() {
   var modal = $("#archiveModal");
   if (!modal) return;
-  state.archExp = null;
+  state.archSelected = [];
   state.archShowDelta = false;
   modal.classList.remove("hidden");
   var data = state.cache[state.ticker];
-  var bounds = data ? getArchiveWeekBounds(data) : null;
   var exps = data ? archiveExpirations(data) : [];
   var title = $("#archiveTitle");
   var sub = $("#archiveSub");
   if (title) title.textContent = "أرشيف الأسبوع";
-  if (sub) {
-    if (bounds) {
-      sub.textContent =
-        state.ticker +
-        " · " +
-        bounds.monIso.slice(5) +
-        " → " +
-        bounds.friIso.slice(5) +
-        " · اختر تاريخًا";
-    } else {
-      sub.textContent = "اختر تاريخًا لعرض جدوله";
-    }
-  }
+  if (sub) sub.textContent = "اختر تاريخًا";
   renderArchChips();
   renderArchDateRow(exps);
   var modeSel = $("#archExportMode");
   if (modeSel) modeSel.value = state.archExportMode || "multi";
   var db = $("#archDeltaBtn");
   if (db) db.classList.remove("active");
-  renderArchiveBody();
+  updateArchSelectHint();
 }
 
 function closeArchive() {
   var modal = $("#archiveModal");
   if (modal) modal.classList.add("hidden");
-  state.archExp = null;
+  state.archSelected = [];
 }
 
 async function exportArchiveExcel() {
@@ -2629,9 +2630,16 @@ async function exportArchiveExcel() {
     setStatus("لا بيانات للتصدير", "err");
     return;
   }
-  var exps = archiveExpirations(data);
-  if (!exps.length) {
+  var weekExps = archiveExpirations(data);
+  var exps = (state.archSelected && state.archSelected.length)
+    ? state.archSelected.filter(function (e) { return weekExps.indexOf(e) >= 0; })
+    : [];
+  if (!weekExps.length) {
     setStatus("الأرشيف فارغ", "err");
+    return;
+  }
+  if (!exps.length) {
+    setStatus("حدّد تاريخًا واحدًا على الأقل من البطاقات", "err");
     return;
   }
   if (typeof ExcelJS === "undefined") {
