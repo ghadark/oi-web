@@ -3725,116 +3725,78 @@ html[data-theme="light"] .exp-month-tip { color: #0f766e; opacity: 0.9; }
   display: none !important;
 }
 
-
-/* ========== اليوم بالسابق: ألوان أعمدة + أعلى رقم ========== */
+/* ========== اليوم بالسابق: هادئ · هيدر=خلايا · بدون تناظر ========== */
 .series-wrap { padding: 2px; }
 table.oi.series-oi th,
 table.oi.series-oi td {
-  border-color: rgba(148, 163, 184, 0.10) !important;
+  border-color: rgba(148, 163, 184, 0.08) !important;
 }
 html[data-theme="light"] table.oi.series-oi th,
 html[data-theme="light"] table.oi.series-oi td {
-  border-color: rgba(148, 163, 184, 0.16) !important;
+  border-color: rgba(148, 163, 184, 0.14) !important;
 }
 table.oi.series-oi th.strike,
 table.oi.series-oi td.strike {
-  background: #0f172a !important;
-  color: #f8fafc !important;
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
   font-weight: 700;
-  border-color: rgba(148, 163, 184, 0.2) !important;
 }
 html[data-theme="light"] table.oi.series-oi th.strike,
 html[data-theme="light"] table.oi.series-oi td.strike {
-  background: #f1f5f9 !important;
+  background: #e2e8f0 !important;
   color: #0f172a !important;
 }
 
-/* هيدر أثقل */
-table.oi.series-oi thead th.sc-a { background: #1d4ed8 !important; color: #eff6ff !important; }
-table.oi.series-oi thead th.sc-b { background: #0f766e !important; color: #ecfdf5 !important; }
-table.oi.series-oi thead th.sc-c { background: #6d28d9 !important; color: #f5f3ff !important; }
-table.oi.series-oi thead th.sc-d { background: #b45309 !important; color: #fffbeb !important; }
-table.oi.series-oi thead th.sc-e { background: #be123c !important; color: #fff1f2 !important; }
-table.oi.series-oi thead th.sc-f { background: #0369a1 !important; color: #e0f2fe !important; }
-table.oi.series-oi thead th.sc-g { background: #4d7c0f !important; color: #f7fee7 !important; }
+/* نفس اللون للهيدر والجسم — شفافية خفيفة مريحة */
+table.oi.series-oi th.sc-a,
+table.oi.series-oi td.sc-a { background: rgba(59, 130, 246, 0.13) !important; color: inherit !important; }
+table.oi.series-oi th.sc-b,
+table.oi.series-oi td.sc-b { background: rgba(45, 212, 191, 0.11) !important; color: inherit !important; }
+table.oi.series-oi th.sc-c,
+table.oi.series-oi td.sc-c { background: rgba(167, 139, 250, 0.12) !important; color: inherit !important; }
+table.oi.series-oi th.sc-d,
+table.oi.series-oi td.sc-d { background: rgba(251, 191, 36, 0.11) !important; color: inherit !important; }
+table.oi.series-oi th.sc-e,
+table.oi.series-oi td.sc-e { background: rgba(251, 113, 133, 0.10) !important; color: inherit !important; }
+table.oi.series-oi th.sc-f,
+table.oi.series-oi td.sc-f { background: rgba(56, 189, 248, 0.11) !important; color: inherit !important; }
+table.oi.series-oi th.sc-g,
+table.oi.series-oi td.sc-g { background: rgba(163, 230, 53, 0.10) !important; color: inherit !important; }
 
-/* خلايا أفتح */
-table.oi.series-oi tbody td.sc-a,
-table.oi.series-oi tbody td.itm.sc-a,
-table.oi.series-oi tbody td.otm.sc-a { background: rgba(37, 99, 235, 0.18) !important; }
-table.oi.series-oi tbody td.sc-b,
-table.oi.series-oi tbody td.itm.sc-b,
-table.oi.series-oi tbody td.otm.sc-b { background: rgba(13, 148, 136, 0.18) !important; }
-table.oi.series-oi tbody td.sc-c,
-table.oi.series-oi tbody td.itm.sc-c,
-table.oi.series-oi tbody td.otm.sc-c { background: rgba(124, 58, 237, 0.18) !important; }
-table.oi.series-oi tbody td.sc-d,
-table.oi.series-oi tbody td.itm.sc-d,
-table.oi.series-oi tbody td.otm.sc-d { background: rgba(217, 119, 6, 0.16) !important; }
-table.oi.series-oi tbody td.sc-e,
-table.oi.series-oi tbody td.itm.sc-e,
-table.oi.series-oi tbody td.otm.sc-e { background: rgba(225, 29, 72, 0.14) !important; }
-table.oi.series-oi tbody td.sc-f,
-table.oi.series-oi tbody td.itm.sc-f,
-table.oi.series-oi tbody td.otm.sc-f { background: rgba(2, 132, 199, 0.16) !important; }
-table.oi.series-oi tbody td.sc-g,
-table.oi.series-oi tbody td.itm.sc-g,
-table.oi.series-oi tbody td.otm.sc-g { background: rgba(101, 163, 13, 0.16) !important; }
+html[data-theme="light"] table.oi.series-oi th.sc-a,
+html[data-theme="light"] table.oi.series-oi td.sc-a { background: rgba(59, 130, 246, 0.10) !important; }
+html[data-theme="light"] table.oi.series-oi th.sc-b,
+html[data-theme="light"] table.oi.series-oi td.sc-b { background: rgba(20, 184, 166, 0.10) !important; }
+html[data-theme="light"] table.oi.series-oi th.sc-c,
+html[data-theme="light"] table.oi.series-oi td.sc-c { background: rgba(139, 92, 246, 0.10) !important; }
+html[data-theme="light"] table.oi.series-oi th.sc-d,
+html[data-theme="light"] table.oi.series-oi td.sc-d { background: rgba(245, 158, 11, 0.10) !important; }
+html[data-theme="light"] table.oi.series-oi th.sc-e,
+html[data-theme="light"] table.oi.series-oi td.sc-e { background: rgba(244, 63, 94, 0.09) !important; }
+html[data-theme="light"] table.oi.series-oi th.sc-f,
+html[data-theme="light"] table.oi.series-oi td.sc-f { background: rgba(14, 165, 233, 0.10) !important; }
+html[data-theme="light"] table.oi.series-oi th.sc-g,
+html[data-theme="light"] table.oi.series-oi td.sc-g { background: rgba(132, 204, 22, 0.10) !important; }
 
-html[data-theme="light"] table.oi.series-oi thead th.sc-a { background: #3b82f6 !important; color: #fff !important; }
-html[data-theme="light"] table.oi.series-oi thead th.sc-b { background: #14b8a6 !important; color: #fff !important; }
-html[data-theme="light"] table.oi.series-oi thead th.sc-c { background: #8b5cf6 !important; color: #fff !important; }
-html[data-theme="light"] table.oi.series-oi thead th.sc-d { background: #f97316 !important; color: #fff !important; }
-html[data-theme="light"] table.oi.series-oi thead th.sc-e { background: #f43f5e !important; color: #fff !important; }
-html[data-theme="light"] table.oi.series-oi thead th.sc-f { background: #0ea5e9 !important; color: #fff !important; }
-html[data-theme="light"] table.oi.series-oi thead th.sc-g { background: #84cc16 !important; color: #14532d !important; }
-
-html[data-theme="light"] table.oi.series-oi tbody td.sc-a,
-html[data-theme="light"] table.oi.series-oi tbody td.itm.sc-a,
-html[data-theme="light"] table.oi.series-oi tbody td.otm.sc-a { background: #dbeafe !important; }
-html[data-theme="light"] table.oi.series-oi tbody td.sc-b,
-html[data-theme="light"] table.oi.series-oi tbody td.itm.sc-b,
-html[data-theme="light"] table.oi.series-oi tbody td.otm.sc-b { background: #ccfbf1 !important; }
-html[data-theme="light"] table.oi.series-oi tbody td.sc-c,
-html[data-theme="light"] table.oi.series-oi tbody td.itm.sc-c,
-html[data-theme="light"] table.oi.series-oi tbody td.otm.sc-c { background: #ede9fe !important; }
-html[data-theme="light"] table.oi.series-oi tbody td.sc-d,
-html[data-theme="light"] table.oi.series-oi tbody td.itm.sc-d,
-html[data-theme="light"] table.oi.series-oi tbody td.otm.sc-d { background: #ffedd5 !important; }
-html[data-theme="light"] table.oi.series-oi tbody td.sc-e,
-html[data-theme="light"] table.oi.series-oi tbody td.itm.sc-e,
-html[data-theme="light"] table.oi.series-oi tbody td.otm.sc-e { background: #ffe4e6 !important; }
-html[data-theme="light"] table.oi.series-oi tbody td.sc-f,
-html[data-theme="light"] table.oi.series-oi tbody td.itm.sc-f,
-html[data-theme="light"] table.oi.series-oi tbody td.otm.sc-f { background: #e0f2fe !important; }
-html[data-theme="light"] table.oi.series-oi tbody td.sc-g,
-html[data-theme="light"] table.oi.series-oi tbody td.itm.sc-g,
-html[data-theme="light"] table.oi.series-oi tbody td.otm.sc-g { background: #ecfccb !important; }
-
-/* أعلى رقم — أوضح فوق لون العمود */
+/* أعلى رقم — هادئ */
 table.oi.series-oi td.max-oi {
-  font-weight: 800 !important;
-  filter: brightness(1.28) !important;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28) !important;
-  color: #fff !important;
+  font-weight: 700 !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16) !important;
 }
 html[data-theme="light"] table.oi.series-oi td.max-oi {
-  filter: brightness(0.88) saturate(1.15) !important;
-  box-shadow: inset 0 0 0 1px rgba(15,23,42,0.15) !important;
-  color: #0f172a !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
+  background: rgba(15, 23, 42, 0.07) !important;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.10) !important;
 }
 
-/* ========== OPX في Excel: موف هادئ بدون إطار ========== */
-.exp-date-chip.opx-chip {
-  box-shadow: none !important;
-  border-color: var(--border) !important;
-}
+
+/* OPX موف هادئ بدون إطار */
+.exp-date-chip.opx-chip { box-shadow: none !important; border-color: var(--border) !important; }
 .exp-date-chip .s.opx-sub {
   color: #c4b5fd !important;
   font-weight: 600;
-  letter-spacing: 0.03em;
-  text-shadow: 0 0 8px rgba(167, 139, 250, 0.3);
+  text-shadow: 0 0 8px rgba(167, 139, 250, 0.28);
 }
 html[data-theme="light"] .exp-date-chip .s.opx-sub {
   color: #7c3aed !important;

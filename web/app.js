@@ -1235,13 +1235,12 @@ function getSeriesPrevDayView(data) {
 }
 
 /** جدول «اليوم بالسابق»: أعمدة = تواريخ انتهاء يومية متتالية (25 ثم 26 ثم…) وليس أيام سحب لنفس الانتهاء */
-/** ألوان أعمدة «اليوم بالسابق» — متنوعة وغير متناظرة */
-function seriesColClass(idx, nCols) {
+/** ألوان أعمدة «اليوم بالسابق» — متسلسلة بدون تناظر كول/بوت */
+function seriesColClass(pos, totalCols) {
   var tones = ["sc-a", "sc-b", "sc-c", "sc-d", "sc-e", "sc-f", "sc-g"];
-  if (!nCols || nCols <= 1) return tones[0];
-  var order = [0, 2, 4, 1, 5, 3, 6];
-  var slot = Math.round((idx / Math.max(1, nCols - 1)) * (order.length - 1));
-  return tones[order[Math.max(0, Math.min(order.length - 1, slot))]];
+  if (!totalCols || totalCols < 1) return tones[0];
+  var p = Math.max(0, Math.min(totalCols - 1, pos | 0));
+  return tones[p % tones.length];
 }
 
 function renderSeriesTable() {
@@ -1280,15 +1279,18 @@ function renderSeriesTable() {
   html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi"><thead><tr>';
 
   if (canDelta) html += '<th class="delta">Δ</th>';
-  for (let i = pullDates.length - 1; i >= 0; i--) {
+  var nCols = pullDates.length;
+  var totalSideCols = nCols * 2;
+  var colPos = 0;
+  for (let i = nCols - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
-    const sc = seriesColClass(i, pullDates.length);
+    const sc = seriesColClass(colPos++, totalSideCols);
     html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   html += '<th class="strike">STRIKE</th>';
-  for (let j = 0; j < pullDates.length; j++) {
+  for (let j = 0; j < nCols; j++) {
     const f = formatPullDate(pullDates[j]);
-    const sc = seriesColClass(j, pullDates.length);
+    const sc = seriesColClass(colPos++, totalSideCols);
     html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
@@ -1350,14 +1352,13 @@ function renderSeriesTable() {
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
+    var bodyPos = 0;
     for (let i = pullDates.length - 1; i >= 0; i--) {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
       html +=
         '<td class="' +
-        callCls +
-        " " +
-        seriesColClass(i, pullDates.length) +
+        seriesColClass(bodyPos++, pullDates.length * 2) +
         maxCls +
         '">' +
         cv.toLocaleString() +
@@ -1369,9 +1370,7 @@ function renderSeriesTable() {
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
       html +=
         '<td class="' +
-        putCls +
-        " " +
-        seriesColClass(i, pullDates.length) +
+        seriesColClass(bodyPos++, pullDates.length * 2) +
         maxCls +
         '">' +
         pv.toLocaleString() +
@@ -1908,7 +1907,6 @@ function openExportDialog() {
       html +=
         '<button type="button" class="exp-date-chip' +
         on +
-        (it.meta.sub === "OPX" ? " opx-chip" : "") +
         '" data-exp="' +
         it.exp +
         '">' +
@@ -1916,9 +1914,7 @@ function openExportDialog() {
         it.meta.day +
         (it.meta.monShort ? " " + it.meta.monShort : "") +
         "</span>" +
-        '<span class="s' +
-        (it.meta.sub === "OPX" ? " opx-sub" : "") +
-        '">' +
+        '<span class="s">' +
         it.meta.sub +
         "</span></button>";
     });
