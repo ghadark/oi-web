@@ -967,7 +967,7 @@ function renderOneMiniTable(data, expiration, label, opts) {
   var html =
     '<div class="x3-col' + (opts.active ? " active" : "") + '">' +
     '<div class="x3-col-h">' + title + "</div>" +
-    '<div class="x3-table-wrap"><table class="oi x3-table"><thead>';
+    '<div class="x3-table-wrap"><table class="oi x3-table" style="width:auto;max-width:none"><thead>';
   var nColsX = pullDates.length;
   html += '<tr class="side-label-row">';
   if (canDelta) html += '<th class="delta side-pad"></th>';
@@ -1284,7 +1284,7 @@ function renderSeriesTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi"><thead>';
+  html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi" style="width:auto;max-width:none"><thead>';
   var nCols = pullDates.length;
   var totalSideCols = nCols * 2;
   // صف CALL | PUT
@@ -1454,7 +1454,7 @@ function renderTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll"><table class="oi"><thead>';
+  html += '</div><div class="table-scroll"><table class="oi" style="width:auto;max-width:none"><thead>';
   var nCols = pullDates.length;
   html += '<tr class="side-label-row">';
   if (canDelta) html += '<th class="delta side-pad"></th>';
@@ -2560,7 +2560,7 @@ function buildOneArchiveTableHtml(exp, view, showDelta) {
   var title = formatArchDayTitle(exp);
   var html = '<div class="archive-day">';
   html += '<div class="archive-day-head"><span>' + title.top + '</span><em>' + title.sub + '</em></div>';
-  html += '<div class="table-scroll"><table class="oi"><thead><tr>';
+  html += '<div class="table-scroll"><table class="oi" style="width:auto;max-width:none"><thead><tr>';
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (var i = pullDates.length - 1; i >= 0; i--) {
     var f = formatPullDate(pullDates[i]);
