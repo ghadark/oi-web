@@ -111,7 +111,13 @@ select {
 .panel {
   background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
 }
-.table-scroll { overflow: auto; max-width: 100%; }
+.table-scroll {
+  overflow: auto;
+  max-width: 100%;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
 .table-title {
   text-align: center;
   margin-bottom: 12px;
@@ -1795,7 +1801,7 @@ html[data-theme="dark"] .x3-col-h .exp-am {
   table.oi.x3-table {
     table-layout: auto !important;
     width: max-content !important;
-    min-width: 100% !important;
+    min-width: 0 !important;
   }
   table.oi.x3-table th.delta,
   table.oi.x3-table td.delta {
@@ -3023,7 +3029,7 @@ button#x3Btn.x3-btn {
 }
 .archive-day table.oi {
   width: max-content;
-  min-width: 100%;
+  min-width: 0;
   font-size: 11px;
 }
 .archive-empty {
@@ -3842,6 +3848,10 @@ table.oi thead tr.side-label-row th.side-pad {
   border: 1px solid rgba(148, 163, 184, 0.14);
   background: rgba(15, 23, 42, 0.35);
   scrollbar-width: thin;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
 }
 html[data-theme="light"] .table-scroll,
 html[data-theme="light"] .series-wrap,
@@ -3853,12 +3863,14 @@ html[data-theme="light"] .x3-table-wrap {
 table.oi {
   border-collapse: separate !important;
   border-spacing: 0 !important;
-  margin: 0 auto;
-  width: max-content;
-  min-width: 100%;
+  margin: 0 auto !important;
+  width: max-content !important;   /* بحجم الأعمدة فقط */
+  min-width: 0 !important;         /* لا يتمدد لملء الشاشة */
+  max-width: none !important;
   font-size: 11px;
   color: var(--text);
   background: transparent;
+  table-layout: auto !important;
 }
 
 /* خلايا بلا حدود مربعة حادة — فواصل أفقية رفيعة فقط */
@@ -3867,10 +3879,11 @@ table.oi td {
   border: none !important;
   border-bottom: 1px solid rgba(148, 163, 184, 0.07) !important;
   padding: 7px 8px !important;
-  min-width: 68px;
+  min-width: 56px;
   height: 34px;
   text-align: center;
   vertical-align: middle;
+  white-space: nowrap;
 }
 html[data-theme="light"] table.oi th,
 html[data-theme="light"] table.oi td {
