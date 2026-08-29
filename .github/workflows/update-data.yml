@@ -1,11 +1,12 @@
 name: Update OCC Data
 
-# السعودية 4:00–8:00 ص = UTC 01:00–05:00
-# كل 10 دقائق؛ السكربت يتوقف تلقائيًا بعد التقاط تحديث اليوم
+# 4:00–7:50 ص السعودية = 01:00–04:50 UTC كل 10 دقائق
+# + محاولات متأخرة حتى ~10 ص إذا تأخر OCC
 on:
   schedule:
     - cron: "*/10 1-4 * * *"
-    - cron: "0,10,20,30,40,50 5 * * *"
+    - cron: "0,20,40 5 * * *"
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 concurrency:
@@ -53,8 +54,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/ web/data/ || true
+          git add data web/data 2>/dev/null || true
           if git diff --staged --quiet; then
-            echo "No data changes — stop (expected after morning capture)"
+            echo "No data changes to commit"
           else
             git commit -m "data: OCC snapshot $(date -u +%Y-%m-%dT%H:%MZ) [${{ github.event_name }}]"
             git push origin HEAD:${{ github.ref_name }}

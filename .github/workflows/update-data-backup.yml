@@ -1,10 +1,11 @@
 name: Update OCC Data Backup
 
-# إزاحة 5 دقائق — نفس النافذة 4–8 ص السعودية فقط
+# إزاحة 5 دقائق عن الأساسي — احتياط إذا تخطّى GitHub الـ cron
 on:
   schedule:
     - cron: "5-59/10 1-4 * * *"
-    - cron: "5,15,25,35,45,55 5 * * *"
+    - cron: "10,30,50 5 * * *"
+    - cron: "15 6 * * *"
   workflow_dispatch: {}
 
 concurrency:
@@ -29,11 +30,15 @@ jobs:
       - run: |
           python -m pip install --upgrade pip
           pip install requests yfinance
-      - name: Fetch OCC → JSON
+      - name: Show trigger
+        run: |
+          echo "event=${{ github.event_name }}"
+          echo "utc=$(date -u +%Y-%m-%dT%H:%MZ)"
+      - name: Fetch OCC
         env:
           FORCE_UPDATE: ${{ github.event_name == 'workflow_dispatch' && 'true' || '' }}
         run: python scripts/fetch_occ.py
-      - name: Commit if changed
+      - name: Commit & push if changed
         run: |
           set -e
           git config user.name "github-actions[bot]"
@@ -42,6 +47,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No data changes"
           else
-            git commit -m "data: OCC backup $(date -u +%Y-%m-%dT%H:%MZ)"
+            git commit -m "data: OCC backup $(date -u +%Y-%m-%dT%H:%MZ) [${{ github.event_name }}]"
             git push origin HEAD:${{ github.ref_name }}
           fi
