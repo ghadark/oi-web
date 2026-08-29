@@ -571,10 +571,19 @@ function lastN(arr, n) {
 }
 
 function filterStrikes(rows, close, strikesLimit) {
-  if (!strikesLimit || strikesLimit === "ALL" || close == null) return rows.slice();
+  if (!strikesLimit || strikesLimit === "ALL") return rows.slice();
   const n = parseInt(strikesLimit, 10);
+  if (!n || n < 1) return rows.slice();
+  var center = close;
+  if (center == null || isNaN(Number(center))) {
+    // احتياط: منتصف السترايكات إن تعذّر الإغلاق
+    if (!rows.length) return rows.slice();
+    var sorted = rows.slice().sort(function (a, b) { return a.strike - b.strike; });
+    center = sorted[Math.floor(sorted.length / 2)].strike;
+  }
+  center = Number(center);
   return rows
-    .map(function (r) { return { r: r, dist: Math.abs(r.strike - close) }; })
+    .map(function (r) { return { r: r, dist: Math.abs(r.strike - center) }; })
     .sort(function (a, b) { return a.dist - b.dist; })
     .slice(0, n * 2)
     .map(function (x) { return x.r; })
@@ -841,7 +850,11 @@ async function refresh() {
     fetchSessionClose(state.ticker).then(function (px) {
       if (px != null) {
         state.sessionClose = px;
-        if (state.cache[state.ticker]) state.cache[state.ticker].close = px;
+        // لا نستبدل data.close من JSON — يبقى مصدر السترايكات/الماب
+        // إن كان JSON بلا إغلاق فقط نعرض sessionClose عبر effectiveClose
+        if (state.cache[state.ticker] && (state.cache[state.ticker].close == null || isNaN(Number(state.cache[state.ticker].close)))) {
+          state.cache[state.ticker].close = px;
+        }
         renderTable();
       }
     });
@@ -2270,24 +2283,16 @@ function estimateCloseFromRows(data) {
 }
 
 function effectiveClose(data) {
-  if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
-    return Number(state.livePrice);
+  // أولوية ثابتة للجدول/الماب/السترايكات: إغلاق JSON من خط أنابيب OCC
+  if (data && data.close != null && !isNaN(Number(data.close))) {
+    return Number(data.close);
   }
   if (state.sessionClose != null && !isNaN(Number(state.sessionClose))) {
     return Number(state.sessionClose);
   }
-  if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
-    return Number(data.close);
+  if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
+    return Number(state.livePrice);
   }
-  if (data && data.closes && typeof data.closes === "object") {
-    var keys = Object.keys(data.closes);
-    for (var i = keys.length - 1; i >= 0; i--) {
-      var v = Number(data.closes[keys[i]]);
-      if (!isNaN(v) && v > 0) return v;
-    }
-  }
-  var est = estimateCloseFromRows(data);
-  if (est != null && !isNaN(est)) return est;
   return null;
 }
 
@@ -2931,7 +2936,10 @@ async function loadLevels() {
   const base = document.body.dataset.dataBase || "../data";
   const res = await fetch(base + "/levels.json?t=" + Date.now());
   if (!res.ok) throw new Error("لا يوجد levels.json بعد — شغّل Actions أولًا");
-  levelsCache = await res.json();
+  var rawTxt = await res.text();
+    // إصلاح NaN غير القانوني في JSON قديم
+    rawTxt = rawTxt.replace(/\bNaN\b/g, "null").replace(/\bInfinity\b/g, "null");
+    levelsCache = JSON.parse(rawTxt);
   return levelsCache;
 }
 
