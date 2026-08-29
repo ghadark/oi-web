@@ -841,7 +841,7 @@ async function refresh() {
     fetchSessionClose(state.ticker).then(function (px) {
       if (px != null) {
         state.sessionClose = px;
-        // لا نستبدل data.close من JSON
+        if (state.cache[state.ticker]) state.cache[state.ticker].close = px;
         renderTable();
       }
     });
@@ -1235,6 +1235,15 @@ function getSeriesPrevDayView(data) {
 }
 
 /** جدول «اليوم بالسابق»: أعمدة = تواريخ انتهاء يومية متتالية (25 ثم 26 ثم…) وليس أيام سحب لنفس الانتهاء */
+/** ألوان أعمدة «اليوم بالسابق» — متنوعة وغير متناظرة */
+function seriesColClass(idx, nCols) {
+  var tones = ["sc-a", "sc-b", "sc-c", "sc-d", "sc-e", "sc-f", "sc-g"];
+  if (!nCols || nCols <= 1) return tones[0];
+  var order = [0, 2, 4, 1, 5, 3, 6];
+  var slot = Math.round((idx / Math.max(1, nCols - 1)) * (order.length - 1));
+  return tones[order[Math.max(0, Math.min(order.length - 1, slot))]];
+}
+
 function renderSeriesTable() {
   const data = state.cache[state.ticker];
   const host = $("#tableHost");
@@ -1268,17 +1277,19 @@ function renderSeriesTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll"><table class="oi series-oi"><thead><tr>';
+  html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi"><thead><tr>';
 
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (let i = pullDates.length - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
-    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    const sc = seriesColClass(i, pullDates.length);
+    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   html += '<th class="strike">STRIKE</th>';
   for (let j = 0; j < pullDates.length; j++) {
     const f = formatPullDate(pullDates[j]);
-    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    const sc = seriesColClass(j, pullDates.length);
+    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
   html += "</tr></thead><tbody>";
@@ -1345,6 +1356,8 @@ function renderSeriesTable() {
       html +=
         '<td class="' +
         callCls +
+        " " +
+        seriesColClass(i, pullDates.length) +
         maxCls +
         '">' +
         cv.toLocaleString() +
@@ -1357,6 +1370,8 @@ function renderSeriesTable() {
       html +=
         '<td class="' +
         putCls +
+        " " +
+        seriesColClass(i, pullDates.length) +
         maxCls +
         '">' +
         pv.toLocaleString() +
@@ -1893,6 +1908,7 @@ function openExportDialog() {
       html +=
         '<button type="button" class="exp-date-chip' +
         on +
+        (it.meta.sub === "OPX" ? " opx-chip" : "") +
         '" data-exp="' +
         it.exp +
         '">' +
@@ -1900,7 +1916,9 @@ function openExportDialog() {
         it.meta.day +
         (it.meta.monShort ? " " + it.meta.monShort : "") +
         "</span>" +
-        '<span class="s">' +
+        '<span class="s' +
+        (it.meta.sub === "OPX" ? " opx-sub" : "") +
+        '">' +
         it.meta.sub +
         "</span></button>";
     });
@@ -2270,7 +2288,12 @@ function estimateCloseFromRows(data) {
 }
 
 function effectiveClose(data) {
-  // مثل الخاص: إغلاق JSON للرمز هو المصدر الأساسي للجدول/السترايكات
+  if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
+    return Number(state.livePrice);
+  }
+  if (state.sessionClose != null && !isNaN(Number(state.sessionClose))) {
+    return Number(state.sessionClose);
+  }
   if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
     return Number(data.close);
   }
@@ -2281,12 +2304,8 @@ function effectiveClose(data) {
       if (!isNaN(v) && v > 0) return v;
     }
   }
-  if (state.sessionClose != null && !isNaN(Number(state.sessionClose)) && Number(state.sessionClose) > 0) {
-    return Number(state.sessionClose);
-  }
-  if (state.livePrice != null && !isNaN(Number(state.livePrice)) && Number(state.livePrice) > 0) {
-    return Number(state.livePrice);
-  }
+  var est = estimateCloseFromRows(data);
+  if (est != null && !isNaN(est)) return est;
   return null;
 }
 
@@ -3632,16 +3651,8 @@ async function levelsForMapRange(baseL, range) {
   if (!baseL) return baseL;
   var data;
   try { data = await loadTicker(state.ticker); } catch (e) { return baseL; }
-  var nEach = mapRangeN(range); // null = ALL
-  // أولوية: إغلاق JSON الرمز (دقيق) ثم levels ثم effectiveClose
-  var close = null;
-  if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
-    close = Number(data.close);
-  } else if (baseL.close != null && !isNaN(Number(baseL.close)) && Number(baseL.close) > 0) {
-    close = Number(baseL.close);
-  } else if (typeof effectiveClose === "function") {
-    close = effectiveClose(data);
-  }
+  var nEach = mapRangeN(range);
+  var close = baseL.close != null ? baseL.close : data.close;
   var pullDates = data.pull_dates || [];
   var lastIdx = pullDates.length - 1;
   var prevIdx = pullDates.length > 1 ? pullDates.length - 2 : -1;
@@ -3696,19 +3707,8 @@ async function openMap() {
   body.innerHTML = '<p style="color:#94a3b8">جاري تحميل المستويات…</p>';
   try {
     const all = await loadLevels();
-    var raw = (all.tickers || {})[state.ticker];
+    const raw = (all.tickers || {})[state.ticker];
     if (!raw) throw new Error("لا مستويات لـ " + state.ticker);
-    // عبّئ الإغلاق من بيانات الرمز إن كان levels بلا close أو غير صالح
-    try {
-      var td = state.cache[state.ticker] || (await loadTicker(state.ticker));
-      if (td && (raw.close == null || isNaN(Number(raw.close)) || Number(raw.close) <= 0)) {
-        var cx = (typeof effectiveClose === "function") ? effectiveClose(td) : td.close;
-        if (cx != null && !isNaN(Number(cx)) && Number(cx) > 0) raw.close = Number(cx);
-      } else if (td && td.close != null && !isNaN(Number(td.close)) && Number(td.close) > 0) {
-        // فضّل إغلاق JSON الرمز دائمًا (أدق من levels القديم)
-        raw.close = Number(td.close);
-      }
-    } catch (e2) {}
     mapZoom = 1;
     mapRawL = raw;
     const L = await levelsForMapRange(raw, state.mapRange || "ALL");
