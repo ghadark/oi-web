@@ -590,6 +590,25 @@ function filterStrikes(rows, close, strikesLimit) {
     .sort(function (a, b) { return a.strike - b.strike; });
 }
 
+/** ألوان أعمدة «اليوم بالسابق» — تدرّج هادئ من الأقدم للأحدث */
+function seriesColClass(idx, nCols, side) {
+  // side: call | put | head
+  var tones = [
+    "sc-teal",
+    "sc-blue",
+    "sc-indigo",
+    "sc-violet",
+    "sc-purple",
+    "sc-amber",
+    "sc-rose",
+  ];
+  // وزّع من الأقدم (0) للأحدث (n-1)
+  var i = 0;
+  if (nCols <= 1) i = 0;
+  else i = Math.round((idx / Math.max(1, nCols - 1)) * (tones.length - 1));
+  return tones[Math.max(0, Math.min(tones.length - 1, i))];
+}
+
 function positiveDelta(last, prev) {
   const d = (last || 0) - (prev || 0);
   return d > 0 ? d : null;
@@ -1281,17 +1300,19 @@ function renderSeriesTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll"><table class="oi series-oi"><thead><tr>';
+  html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi"><thead><tr>';
 
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (let i = pullDates.length - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
-    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    const sc = seriesColClass(i, pullDates.length);
+    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   html += '<th class="strike">STRIKE</th>';
   for (let j = 0; j < pullDates.length; j++) {
     const f = formatPullDate(pullDates[j]);
-    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    const sc = seriesColClass(j, pullDates.length);
+    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
   html += "</tr></thead><tbody>";
@@ -1358,6 +1379,8 @@ function renderSeriesTable() {
       html +=
         '<td class="' +
         callCls +
+        " " +
+        seriesColClass(i, pullDates.length) +
         maxCls +
         '">' +
         cv.toLocaleString() +
@@ -1370,6 +1393,8 @@ function renderSeriesTable() {
       html +=
         '<td class="' +
         putCls +
+        " " +
+        seriesColClass(i, pullDates.length) +
         maxCls +
         '">' +
         pv.toLocaleString() +
@@ -1418,7 +1443,8 @@ function renderTable() {
   }
   const pullDates = view.pullDates;
   const rows = view.rows;
-  const close = effectiveClose(data);
+  var close = effectiveClose(data);
+  if (close == null && data && data.close != null && !isNaN(Number(data.close))) close = Number(data.close);
   const canDelta = state.showDelta && pullDates.length >= 2;
   const lastI = pullDates.length - 1;
   const prevI = pullDates.length - 2;
@@ -1430,7 +1456,7 @@ function renderTable() {
     " | Exp: " +
     state.expiration +
     "</div>";
-  if (close != null) {
+  if (close != null && !isNaN(Number(close))) {
     const liveTag = state.livePrice != null ? " · مباشر" : "";
     html +=
       '<div class="close-pill">الإغلاق: ' +
@@ -1906,6 +1932,7 @@ function openExportDialog() {
       html +=
         '<button type="button" class="exp-date-chip' +
         on +
+        (it.meta.sub === "OPX" ? " opx-chip" : "") +
         '" data-exp="' +
         it.exp +
         '">' +
@@ -1913,7 +1940,9 @@ function openExportDialog() {
         it.meta.day +
         (it.meta.monShort ? " " + it.meta.monShort : "") +
         "</span>" +
-        '<span class="s">' +
+        '<span class="s' +
+        (it.meta.sub === "OPX" ? " opx-sub" : "") +
+        '">' +
         it.meta.sub +
         "</span></button>";
     });
@@ -2283,16 +2312,26 @@ function estimateCloseFromRows(data) {
 }
 
 function effectiveClose(data) {
-  // أولوية ثابتة للجدول/الماب/السترايكات: إغلاق JSON من خط أنابيب OCC
-  if (data && data.close != null && !isNaN(Number(data.close))) {
+  // مصدر ثابت للجدول/الماب/السترايكات: إغلاق خط OCC في JSON
+  if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
     return Number(data.close);
   }
-  if (state.sessionClose != null && !isNaN(Number(state.sessionClose))) {
+  if (data && data.closes && typeof data.closes === "object") {
+    var keys = Object.keys(data.closes);
+    for (var i = keys.length - 1; i >= 0; i--) {
+      var v = Number(data.closes[keys[i]]);
+      if (!isNaN(v) && v > 0) return v;
+    }
+  }
+  if (state.sessionClose != null && !isNaN(Number(state.sessionClose)) && Number(state.sessionClose) > 0) {
     return Number(state.sessionClose);
   }
-  if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
+  // السعر المباشر اختياري للعرض فقط — لا يُستخدم كبديل أساسي إن وُجد JSON
+  if (state.livePrice != null && !isNaN(Number(state.livePrice)) && Number(state.livePrice) > 0) {
     return Number(state.livePrice);
   }
+  var est = typeof estimateCloseFromRows === "function" ? estimateCloseFromRows(data) : null;
+  if (est != null && !isNaN(est)) return est;
   return null;
 }
 
