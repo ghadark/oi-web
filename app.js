@@ -21,6 +21,7 @@ const STOCKS_TICKERS = [
   { symbol: "MU", name: "Micron", color: "#111827" },
   { symbol: "COHR", name: "Coherent", color: "#00A3E0" },
   { symbol: "SNDK", name: "SanDisk", color: "#6366F1" },
+  { symbol: "VOO", name: "Vanguard S&P 500", color: "#C41230" },
 ];
 
 /** كل الرموز للبحث/العرض */
@@ -29,30 +30,57 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
   expiration: null, showDelta: false, seriesMode: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
+  archDays: "2", archStrikes: "30", archShowDelta: false, archExportMode: "multi", archSelected: [],
 };
 
 const $ = (sel) => document.querySelector(sel);
 
-function positionDdList(btn, list) {
+function placeFixedDropdown(btn, list) {
+  if (!btn || !list) return;
   try {
-    if (!btn || !list) return;
-    if (window.innerWidth > 1100) {
-      list.style.left = "";
-      list.style.right = "";
-      list.style.top = "";
-      list.style.width = "";
-      list.style.position = "";
-      return;
-    }
+    if (!list._ddHome) list._ddHome = list.parentElement;
+    if (list.parentElement !== document.body) document.body.appendChild(list);
     var r = btn.getBoundingClientRect();
-    list.style.position = "fixed";
-    list.style.zIndex = "9999";
-    list.style.top = Math.round(r.bottom + 4) + "px";
-    list.style.left = Math.round(r.left) + "px";
-    list.style.right = "auto";
-    list.style.width = Math.max(Math.round(r.width), 140) + "px";
-    list.style.maxHeight = Math.min(420, window.innerHeight - r.bottom - 12) + "px";
+    var w = Math.max(1, Math.round(r.width));
+    var left = r.left;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+    if (left < 8) left = 8;
+    var top = r.bottom + 4;
+    if (top + 120 > window.innerHeight) {
+      top = Math.max(8, r.top - 4 - Math.min(320, window.innerHeight * 0.5));
+    }
+    list.classList.add("dd-fixed");
+    list.hidden = false;
+    list.removeAttribute("hidden");
+    list.style.setProperty("display", "block", "important");
+    list.style.setProperty("visibility", "visible", "important");
+    list.style.setProperty("pointer-events", "auto", "important");
+    list.style.setProperty("opacity", "1", "important");
+    list.style.setProperty("position", "fixed", "important");
+    list.style.setProperty("top", Math.round(top) + "px", "important");
+    list.style.setProperty("left", Math.round(left) + "px", "important");
+    list.style.setProperty("width", Math.round(w) + "px", "important");
+    list.style.setProperty("right", "auto", "important");
+    list.style.setProperty("bottom", "auto", "important");
+    list.style.setProperty("z-index", "10050", "important");
+    list.style.setProperty("max-height", "min(420px, 70vh)", "important");
+    list.style.setProperty("overflow-y", "auto", "important");
   } catch (e) {}
+}
+function clearFixedDropdown(list) {
+  if (!list) return;
+  try {
+    list.classList.remove("dd-fixed");
+    ["display","visibility","pointer-events","opacity","position","top","left","width","right","bottom","z-index","max-height","overflow-y"].forEach(function (p) {
+      try { list.style.removeProperty(p); } catch (e0) {}
+    });
+    list.hidden = true;
+    list.setAttribute("hidden", "");
+    if (list._ddHome && list.parentElement === document.body) list._ddHome.appendChild(list);
+  } catch (e) {}
+}
+function positionDdList(btn, list) {
+  placeFixedDropdown(btn, list);
 }
 
 
@@ -269,6 +297,7 @@ function ensureExpDropdownUI() {
     list.setAttribute("hidden", "");
     btn.classList.remove("open");
     if (wrap) wrap.classList.remove("open");
+    clearFixedDropdown(list);
   });
   return dd;
 }
@@ -378,6 +407,7 @@ function fillExpDropdown(exps) {
         if (list) {
           list.hidden = true;
           list.setAttribute("hidden", "");
+          clearFixedDropdown(list);
         }
         if (btn) btn.classList.remove("open");
         var wrap = document.getElementById("expDropdown");
@@ -418,19 +448,20 @@ function fillExpDropdown(exps) {
         var sList = document.getElementById("stocksDdList");
         if (sWrap) sWrap.classList.remove("open");
         if (sBtn) sBtn.classList.remove("open");
-        if (sList) { sList.hidden = true; sList.setAttribute("hidden", ""); }
+        if (sList) { sList.hidden = true; sList.setAttribute("hidden", ""); clearFixedDropdown(sList); }
       } catch (eS) {}
       if (isOpen) {
         if (wrap) wrap.classList.remove("open");
         btn.classList.remove("open");
         list.hidden = true;
         list.setAttribute("hidden", "");
+        clearFixedDropdown(list);
       } else {
         if (wrap) wrap.classList.add("open");
         btn.classList.add("open");
         list.hidden = false;
         list.removeAttribute("hidden");
-        if (typeof positionDdList === "function") positionDdList(btn, list);
+        placeFixedDropdown(btn, list);
       }
     };
   }
@@ -540,10 +571,19 @@ function lastN(arr, n) {
 }
 
 function filterStrikes(rows, close, strikesLimit) {
-  if (!strikesLimit || strikesLimit === "ALL" || close == null) return rows.slice();
+  if (!strikesLimit || strikesLimit === "ALL") return rows.slice();
   const n = parseInt(strikesLimit, 10);
+  if (!n || n < 1) return rows.slice();
+  var center = close;
+  if (center == null || isNaN(Number(center))) {
+    // احتياط: منتصف السترايكات إن تعذّر الإغلاق
+    if (!rows.length) return rows.slice();
+    var sorted = rows.slice().sort(function (a, b) { return a.strike - b.strike; });
+    center = sorted[Math.floor(sorted.length / 2)].strike;
+  }
+  center = Number(center);
   return rows
-    .map(function (r) { return { r: r, dist: Math.abs(r.strike - close) }; })
+    .map(function (r) { return { r: r, dist: Math.abs(r.strike - center) }; })
     .sort(function (a, b) { return a.dist - b.dist; })
     .slice(0, n * 2)
     .map(function (x) { return x.r; })
@@ -634,19 +674,20 @@ function renderStocksDropdown() {
       var eList = document.getElementById("expDdList");
       if (eWrap) eWrap.classList.remove("open");
       if (eBtn) eBtn.classList.remove("open");
-      if (eList) { eList.hidden = true; eList.setAttribute("hidden", ""); }
+      if (eList) { eList.hidden = true; eList.setAttribute("hidden", ""); clearFixedDropdown(eList); }
     } catch (eE) {}
     if (isOpen) {
       if (wrap) wrap.classList.remove("open");
       btn.classList.remove("open");
       list.hidden = true;
       list.setAttribute("hidden", "");
-    } else {
+        clearFixedDropdown(list);
+      } else {
       if (wrap) wrap.classList.add("open");
       btn.classList.add("open");
       list.hidden = false;
       list.removeAttribute("hidden");
-      if (typeof positionDdList === "function") positionDdList(btn, list);
+      placeFixedDropdown(btn, list);
     }
   };
   list.querySelectorAll(".stocks-dd-item").forEach(function (item) {
@@ -659,6 +700,7 @@ function renderStocksDropdown() {
       btn.classList.remove("open");
       var sWrap = document.getElementById("stocksDd");
       if (sWrap) sWrap.classList.remove("open");
+      clearFixedDropdown(list);
       if (!v) return;
       state.ticker = v;
       state.expiration = null;
@@ -677,11 +719,13 @@ function renderStocksDropdown() {
       var btnEl = $("#stocksDdBtn");
       var wrap = $("#stocksDd");
       if (!listEl || !btnEl) return;
+      if (btnEl.contains(e.target) || listEl.contains(e.target)) return;
       if (wrap && wrap.contains(e.target)) return;
       listEl.hidden = true;
       listEl.setAttribute("hidden", "");
       btnEl.classList.remove("open");
       if (wrap) wrap.classList.remove("open");
+      clearFixedDropdown(listEl);
     });
   }
 }
@@ -806,7 +850,11 @@ async function refresh() {
     fetchSessionClose(state.ticker).then(function (px) {
       if (px != null) {
         state.sessionClose = px;
-        if (state.cache[state.ticker]) state.cache[state.ticker].close = px;
+        // لا نستبدل data.close من JSON — يبقى مصدر السترايكات/الماب
+        // إن كان JSON بلا إغلاق فقط نعرض sessionClose عبر effectiveClose
+        if (state.cache[state.ticker] && (state.cache[state.ticker].close == null || isNaN(Number(state.cache[state.ticker].close)))) {
+          state.cache[state.ticker].close = px;
+        }
         renderTable();
       }
     });
@@ -1771,6 +1819,35 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   return headerEnd;
 }
 
+function formatExpExportChip(exp) {
+  try {
+    var d = new Date(String(exp) + "T12:00:00");
+    var monthsAr = {
+      0: "يناير", 1: "فبراير", 2: "مارس", 3: "أبريل", 4: "مايو", 5: "يونيو",
+      6: "يوليو", 7: "أغسطس", 8: "سبتمبر", 9: "أكتوبر", 10: "نوفمبر", 11: "ديسمبر"
+    };
+    var isOpx = typeof isThirdFridayExp === "function" && isThirdFridayExp(exp);
+    return {
+      day: d.getDate(),
+      monShort: d.toLocaleString("en", { month: "short" }),
+      weekday: d.toLocaleString("en", { weekday: "short" }),
+      monthKey: d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"),
+      monthLabel: (monthsAr[d.getMonth()] || "") + " " + d.getFullYear(),
+      sub: isOpx ? "OPX" : d.toLocaleString("en", { weekday: "short" }),
+    };
+  } catch (e) {
+    return { day: exp, monShort: "", weekday: "", monthKey: "x", monthLabel: "", sub: "" };
+  }
+}
+
+
+/** أول اثنين من الشهر الميلادي (بتاريخ الجهاز) */
+function isFirstMondayOfMonth(d) {
+  d = d || new Date();
+  if (d.getDay() !== 1) return false;
+  return d.getDate() <= 7;
+}
+
 function openExportDialog() {
   const data = state.cache[state.ticker];
   if (!data) {
@@ -1794,51 +1871,110 @@ function openExportDialog() {
     return;
   }
   const curExp = state.expiration;
-  let html = "";
-  html += '<div class="exp-export-block">';
-  html += '<div class="exp-export-head"><b>تواريخ الانتهاء</b>';
-  html += '<button type="button" class="btn btn-sm" id="expSelectAll">تحديد الكل</button></div>';
-  html += '<div class="exp-checks">';
+
+  // تجميع حسب الشهر
+  const groups = {};
+  const order = [];
   exps.forEach(function (exp) {
-    const chk = exp === curExp ? " checked" : "";
-    html +=
-      '<label class="exp-check"><input type="checkbox" data-exp="' +
-      exp +
-      '"' +
-      chk +
-      "/> " +
-      exp +
-      "</label>";
+    const meta = formatExpExportChip(exp);
+    if (!groups[meta.monthKey]) {
+      groups[meta.monthKey] = { label: meta.monthLabel, items: [] };
+      order.push(meta.monthKey);
+    }
+    groups[meta.monthKey].items.push({ exp: exp, meta: meta });
   });
-  html += "</div></div>";
-  html += '<div class="exp-export-row"><span>الوضع</span>';
-  html += '<button type="button" class="chip on" data-emode="single">صفحة واحدة</button>';
-  html += '<button type="button" class="chip" data-emode="multi">صفحات متعددة</button></div>';
-  html += '<div class="exp-export-row"><span>Days</span>';
+
+  let html = "";
+  html += '<div class="exp-export-top">';
+  html += '<div class="exp-export-heading">';
+  html += '<div class="exp-export-title">' + (state.ticker || "") + "</div>";
+  if (isFirstMondayOfMonth(new Date())) {
+    html += '<div class="exp-month-tip">بداية شهر جديد — مناسبة لتصدير ما يهمّك</div>';
+  }
+  html += "</div>";
+  html += '<button type="button" class="btn-sm exp-select-all" id="expSelectAll">تحديد الكل</button>';
+  html += "</div>";
+
+  html += '<div class="exp-month-list">';
+  order.forEach(function (key) {
+    const g = groups[key];
+    html += '<div class="exp-month">';
+    html += '<div class="exp-month-title">' + (g.label || key) + "</div>";
+    html += '<div class="exp-month-dates">';
+    g.items.forEach(function (it) {
+      const on = it.exp === curExp ? " on" : "";
+      html +=
+        '<button type="button" class="exp-date-chip' +
+        on +
+        '" data-exp="' +
+        it.exp +
+        '">' +
+        '<span class="d">' +
+        it.meta.day +
+        (it.meta.monShort ? " " + it.meta.monShort : "") +
+        "</span>" +
+        '<span class="s">' +
+        it.meta.sub +
+        "</span></button>";
+    });
+    html += "</div></div>";
+  });
+  html += "</div>";
+
+  // شريط موحّد: Days + Strikes + الوضع + Excel
+  html += '<div class="exp-unified-bar">';
+  html += '<span class="lab">Days</span>';
   ["2", "3", "5", "10", "ALL"].forEach(function (d) {
     const on = String(state.days) === d ? " on" : "";
-    html += '<button type="button" class="chip' + on + '" data-edays="' + d + '">' + d + "</button>";
+    html +=
+      '<button type="button" class="chip' +
+      on +
+      '" data-edays="' +
+      d +
+      '">' +
+      d +
+      "</button>";
   });
-  html += "</div>";
-  html += '<div class="exp-export-row"><span>Strikes</span>';
+  html += '<span class="lab">Strikes</span>';
   ["50", "100", "ALL"].forEach(function (s) {
-    const curS = ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0 ? String(state.strikes) : "50";
+    const curS =
+      ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
+        ? String(state.strikes)
+        : "50";
     const on = curS === s ? " on" : "";
-    html += '<button type="button" class="chip' + on + '" data-estrikes="' + s + '">' + s + "</button>";
+    html +=
+      '<button type="button" class="chip' +
+      on +
+      '" data-estrikes="' +
+      s +
+      '">' +
+      s +
+      "</button>";
   });
+  html +=
+    '<button type="button" class="chip on" data-emode="single">صفحة واحدة</button>';
+  html +=
+    '<button type="button" class="chip" data-emode="multi">متعددة</button>';
+  html +=
+    '<button type="button" class="btn btn-teal exp-do-inline" id="expDoBtn">Excel</button>';
   html += "</div>";
-  html += '<div class="exp-footer">';
   html += '<p id="expStatus" class="exp-status"></p>';
-  html += '<div class="exp-export-actions">';
-  html += '<button type="button" class="btn btn-teal" id="expDoBtn">تصدير Excel</button>';
-  html += '<button type="button" class="btn" id="expCancelBtn">إلغاء</button></div>';
-  html += '</div>';
+
   body.innerHTML = html;
   modal.classList.remove("hidden");
 
   let emode = "single";
   let edays = String(state.days || "2");
-  let estrikes = ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0 ? String(state.strikes) : "50";
+  let estrikes =
+    ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
+      ? String(state.strikes)
+      : "50";
+
+  body.querySelectorAll(".exp-date-chip").forEach(function (btn) {
+    btn.onclick = function () {
+      btn.classList.toggle("on");
+    };
+  });
 
   body.querySelectorAll("[data-emode]").forEach(function (btn) {
     btn.onclick = function () {
@@ -1864,16 +2000,20 @@ function openExportDialog() {
       });
     };
   });
+
   const selAll = $("#expSelectAll");
   if (selAll) {
     selAll.onclick = function () {
-      body.querySelectorAll("input[data-exp]").forEach(function (cb) {
-        cb.checked = true;
+      const chips = body.querySelectorAll(".exp-date-chip");
+      const allOn = Array.prototype.every.call(chips, function (c) {
+        return c.classList.contains("on");
+      });
+      chips.forEach(function (c) {
+        c.classList.toggle("on", !allOn);
       });
     };
   }
-  const cancel = $("#expCancelBtn");
-  if (cancel) cancel.onclick = closeExportDialog;
+
   const doBtn = $("#expDoBtn");
   if (doBtn) {
     doBtn.onclick = function () {
@@ -1893,9 +2033,15 @@ function runExportFromDialog(emode, edays, estrikes) {
   const st = $("#expStatus");
   const chosen = [];
   if (body) {
-    body.querySelectorAll("input[data-exp]:checked").forEach(function (cb) {
-      chosen.push(cb.getAttribute("data-exp"));
+    body.querySelectorAll(".exp-date-chip.on").forEach(function (chip) {
+      chosen.push(chip.getAttribute("data-exp"));
     });
+    // توافق قديم إن وُجدت checkboxes
+    if (!chosen.length) {
+      body.querySelectorAll("input[data-exp]:checked").forEach(function (cb) {
+        chosen.push(cb.getAttribute("data-exp"));
+      });
+    }
   }
   if (!chosen.length) {
     if (st) st.textContent = "اختر تاريخ انتهاء واحدًا على الأقل";
@@ -1958,8 +2104,8 @@ function runExportFromDialog(emode, edays, estrikes) {
         a.click();
         URL.revokeObjectURL(a.href);
       }
-      if (st) st.textContent = "✅ تم التصدير: " + fname;
-      setStatus("✅ تم التصدير: " + fname, "ok");
+      if (st) st.textContent = "تم التصدير";
+      setStatus("تم التصدير", "ok");
     }).catch(function (err) {
       if (st) st.textContent = "خطأ: " + (err && err.message ? err.message : err);
       setStatus("خطأ تصدير: " + (err && err.message ? err.message : err), "err");
@@ -2137,24 +2283,16 @@ function estimateCloseFromRows(data) {
 }
 
 function effectiveClose(data) {
-  if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
-    return Number(state.livePrice);
+  // أولوية ثابتة للجدول/الماب/السترايكات: إغلاق JSON من خط أنابيب OCC
+  if (data && data.close != null && !isNaN(Number(data.close))) {
+    return Number(data.close);
   }
   if (state.sessionClose != null && !isNaN(Number(state.sessionClose))) {
     return Number(state.sessionClose);
   }
-  if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
-    return Number(data.close);
+  if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
+    return Number(state.livePrice);
   }
-  if (data && data.closes && typeof data.closes === "object") {
-    var keys = Object.keys(data.closes);
-    for (var i = keys.length - 1; i >= 0; i--) {
-      var v = Number(data.closes[keys[i]]);
-      if (!isNaN(v) && v > 0) return v;
-    }
-  }
-  var est = estimateCloseFromRows(data);
-  if (est != null && !isNaN(est)) return est;
   return null;
 }
 
@@ -2237,6 +2375,25 @@ if ($("#expSelect")) {
   };
   if ($("#themeSwitch")) $("#themeSwitch").onclick = toggleTheme;
   if ($("#mapBtn")) $("#mapBtn").onclick = function () { openMap(); };
+
+  if ($("#archiveBtn")) $("#archiveBtn").onclick = function () { openArchive(); };
+  if ($("#archiveClose")) $("#archiveClose").onclick = closeArchive;
+  if ($("#archiveModal")) $("#archiveModal").addEventListener("click", function (e) {
+    if (e.target.id === "archiveModal") closeArchive();
+  });
+  if ($("#archDeltaBtn")) $("#archDeltaBtn").onclick = function () {
+    state.archShowDelta = !state.archShowDelta;
+    renderArchChips();
+  };
+  if ($("#archExportBtn")) $("#archExportBtn").onclick = function () {
+    try { exportArchiveExcel(); } catch (err) {
+      setStatus("خطأ تصدير الأرشيف: " + (err && err.message ? err.message : err), "err");
+    }
+  };
+  if ($("#archExportMode")) $("#archExportMode").onchange = function (e) {
+    state.archExportMode = e.target.value || "multi";
+  };
+
   if ($("#mapClose")) $("#mapClose").onclick = closeMap;
   if ($("#exportClose")) $("#exportClose").onclick = closeExportDialog;
   if ($("#feedbackBtn")) $("#feedbackBtn").onclick = openFeedback;
@@ -2263,6 +2420,513 @@ if ($("#expSelect")) {
 
 
 
+
+// ========== أرشيف الأسبوع (جداول الانتهاء الأساسية) ==========
+function isoFromDate(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function getArchiveWeekBounds(data) {
+  var s = dataSessionFromPull(data);
+  var d;
+  if (s) {
+    d = new Date(s.year, s.month - 1, s.day);
+  } else {
+    d = dataSessionCutoffDate(data);
+  }
+  d.setHours(12, 0, 0, 0);
+  var day = d.getDay(); // 0 Sun .. 5 Fri
+  var toMon = day === 0 ? -6 : 1 - day;
+  var mon = new Date(d);
+  mon.setDate(d.getDate() + toMon);
+  mon.setHours(0, 0, 0, 0);
+  var fri = new Date(mon);
+  fri.setDate(mon.getDate() + 4);
+  fri.setHours(23, 59, 59, 999);
+  return { mon: mon, fri: fri, monIso: isoFromDate(mon), friIso: isoFromDate(fri) };
+}
+
+function archiveExpirations(data) {
+  if (!data) return [];
+  var bounds = getArchiveWeekBounds(data);
+  var by = data.by_expiration || {};
+  var all = (data.expirations || Object.keys(by) || []).slice();
+  var out = [];
+  all.forEach(function (exp) {
+    var dt = new Date(String(exp) + "T12:00:00");
+    if (isNaN(dt.getTime())) return;
+    if (dt < bounds.mon || dt > bounds.fri) return;
+    if (!by[exp]) return;
+    out.push(exp);
+  });
+  out.sort();
+  return out;
+}
+
+function formatArchDayTitle(exp) {
+  try {
+    var d = new Date(String(exp) + "T12:00:00");
+    var top = d.getDate() + " " + d.toLocaleString("en", { month: "short" });
+    var sub = d.toLocaleString("en", { weekday: "short" });
+    return { top: top, sub: sub };
+  } catch (e) {
+    return { top: exp, sub: "" };
+  }
+}
+
+function getViewRowsForExp(data, exp, daysLimit, strikesLimit) {
+  if (!data || !exp || !data.by_expiration || !data.by_expiration[exp]) return null;
+  var block = data.by_expiration[exp];
+  var basePull = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates.slice()
+    : (data.pull_dates || []).slice();
+  if (
+    String(state.ticker).toUpperCase() === "SPX" &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(exp)
+  ) {
+    basePull = filterSpxMonthlyPullDates(basePull);
+  }
+  var fullDates = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates
+    : (data.pull_dates || []);
+  var idxFull = basePull.map(function (d) { return fullDates.indexOf(d); });
+  var rowsAligned = (block.rows || []).map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idxFull.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idxFull.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
+    };
+  });
+  var trimmed = trimLeadingZeroColumns(basePull, rowsAligned);
+  basePull = trimmed.pullDates;
+  rowsAligned = trimmed.rows;
+  var pullDates = lastN(basePull, daysLimit);
+  if (!pullDates.length) return null;
+  var idx = pullDates.map(function (d) { return basePull.indexOf(d); });
+  var rows = rowsAligned.map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idx.map(function (i) { return i >= 0 ? r.calls[i] : 0; }),
+      puts: idx.map(function (i) { return i >= 0 ? r.puts[i] : 0; }),
+    };
+  });
+  var close = effectiveClose(data);
+  rows = filterStrikes(rows, close, strikesLimit);
+  return { pullDates: pullDates, rows: rows, close: close };
+}
+
+function buildOneArchiveTableHtml(exp, view, showDelta) {
+  if (!view || !view.rows || !view.rows.length) {
+    return '<div class="archive-empty">لا بيانات</div>';
+  }
+  var pullDates = view.pullDates;
+  var rows = view.rows;
+  var close = view.close;
+  var canDelta = showDelta && pullDates.length >= 2;
+  var lastI = pullDates.length - 1;
+  var prevI = pullDates.length - 2;
+  var title = formatArchDayTitle(exp);
+  var html = '<div class="archive-day">';
+  html += '<div class="archive-day-head"><span>' + title.top + '</span><em>' + title.sub + '</em></div>';
+  html += '<div class="table-scroll"><table class="oi"><thead><tr>';
+  if (canDelta) html += '<th class="delta">Δ</th>';
+  for (var i = pullDates.length - 1; i >= 0; i--) {
+    var f = formatPullDate(pullDates[i]);
+    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+  }
+  html += '<th class="strike">STRIKE</th>';
+  for (var j = 0; j < pullDates.length; j++) {
+    var f2 = formatPullDate(pullDates[j]);
+    html += "<th>" + f2.top + '<br><span class="subh">' + f2.sub + "</span></th>";
+  }
+  if (canDelta) html += '<th class="delta">Δ</th>';
+  html += "</tr></thead><tbody>";
+
+  var callMax = [], putMax = [];
+  for (var ci = 0; ci < pullDates.length; ci++) {
+    var mc = 0, mp = 0;
+    rows.forEach(function (r) {
+      var cv = r.calls[ci] || 0, pv = r.puts[ci] || 0;
+      if (cv > mc) mc = cv;
+      if (pv > mp) mp = pv;
+    });
+    callMax.push(mc);
+    putMax.push(mp);
+  }
+  var deltaCallMax = 0, deltaPutMax = 0;
+  if (canDelta) {
+    rows.forEach(function (r) {
+      var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      var dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      if (dc != null && dc > deltaCallMax) deltaCallMax = dc;
+      if (dp != null && dp > deltaPutMax) deltaPutMax = dp;
+    });
+  }
+  var barDone = false;
+  rows.forEach(function (r, ri) {
+    if (close != null && !barDone && r.strike > close) {
+      html += greenBarRow(canDelta, pullDates.length, close);
+      barDone = true;
+    }
+    var zebra = ri % 2 === 1 ? " zebra" : "";
+    var above = close != null && r.strike > close;
+    var below = close != null && r.strike < close;
+    var callCls = below || (close != null && r.strike === close) ? "itm" : "otm";
+    var putCls = above || (close != null && r.strike === close) ? "itm" : "otm";
+    html += '<tr class="' + zebra + '">';
+    if (canDelta) {
+      var d = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      var maxCls = d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
+      html += '<td class="delta' + maxCls + '">' + (d != null ? d.toLocaleString() : "") + "</td>";
+    }
+    for (var ii = pullDates.length - 1; ii >= 0; ii--) {
+      var cv = r.calls[ii] || 0;
+      var maxC = callMax[ii] > 0 && cv === callMax[ii] ? " max-oi" : "";
+      html += '<td class="' + callCls + maxC + '">' + cv.toLocaleString() + "</td>";
+    }
+    html += '<td class="strike">' + r.strike + "</td>";
+    for (var pi = 0; pi < pullDates.length; pi++) {
+      var pv = r.puts[pi] || 0;
+      var maxP = putMax[pi] > 0 && pv === putMax[pi] ? " max-oi" : "";
+      html += '<td class="' + putCls + maxP + '">' + pv.toLocaleString() + "</td>";
+    }
+    if (canDelta) {
+      var dp2 = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      var maxDp = dp2 != null && deltaPutMax > 0 && dp2 === deltaPutMax ? " max-oi" : "";
+      html += '<td class="delta' + maxDp + '">' + (dp2 != null ? dp2.toLocaleString() : "") + "</td>";
+    }
+    html += "</tr>";
+  });
+  if (close != null && !barDone) {
+    html += greenBarRow(canDelta, pullDates.length, close);
+  }
+  html += "</tbody></table></div></div>";
+  return html;
+}
+
+
+function renderArchChips() {
+  var daysHost = $("#archDaysRow");
+  var strikesHost = $("#archStrikesRow");
+  if (daysHost) {
+    daysHost.innerHTML = "";
+    ["2", "3", "5", "10", "ALL"].forEach(function (opt) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (String(state.archDays) === opt ? " active" : "");
+      b.textContent = opt;
+      b.onclick = function () {
+        state.archDays = opt;
+        renderArchChips();
+      };
+      daysHost.appendChild(b);
+    });
+  }
+  if (strikesHost) {
+    strikesHost.innerHTML = "";
+    ["30", "50", "ALL"].forEach(function (opt) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (String(state.archStrikes) === opt ? " active" : "");
+      b.textContent = opt;
+      b.onclick = function () {
+        state.archStrikes = opt;
+        renderArchChips();
+      };
+      strikesHost.appendChild(b);
+    });
+  }
+  var db = $("#archDeltaBtn");
+  if (db) db.classList.toggle("active", !!state.archShowDelta);
+}
+
+function updateArchSelectHint() {
+  /* hint removed by design */
+}
+
+function renderArchDateRow(exps) {
+  var row = $("#archDateRow");
+  if (!row) return;
+  row.innerHTML = "";
+  if (!exps || !exps.length) {
+    row.innerHTML = '<span class="archive-empty-inline">لا تواريخ هذا الأسبوع</span>';
+    updateArchSelectHint();
+    return;
+  }
+  // زر تحديد الكل
+  var allBtn = document.createElement("button");
+  allBtn.type = "button";
+  allBtn.className = "arch-date-chip arch-all-chip";
+  allBtn.innerHTML = '<span class="d-top">الكل</span><span class="d-sub">تحديد</span>';
+  allBtn.onclick = function () {
+    var selected = state.archSelected || [];
+    if (selected.length === exps.length) {
+      state.archSelected = [];
+    } else {
+      state.archSelected = exps.slice();
+    }
+    renderArchDateRow(exps);
+  };
+  if ((state.archSelected || []).length === exps.length && exps.length) {
+    allBtn.classList.add("active");
+  }
+  row.appendChild(allBtn);
+
+  exps.forEach(function (exp) {
+    var t = formatArchDayTitle(exp);
+    var b = document.createElement("button");
+    b.type = "button";
+    var on = (state.archSelected || []).indexOf(exp) >= 0;
+    b.className = "arch-date-chip" + (on ? " active" : "");
+    b.innerHTML = '<span class="d-top">' + t.top + '</span><span class="d-sub">' + t.sub + "</span>";
+    b.onclick = function () {
+      var arr = (state.archSelected || []).slice();
+      var i = arr.indexOf(exp);
+      if (i >= 0) arr.splice(i, 1);
+      else arr.push(exp);
+      arr.sort();
+      state.archSelected = arr;
+      renderArchDateRow(exps);
+    };
+    row.appendChild(b);
+  });
+  updateArchSelectHint();
+}
+
+function openArchive() {
+  var modal = $("#archiveModal");
+  if (!modal) return;
+  state.archSelected = [];
+  state.archShowDelta = false;
+  modal.classList.remove("hidden");
+  var data = state.cache[state.ticker];
+  var exps = data ? archiveExpirations(data) : [];
+  var title = $("#archiveTitle");
+  var sub = $("#archiveSub");
+  if (title) title.textContent = "أرشيف الأسبوع — " + (state.ticker || "");
+  if (sub) sub.textContent = "اختر تاريخًا";
+  renderArchChips();
+  renderArchDateRow(exps);
+  var modeSel = $("#archExportMode");
+  if (modeSel) modeSel.value = state.archExportMode || "multi";
+  var db = $("#archDeltaBtn");
+  if (db) db.classList.remove("active");
+  updateArchSelectHint();
+}
+
+function closeArchive() {
+  var modal = $("#archiveModal");
+  if (modal) modal.classList.add("hidden");
+  state.archSelected = [];
+}
+
+
+function expIsoSortKey(exp) {
+  try {
+    var p = String(exp).split("-").map(Number);
+    if (p.length < 3) return 0;
+    return new Date(p[0], p[1] - 1, p[2]).getTime();
+  } catch (e) {
+    return 0;
+  }
+}
+
+/** إزالة أعمدة الأصفار من نهاية الجدول */
+function trimTrailingZeroColumns(pullDates, rows) {
+  if (!pullDates || !pullDates.length || !rows || !rows.length) {
+    return { pullDates: pullDates || [], rows: rows || [] };
+  }
+  var n = pullDates.length, last = n - 1, found = false;
+  for (var i = n - 1; i >= 0; i--) {
+    for (var r = 0; r < rows.length; r++) {
+      var c = rows[r].calls && rows[r].calls[i] != null ? Number(rows[r].calls[i]) : 0;
+      var pt = rows[r].puts && rows[r].puts[i] != null ? Number(rows[r].puts[i]) : 0;
+      if (c > 0 || pt > 0) { last = i; found = true; break; }
+    }
+    if (found) break;
+  }
+  if (!found) last = 0;
+  if (last === n - 1) return { pullDates: pullDates, rows: rows };
+  return {
+    pullDates: pullDates.slice(0, last + 1),
+    rows: rows.map(function (row) {
+      return {
+        strike: row.strike,
+        calls: (row.calls || []).slice(0, last + 1),
+        puts: (row.puts || []).slice(0, last + 1),
+      };
+    }),
+  };
+}
+
+/**
+ * عرض أرشيف لتاريخ انتهاء:
+ * - أعمدة السحب فقط حتى يوم الانتهاء (شاملًا) بدون أيام لاحقة
+ * - بدون أعمدة أصفار في البداية أو النهاية
+ * - Days = آخر N أيام سحب حقيقية لهذا الانتهاء
+ * - Δ = آخر عمود مقابل الذي قبله
+ */
+function getArchiveViewRows(data, exp, daysLimit, strikesLimit) {
+  if (!data || !exp) return null;
+  var block = data.by_expiration[exp];
+  if (!block) return null;
+
+  var basePull = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates.slice()
+    : (data.pull_dates || []).slice();
+
+  if (
+    String(state.ticker).toUpperCase() === "SPX" &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(exp)
+  ) {
+    basePull = filterSpxMonthlyPullDates(basePull);
+  }
+  if (
+    String(state.ticker).toUpperCase() === "NDX" &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(exp) &&
+    typeof filterSpxMonthlyPullDates === "function"
+  ) {
+    basePull = filterSpxMonthlyPullDates(basePull);
+  }
+
+  // فقط أيام السحب في أو قبل تاريخ الانتهاء
+  var expKey = expIsoSortKey(exp);
+  basePull = basePull.filter(function (pd) {
+    return pullDateSortKey(pd) <= expKey;
+  });
+  if (!basePull.length) return null;
+
+  var fullDates = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates
+    : (data.pull_dates || []);
+  var idxFull = basePull.map(function (d) { return fullDates.indexOf(d); });
+  var rowsAligned = (block.rows || []).map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idxFull.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idxFull.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
+    };
+  });
+
+  if (typeof trimLeadingZeroColumns === "function") {
+    var t1 = trimLeadingZeroColumns(basePull, rowsAligned);
+    basePull = t1.pullDates;
+    rowsAligned = t1.rows;
+  }
+  var t2 = trimTrailingZeroColumns(basePull, rowsAligned);
+  basePull = t2.pullDates;
+  rowsAligned = t2.rows;
+  if (!basePull.length) return null;
+
+  var pullDates = lastN(basePull, daysLimit);
+  if (!pullDates.length) return null;
+  var idx = pullDates.map(function (d) { return basePull.indexOf(d); });
+  var rows = rowsAligned.map(function (r) {
+    return {
+      strike: r.strike,
+      calls: idx.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idx.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
+    };
+  });
+  rows = filterStrikes(rows, data.close, strikesLimit);
+  if (!rows.length) return null;
+  return { pullDates: pullDates, rows: rows, close: data.close, expiration: exp };
+}
+
+async function exportArchiveExcel() {
+  var data = state.cache[state.ticker];
+  if (!data) {
+    setStatus("لا بيانات للتصدير", "err");
+    return;
+  }
+  var weekExps = archiveExpirations(data);
+  var exps = (state.archSelected && state.archSelected.length)
+    ? state.archSelected.filter(function (e) { return weekExps.indexOf(e) >= 0; })
+    : [];
+  if (!weekExps.length) {
+    setStatus("الأرشيف فارغ", "err");
+    return;
+  }
+  if (!exps.length) {
+    setStatus("حدّد تاريخًا واحدًا على الأقل من البطاقات", "err");
+    return;
+  }
+  if (typeof ExcelJS === "undefined") {
+    setStatus("مكتبة Excel غير محمّلة", "err");
+    return;
+  }
+  if (typeof writeOiTableToSheet !== "function" || typeof getArchiveViewRows !== "function") {
+    setStatus("دوال التصدير غير متوفرة", "err");
+    return;
+  }
+
+  var mode = state.archExportMode || "multi";
+  var showDelta = !!state.archShowDelta;
+  var edays = state.archDays || "2";
+  var estrikes = state.archStrikes || "30";
+  var GAP = 4;
+
+  var wb = new ExcelJS.Workbook();
+  wb.creator = "Oi Archive";
+
+  if (mode === "multi") {
+    exps.forEach(function (exp) {
+      var view = getArchiveViewRows(data, exp, edays, estrikes);
+      if (!view) return;
+      var ws = wb.addWorksheet(String(exp).slice(0, 31), {
+        views: [{ rightToLeft: true }],
+      });
+      writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta);
+    });
+  } else {
+    var ws = wb.addWorksheet("Archive", {
+      views: [{ rightToLeft: true }],
+    });
+    var col = 2;
+    exps.forEach(function (exp) {
+      var view = getArchiveViewRows(data, exp, edays, estrikes);
+      if (!view) return;
+      var last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta);
+      col = last + 1 + GAP;
+    });
+  }
+
+  if (!wb.worksheets.length) {
+    setStatus("لا بيانات للجداول المختارة", "err");
+    return;
+  }
+
+  var buf = await wb.xlsx.writeBuffer();
+  var blob = new Blob([buf], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  var stamp = new Date().toISOString().slice(0, 10);
+  var fname =
+    state.ticker +
+    "_Archive_D" +
+    edays +
+    "_S" +
+    estrikes +
+    "_" +
+    stamp +
+    ".xlsx";
+  if (typeof saveAs === "function") {
+    saveAs(blob, fname);
+  } else {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  setStatus("تم التصدير", "ok");
+}
+
+
+
 // ========== Levels Map (3 phases) ==========
 let levelsCache = null;
 let mapRawL = null;
@@ -2272,7 +2936,10 @@ async function loadLevels() {
   const base = document.body.dataset.dataBase || "../data";
   const res = await fetch(base + "/levels.json?t=" + Date.now());
   if (!res.ok) throw new Error("لا يوجد levels.json بعد — شغّل Actions أولًا");
-  levelsCache = await res.json();
+  var rawTxt = await res.text();
+    // إصلاح NaN غير القانوني في JSON قديم
+    rawTxt = rawTxt.replace(/\bNaN\b/g, "null").replace(/\bInfinity\b/g, "null");
+    levelsCache = JSON.parse(rawTxt);
   return levelsCache;
 }
 
@@ -3135,5 +3802,21 @@ async function submitFeedback(e) {
     if (st) st.textContent = "خطأ شبكة — حاولي لاحقًا";
   }
 }
+
+
+(function bindDdReposition() {
+  function repo() {
+    try {
+      var eBtn = document.getElementById("expDdBtn");
+      var eList = document.getElementById("expDdList");
+      if (eBtn && eList && eBtn.classList.contains("open") && !eList.hidden) placeFixedDropdown(eBtn, eList);
+      var sBtn = document.getElementById("stocksDdBtn");
+      var sList = document.getElementById("stocksDdList");
+      if (sBtn && sList && sBtn.classList.contains("open") && !sList.hidden) placeFixedDropdown(sBtn, sList);
+    } catch (e) {}
+  }
+  window.addEventListener("resize", repo);
+  window.addEventListener("scroll", repo, true);
+})();
 
 document.addEventListener("DOMContentLoaded", init);
