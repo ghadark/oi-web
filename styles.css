@@ -3831,3 +3831,186 @@ table.oi thead tr.side-label-row th.side-pad {
   background: transparent !important;
   border-bottom: 1px solid var(--border) !important;
 }
+
+
+/* ========== جداول الواجهة: زوايا ناعمة · هيدر رقيق · سترايك بارز ========== */
+.table-scroll,
+.series-wrap,
+.x3-table-wrap {
+  border-radius: 14px;
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(15, 23, 42, 0.35);
+  scrollbar-width: thin;
+}
+html[data-theme="light"] .table-scroll,
+html[data-theme="light"] .series-wrap,
+html[data-theme="light"] .x3-table-wrap {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: #ffffff;
+}
+
+table.oi {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  margin: 0 auto;
+  width: max-content;
+  min-width: 100%;
+  font-size: 11px;
+  color: var(--text);
+  background: transparent;
+}
+
+/* خلايا بلا حدود مربعة حادة — فواصل أفقية رفيعة فقط */
+table.oi th,
+table.oi td {
+  border: none !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.07) !important;
+  padding: 7px 8px !important;
+  min-width: 68px;
+  height: 34px;
+  text-align: center;
+  vertical-align: middle;
+}
+html[data-theme="light"] table.oi th,
+html[data-theme="light"] table.oi td {
+  border-bottom-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+/* صف التواريخ / الهيدر الثاني — خط رفيع يفصل الهيدر عن البيانات */
+table.oi thead tr:last-child th {
+  background: rgba(30, 41, 59, 0.55) !important;
+  color: var(--text) !important;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+html[data-theme="light"] table.oi thead tr:last-child th {
+  background: #f1f5f9 !important;
+  border-bottom-color: rgba(100, 116, 139, 0.25) !important;
+}
+table.oi thead th .subh {
+  font-weight: 500;
+  color: var(--gray);
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+/* صف CALL / PUT */
+table.oi thead tr.side-label-row th {
+  border-bottom: none !important;
+  padding-top: 8px !important;
+  padding-bottom: 4px !important;
+  background: transparent !important;
+}
+table.oi thead tr.side-label-row th.side-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
+  opacity: 0.92;
+}
+table.oi thead tr.side-label-row th.call-side {
+  color: #93c5fd !important;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.10), transparent) !important;
+}
+table.oi thead tr.side-label-row th.put-side {
+  color: #c4b5fd !important;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.10), transparent) !important;
+}
+html[data-theme="light"] table.oi thead tr.side-label-row th.call-side {
+  color: #2563eb !important;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.08), transparent) !important;
+}
+html[data-theme="light"] table.oi thead tr.side-label-row th.put-side {
+  color: #6d28d9 !important;
+  background: linear-gradient(180deg, rgba(109, 40, 217, 0.07), transparent) !important;
+}
+table.oi thead tr.side-label-row th.side-mid,
+table.oi thead tr.side-label-row th.side-pad {
+  background: transparent !important;
+}
+
+/* عمود السترايك — بارز وواضح أنه محور الجدول */
+table.oi th.strike,
+table.oi td.strike {
+  min-width: 72px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em;
+  background: rgba(15, 23, 42, 0.92) !important;
+  color: #f8fafc !important;
+  box-shadow:
+    inset 1px 0 0 rgba(148, 163, 184, 0.16),
+    inset -1px 0 0 rgba(148, 163, 184, 0.16);
+  position: relative;
+  z-index: 1;
+}
+html[data-theme="light"] table.oi th.strike,
+html[data-theme="light"] table.oi td.strike {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  box-shadow:
+    inset 1px 0 0 rgba(15, 23, 42, 0.12),
+    inset -1px 0 0 rgba(15, 23, 42, 0.12);
+}
+table.oi thead th.strike {
+  background: rgba(15, 23, 42, 0.98) !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.28) !important;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+/* دلتا متناسقة بلا حواف حادة */
+table.oi th.delta,
+table.oi td.delta {
+  background: var(--delta-bg) !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.06) !important;
+}
+
+/* زوايا ناعمة لأطراف الجدول الفعلية */
+table.oi thead tr:first-child th:first-child {
+  border-top-left-radius: 13px;
+}
+table.oi thead tr:first-child th:last-child {
+  border-top-right-radius: 13px;
+}
+table.oi tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 13px;
+}
+table.oi tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 13px;
+}
+
+/* صفوف البيانات أنعم */
+table.oi tbody tr:hover td:not(.strike):not(.delta) {
+  filter: brightness(1.06);
+}
+html[data-theme="light"] table.oi tbody tr:hover td:not(.strike):not(.delta) {
+  filter: brightness(0.98);
+}
+
+/* أعلى رقم — يبقى واضحًا داخل التصميم الناعم */
+table.oi td.max-oi {
+  font-weight: 700 !important;
+  background: rgba(99, 102, 241, 0.28) !important;
+  color: #e0e7ff !important;
+  box-shadow: inset 0 0 0 1px rgba(165, 180, 252, 0.25);
+}
+html[data-theme="light"] table.oi td.max-oi {
+  background: rgba(99, 102, 241, 0.16) !important;
+  color: #312e81 !important;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+
+/* سلسلة اليوم بالسابق: احترم ألوان الأعمدة مع الزوايا الناعمة */
+table.oi.series-oi thead tr:last-child th.sc-a,
+table.oi.series-oi thead tr:last-child th.sc-b,
+table.oi.series-oi thead tr:last-child th.sc-c,
+table.oi.series-oi thead tr:last-child th.sc-d,
+table.oi.series-oi thead tr:last-child th.sc-e,
+table.oi.series-oi thead tr:last-child th.sc-f,
+table.oi.series-oi thead tr:last-child th.sc-g {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2) !important;
+}
