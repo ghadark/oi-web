@@ -967,7 +967,15 @@ function renderOneMiniTable(data, expiration, label, opts) {
   var html =
     '<div class="x3-col' + (opts.active ? " active" : "") + '">' +
     '<div class="x3-col-h">' + title + "</div>" +
-    '<div class="x3-table-wrap"><table class="oi x3-table"><thead><tr>';
+    '<div class="x3-table-wrap"><table class="oi x3-table"><thead>';
+  var nColsX = pullDates.length;
+  html += '<tr class="side-label-row">';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += '<th class="side-label call-side" colspan="' + nColsX + '">CALL</th>';
+  html += '<th class="strike side-mid"></th>';
+  html += '<th class="side-label put-side" colspan="' + nColsX + '">PUT</th>';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += "</tr><tr>";
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (var hi = pullDates.length - 1; hi >= 0; hi--) {
     var f = formatPullDate(pullDates[hi]);
@@ -1276,12 +1284,19 @@ function renderSeriesTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi"><thead><tr>';
-
-  if (canDelta) html += '<th class="delta">Δ</th>';
+  html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi"><thead>';
   var nCols = pullDates.length;
   var totalSideCols = nCols * 2;
+  // صف CALL | PUT
+  html += '<tr class="side-label-row">';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += '<th class="side-label call-side" colspan="' + nCols + '">CALL</th>';
+  html += '<th class="strike side-mid"></th>';
+  html += '<th class="side-label put-side" colspan="' + nCols + '">PUT</th>';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += "</tr><tr>";
   var colPos = 0;
+  if (canDelta) html += '<th class="delta">Δ</th>';
   for (let i = nCols - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
     const sc = seriesColClass(colPos++, totalSideCols);
@@ -1439,8 +1454,15 @@ function renderTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll"><table class="oi"><thead><tr>';
-
+  html += '</div><div class="table-scroll"><table class="oi"><thead>';
+  var nCols = pullDates.length;
+  html += '<tr class="side-label-row">';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += '<th class="side-label call-side" colspan="' + nCols + '">CALL</th>';
+  html += '<th class="strike side-mid"></th>';
+  html += '<th class="side-label put-side" colspan="' + nCols + '">PUT</th>';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += "</tr><tr>";
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (let i = pullDates.length - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);

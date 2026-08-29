@@ -3802,3 +3802,32 @@ html[data-theme="light"] .exp-date-chip .s.opx-sub {
   color: #7c3aed !important;
   text-shadow: none;
 }
+
+/* تسميات CALL / PUT أعلى الجدول */
+table.oi thead tr.side-label-row th.side-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 4px !important;
+  border-bottom: 1px solid var(--border) !important;
+  background: transparent !important;
+  color: var(--gray) !important;
+}
+table.oi thead tr.side-label-row th.call-side {
+  color: #93c5fd !important;
+}
+table.oi thead tr.side-label-row th.put-side {
+  color: #c4b5fd !important;
+}
+html[data-theme="light"] table.oi thead tr.side-label-row th.call-side {
+  color: #2563eb !important;
+}
+html[data-theme="light"] table.oi thead tr.side-label-row th.put-side {
+  color: #7c3aed !important;
+}
+table.oi thead tr.side-label-row th.side-mid,
+table.oi thead tr.side-label-row th.side-pad {
+  background: transparent !important;
+  border-bottom: 1px solid var(--border) !important;
+}
