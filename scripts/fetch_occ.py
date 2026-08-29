@@ -13,6 +13,7 @@ import re
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
+import math
 from typing import Any
 
 try:
@@ -29,14 +30,53 @@ WEB_DATA_DIR = ROOT / "web" / "data"
 # حذف أيام أقدم من هذا الحد (حماية حجم المستودع)
 RETENTION_DAYS = 90
 
+def _json_safe(obj: Any) -> Any:
+    """لا تسمح بـ NaN/Infinity في JSON (يكسر الماب)."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_json_safe(v) for v in obj]
+    return obj
+
+def _day_fingerprint(day_block: dict) -> str:
+    """بصمة سريعة لمحتوى يوم سحب (OI فقط)."""
+    parts = []
+    for exp in sorted(day_block.keys()):
+        strikes = day_block[exp] or {}
+        for sk in sorted(strikes.keys(), key=lambda x: float(x) if _is_float(x) else 0):
+            cell = strikes[sk] or {}
+            parts.append(f"{exp}|{sk}|{cell.get('call_oi', 0)}|{cell.get('put_oi', 0)}")
+    return str(len(parts)) + ":" + str(hash(tuple(parts)))
+
+def _is_float(x) -> bool:
+    try:
+        float(x)
+        return True
+    except Exception:
+        return False
+
+def _rows_fingerprint(rows: list) -> str:
+    parts = []
+    for rec in sorted(rows, key=lambda r: (r.get("expiration", ""), float(r.get("strike") or 0))):
+        parts.append(
+            f"{rec.get('expiration')}|{rec.get('strike')}|{rec.get('call_oi', 0)}|{rec.get('put_oi', 0)}"
+        )
+    return str(len(parts)) + ":" + str(hash(tuple(parts)))
+
+
 
 def _write_json(path: Path, obj: Any, *, indent: int | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    safe = _json_safe(obj)
     with path.open("w", encoding="utf-8") as f:
         if indent is None:
-            json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
+            json.dump(safe, f, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
         else:
-            json.dump(obj, f, ensure_ascii=False, indent=indent)
+            json.dump(safe, f, ensure_ascii=False, indent=indent, allow_nan=False)
 
 
 def mirror_to_web_data() -> None:
@@ -597,13 +637,17 @@ def main() -> int:
     levels_all: dict[str, Any] = {}
     pull_date, pull_day = session_pull_date()
     now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-    print(f"session column: {pull_date} ({pull_day})")
+    force = (os.environ.get("FORCE_UPDATE") or "").strip().lower() in ("1", "true", "yes")
+    print(f"session column: {pull_date} ({pull_day}) force={force}")
 
     index = {
         "generated_at": now,
         "session_pull_date": pull_date,
         "tickers": [],
     }
+
+    any_oi_changed = False
+    any_file_written = False
 
     for ticker, url in TICKER_URLS.items():
         hist_path = DATA_DIR / f"{ticker}_history.json"
@@ -615,45 +659,72 @@ def main() -> int:
             rows = download_ticker(ticker, url)
         except Exception as e:
             print(f"[error] {ticker}: {e}", file=sys.stderr)
-            # still publish last known snapshot if any
             if pub_path.exists():
                 index["tickers"].append(ticker)
             continue
 
-        if not rows:
-            print(f"[warn] {ticker}: zero rows", file=sys.stderr)
+        # هل بيانات هذا اليوم موجودة ومطابقة لـ OCC؟
+        existing = (hist.get("days") or {}).get(pull_date) or {}
+        new_fp = _rows_fingerprint(rows) if rows else ""
+        old_fp = _day_fingerprint(existing) if existing else ""
+        oi_same = bool(existing) and bool(rows) and (new_fp == old_fp)
+
+        if oi_same and not force:
+            print(f"[skip] {ticker}: {pull_date} unchanged ({len(rows)} rows)")
         else:
-            merge_day(hist, pull_date, rows)
+            if not rows:
+                print(f"[warn] {ticker}: zero rows", file=sys.stderr)
+            else:
+                merge_day(hist, pull_date, rows)
+                any_oi_changed = True
+                print(f"[merge] {ticker}: {pull_date} rows={len(rows)}")
+
         pruned = prune_old_days(hist)
         if pruned:
             print(f"[prune] {ticker}: removed {pruned} day(s) older than {RETENTION_DAYS}d")
+            any_oi_changed = True
 
-        close = get_close(ticker)
-        if close is not None:
-            hist.setdefault("closes", {})[pull_date] = close
+        # إغلاق الجلسة — لا نستبدله إن وُجد لنفس pull_date إلا مع force
+        closes = hist.setdefault("closes", {})
+        if force or pull_date not in closes or closes.get(pull_date) is None:
+            close = get_close(ticker)
+            if close is not None and not (isinstance(close, float) and (math.isnan(close) or math.isinf(close))):
+                prev_c = closes.get(pull_date)
+                closes[pull_date] = float(close)
+                if prev_c != closes[pull_date]:
+                    any_oi_changed = True
+        close = closes.get(pull_date)
+        if close is None and closes:
+            close = list(closes.values())[-1]
 
-        hist["updated_at"] = now
-        _write_json(hist_path, hist)
-
-        snap = build_public_snapshot(hist, ticker)
-        _write_json(pub_path, snap)
+        if any_oi_changed or force or not pub_path.exists():
+            hist["updated_at"] = now
+            _write_json(hist_path, hist)
+            snap = build_public_snapshot(hist, ticker)
+            _write_json(pub_path, snap)
+            any_file_written = True
+            print(f"[saved] {pub_path.name} days={len(snap['pull_dates'])} exps={len(snap['expirations'])}")
+        else:
+            # لا تعيد الكتابة — يمنع commits ظهرًا بلا داعٍ
+            snap = build_public_snapshot(hist, ticker)
+            print(f"[keep] {pub_path.name} (no rewrite)")
 
         levels_all[ticker] = build_levels_for_ticker(hist, ticker, pull_date, close)
         index["tickers"].append(ticker)
-        print(f"[saved] {pub_path.name} days={len(snap['pull_dates'])} exps={len(snap['expirations'])}")
 
-    _write_json(DATA_DIR / "index.json", index, indent=2)
-    _write_json(
-        DATA_DIR / "levels.json",
-        {"updated_at": datetime.utcnow().isoformat() + "Z", "tickers": levels_all},
-        indent=2,
-    )
-    print("[saved] levels.json")
-
-    # مهم لـ Cloudflare: نفس الملفات تحت web/data
-    mirror_to_web_data()
-
-    print("done.")
+    if any_file_written or force or any_oi_changed:
+        _write_json(DATA_DIR / "index.json", index, indent=2)
+        _write_json(
+            DATA_DIR / "levels.json",
+            {"updated_at": datetime.utcnow().isoformat() + "Z", "tickers": levels_all},
+            indent=2,
+        )
+        print("[saved] levels.json")
+        mirror_to_web_data()
+        print("done (updated).")
+    else:
+        print("done (no OI changes — stop).")
+        # لا mirror ولا levels rewrite → لا git diff → لا نشر ظهرًا
     return 0
 
 
