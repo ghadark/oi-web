@@ -571,42 +571,14 @@ function lastN(arr, n) {
 }
 
 function filterStrikes(rows, close, strikesLimit) {
-  if (!strikesLimit || strikesLimit === "ALL") return rows.slice();
+  if (!strikesLimit || strikesLimit === "ALL" || close == null) return rows.slice();
   const n = parseInt(strikesLimit, 10);
-  if (!n || n < 1) return rows.slice();
-  var center = close;
-  if (center == null || isNaN(Number(center))) {
-    // احتياط: منتصف السترايكات إن تعذّر الإغلاق
-    if (!rows.length) return rows.slice();
-    var sorted = rows.slice().sort(function (a, b) { return a.strike - b.strike; });
-    center = sorted[Math.floor(sorted.length / 2)].strike;
-  }
-  center = Number(center);
   return rows
-    .map(function (r) { return { r: r, dist: Math.abs(r.strike - center) }; })
+    .map(function (r) { return { r: r, dist: Math.abs(r.strike - close) }; })
     .sort(function (a, b) { return a.dist - b.dist; })
     .slice(0, n * 2)
     .map(function (x) { return x.r; })
     .sort(function (a, b) { return a.strike - b.strike; });
-}
-
-/** ألوان أعمدة «اليوم بالسابق» — تدرّج هادئ من الأقدم للأحدث */
-function seriesColClass(idx, nCols, side) {
-  // side: call | put | head
-  var tones = [
-    "sc-teal",
-    "sc-blue",
-    "sc-indigo",
-    "sc-violet",
-    "sc-purple",
-    "sc-amber",
-    "sc-rose",
-  ];
-  // وزّع من الأقدم (0) للأحدث (n-1)
-  var i = 0;
-  if (nCols <= 1) i = 0;
-  else i = Math.round((idx / Math.max(1, nCols - 1)) * (tones.length - 1));
-  return tones[Math.max(0, Math.min(tones.length - 1, i))];
 }
 
 function positiveDelta(last, prev) {
@@ -869,11 +841,7 @@ async function refresh() {
     fetchSessionClose(state.ticker).then(function (px) {
       if (px != null) {
         state.sessionClose = px;
-        // لا نستبدل data.close من JSON — يبقى مصدر السترايكات/الماب
-        // إن كان JSON بلا إغلاق فقط نعرض sessionClose عبر effectiveClose
-        if (state.cache[state.ticker] && (state.cache[state.ticker].close == null || isNaN(Number(state.cache[state.ticker].close)))) {
-          state.cache[state.ticker].close = px;
-        }
+        // لا نستبدل data.close من JSON
         renderTable();
       }
     });
@@ -1300,19 +1268,17 @@ function renderSeriesTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi"><thead><tr>';
+  html += '</div><div class="table-scroll"><table class="oi series-oi"><thead><tr>';
 
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (let i = pullDates.length - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
-    const sc = seriesColClass(i, pullDates.length);
-    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   html += '<th class="strike">STRIKE</th>';
   for (let j = 0; j < pullDates.length; j++) {
     const f = formatPullDate(pullDates[j]);
-    const sc = seriesColClass(j, pullDates.length);
-    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
   html += "</tr></thead><tbody>";
@@ -1379,8 +1345,6 @@ function renderSeriesTable() {
       html +=
         '<td class="' +
         callCls +
-        " " +
-        seriesColClass(i, pullDates.length) +
         maxCls +
         '">' +
         cv.toLocaleString() +
@@ -1393,8 +1357,6 @@ function renderSeriesTable() {
       html +=
         '<td class="' +
         putCls +
-        " " +
-        seriesColClass(i, pullDates.length) +
         maxCls +
         '">' +
         pv.toLocaleString() +
@@ -1443,8 +1405,7 @@ function renderTable() {
   }
   const pullDates = view.pullDates;
   const rows = view.rows;
-  var close = effectiveClose(data);
-  if (close == null && data && data.close != null && !isNaN(Number(data.close))) close = Number(data.close);
+  const close = effectiveClose(data);
   const canDelta = state.showDelta && pullDates.length >= 2;
   const lastI = pullDates.length - 1;
   const prevI = pullDates.length - 2;
@@ -1456,7 +1417,7 @@ function renderTable() {
     " | Exp: " +
     state.expiration +
     "</div>";
-  if (close != null && !isNaN(Number(close))) {
+  if (close != null) {
     const liveTag = state.livePrice != null ? " · مباشر" : "";
     html +=
       '<div class="close-pill">الإغلاق: ' +
@@ -1932,7 +1893,6 @@ function openExportDialog() {
       html +=
         '<button type="button" class="exp-date-chip' +
         on +
-        (it.meta.sub === "OPX" ? " opx-chip" : "") +
         '" data-exp="' +
         it.exp +
         '">' +
@@ -1940,9 +1900,7 @@ function openExportDialog() {
         it.meta.day +
         (it.meta.monShort ? " " + it.meta.monShort : "") +
         "</span>" +
-        '<span class="s' +
-        (it.meta.sub === "OPX" ? " opx-sub" : "") +
-        '">' +
+        '<span class="s">' +
         it.meta.sub +
         "</span></button>";
     });
@@ -2312,7 +2270,7 @@ function estimateCloseFromRows(data) {
 }
 
 function effectiveClose(data) {
-  // مصدر ثابت للجدول/الماب/السترايكات: إغلاق خط OCC في JSON
+  // مثل الخاص: إغلاق JSON للرمز هو المصدر الأساسي للجدول/السترايكات
   if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
     return Number(data.close);
   }
@@ -2326,12 +2284,9 @@ function effectiveClose(data) {
   if (state.sessionClose != null && !isNaN(Number(state.sessionClose)) && Number(state.sessionClose) > 0) {
     return Number(state.sessionClose);
   }
-  // السعر المباشر اختياري للعرض فقط — لا يُستخدم كبديل أساسي إن وُجد JSON
   if (state.livePrice != null && !isNaN(Number(state.livePrice)) && Number(state.livePrice) > 0) {
     return Number(state.livePrice);
   }
-  var est = typeof estimateCloseFromRows === "function" ? estimateCloseFromRows(data) : null;
-  if (est != null && !isNaN(est)) return est;
   return null;
 }
 
@@ -2975,10 +2930,7 @@ async function loadLevels() {
   const base = document.body.dataset.dataBase || "../data";
   const res = await fetch(base + "/levels.json?t=" + Date.now());
   if (!res.ok) throw new Error("لا يوجد levels.json بعد — شغّل Actions أولًا");
-  var rawTxt = await res.text();
-    // إصلاح NaN غير القانوني في JSON قديم
-    rawTxt = rawTxt.replace(/\bNaN\b/g, "null").replace(/\bInfinity\b/g, "null");
-    levelsCache = JSON.parse(rawTxt);
+  levelsCache = await res.json();
   return levelsCache;
 }
 
@@ -3680,8 +3632,16 @@ async function levelsForMapRange(baseL, range) {
   if (!baseL) return baseL;
   var data;
   try { data = await loadTicker(state.ticker); } catch (e) { return baseL; }
-  var nEach = mapRangeN(range);
-  var close = baseL.close != null ? baseL.close : data.close;
+  var nEach = mapRangeN(range); // null = ALL
+  // أولوية: إغلاق JSON الرمز (دقيق) ثم levels ثم effectiveClose
+  var close = null;
+  if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
+    close = Number(data.close);
+  } else if (baseL.close != null && !isNaN(Number(baseL.close)) && Number(baseL.close) > 0) {
+    close = Number(baseL.close);
+  } else if (typeof effectiveClose === "function") {
+    close = effectiveClose(data);
+  }
   var pullDates = data.pull_dates || [];
   var lastIdx = pullDates.length - 1;
   var prevIdx = pullDates.length > 1 ? pullDates.length - 2 : -1;
@@ -3736,8 +3696,19 @@ async function openMap() {
   body.innerHTML = '<p style="color:#94a3b8">جاري تحميل المستويات…</p>';
   try {
     const all = await loadLevels();
-    const raw = (all.tickers || {})[state.ticker];
+    var raw = (all.tickers || {})[state.ticker];
     if (!raw) throw new Error("لا مستويات لـ " + state.ticker);
+    // عبّئ الإغلاق من بيانات الرمز إن كان levels بلا close أو غير صالح
+    try {
+      var td = state.cache[state.ticker] || (await loadTicker(state.ticker));
+      if (td && (raw.close == null || isNaN(Number(raw.close)) || Number(raw.close) <= 0)) {
+        var cx = (typeof effectiveClose === "function") ? effectiveClose(td) : td.close;
+        if (cx != null && !isNaN(Number(cx)) && Number(cx) > 0) raw.close = Number(cx);
+      } else if (td && td.close != null && !isNaN(Number(td.close)) && Number(td.close) > 0) {
+        // فضّل إغلاق JSON الرمز دائمًا (أدق من levels القديم)
+        raw.close = Number(td.close);
+      }
+    } catch (e2) {}
     mapZoom = 1;
     mapRawL = raw;
     const L = await levelsForMapRange(raw, state.mapRange || "ALL");
