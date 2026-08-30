@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-30T06:29:47Z",
+  "generated_at": "2026-08-30T09:28:28Z",
   "session_pull_date": "31-8",
   "tickers": [
     "SPY",
@@ -20,7 +20,6 @@
     "AMD",
     "MU",
     "COHR",
-    "SNDK",
-    "VOO"
+    "SNDK"
   ]
 }
