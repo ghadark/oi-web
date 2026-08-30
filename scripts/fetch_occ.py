@@ -523,6 +523,10 @@ def build_public_snapshot(hist: dict[str, Any], ticker: str) -> dict[str, Any]:
         "close": close,
         "by_expiration": by_exp,
         "updated_at": hist.get("updated_at"),
+        # وقت التقاط أرقام آخر عمود جلسة (إن وُجد) — للعرض فقط
+        "data_captured_at": (hist.get("data_captures") or {}).get(
+            (sort_pull_dates(list((hist.get("days") or {}).keys())) or [None])[-1]
+        ) or hist.get("updated_at"),
     }
 
 
@@ -940,12 +944,21 @@ def main() -> int:
                 index["tickers"].append(ticker)
             continue
 
+        # بصمة قبل الدمج — لمعرفة إن تغيّرت الأرقام فعليًا
+        fp_before = day_oi_fingerprint(hist, pull_date) if pull_date in (hist.get("days") or {}) else None
+        data_changed = False
+        is_dup = False
         if not rows:
             print(f"[warn] {ticker}: zero rows — skip merge", file=sys.stderr)
         else:
             merge_day(hist, pull_date, rows)
-            if is_stale_duplicate_of_prev(hist, pull_date):
+            fp_after = day_oi_fingerprint(hist, pull_date)
+            data_changed = fp_before != fp_after
+            is_dup = is_stale_duplicate_of_prev(hist, pull_date)
+            if is_dup:
                 print(f"[warn] {ticker}: {pull_date} مطابق لليوم السابق — OCC قد لا يكون حدّث بعد")
+            elif data_changed:
+                print(f"[data] {ticker}: تغيّر فعلي في أرقام {pull_date}")
         pruned = prune_old_days(hist)
         if pruned:
             print(f"[prune] {ticker}: removed {pruned} day(s) older than {RETENTION_DAYS}d")
@@ -999,7 +1012,19 @@ def main() -> int:
             except Exception:
                 close = None
 
-        hist["updated_at"] = now
+        # updated_at = وقت أول/آخر التقاط حقيقي للبيانات فقط (ليس كل تشييك)
+        # - يتحدّث فقط عند تغيّر بصمة OI لعمود الجلسة
+        # - ولا يُحدَّث إذا كانت الأرقام نسخة مطابقة لليوم السابق (OCC لم يصدر بعد)
+        if data_changed and not is_dup:
+            hist["updated_at"] = now
+            captures = hist.setdefault("data_captures", {})
+            captures[pull_date] = now
+            print(f"[time] {ticker}: updated_at → {now} (تغيير حقيقي)")
+        elif not hist.get("updated_at"):
+            # أول تشغيل على التاريخ — لا نترك الحقل فارغًا
+            hist["updated_at"] = now
+        # وإلا: الإبقاء على updated_at السابق (وقت الالتقاط الحقيقي)
+
         _write_json(hist_path, hist)
 
         snap = build_public_snapshot(hist, ticker)
