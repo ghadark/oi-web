@@ -836,7 +836,7 @@ async function refresh() {
     if (up) {
       var ts = data.data_captured_at || data.updated_at;
       up.textContent = ts
-        ? "آخر تحديث للبيانات: " + formatUpdatedAt(ts)
+        ? "آخر تحديث: " + formatUpdatedAt(ts)
         : "لا يوجد تحديث بعد — شغّل Actions أولاً";
     }
     renderTable();
@@ -995,11 +995,9 @@ function renderOneMiniTable(data, expiration, label, opts) {
 
   rows.forEach(function (r, ri) {
     var isCloseRow = closeStrike != null && Number(r.strike) === Number(closeStrike);
-    var above = close != null && r.strike > close;
-    var below = close != null && r.strike < close;
-    var callCls = below || (close != null && r.strike === close) ? "itm" : "otm";
-    var putCls = above || (close != null && r.strike === close) ? "itm" : "otm";
-    var zebra = ri % 2 === 1 ? " zebra" : "";
+    /* ×3 نطاقات: بدون زيبرا وبدون itm/otm — التلوين بالنطاق فقط */
+    var callCls = "";
+    var putCls = "";
     var band = "";
     if (close != null && !isNaN(Number(close)) && !isCloseRow) {
       var dist = Math.abs(Number(r.strike) - Number(close));
@@ -1007,7 +1005,7 @@ function renderOneMiniTable(data, expiration, label, opts) {
       else if (dist <= 8) band = " band-mid";
       else band = " band-far";
     }
-    html += '<tr class="' + (isCloseRow ? "close-bar" : "") + zebra + band + '">';
+    html += '<tr class="' + (isCloseRow ? "close-bar" : "") + band + '">';
     if (canDelta) {
       var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
       var maxD = dc != null && deltaCallMax > 0 && dc === deltaCallMax ? " max-oi" : "";

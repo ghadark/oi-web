@@ -4178,86 +4178,111 @@ table.oi.x3-table tr.close-bar td.delta {
 }
 
 
+
 /* =========================================================
-   ×3 خيار 4: نطاقات حول الإغلاق (band-near / mid / far)
-   Δ رمادي · الأخضر لا يمتد لـ Δ · مريح لابتوب + تكديس موبايل
+   ×3 خيار 4 محسّن: نطاقات حول الإغلاق · بلا زيبرا
+   Δ رمادي هادئ · أخضر لا يمتد لـ Δ · أعلى رقم أزرق راقي
    ========================================================= */
 
-/* نطاقات — لا تمس Δ ولا STRIKE ولا صف الإغلاق */
+/* تعطيل زيبرا على ×3 إن وُجدت */
+table.oi.x3-table tbody tr.zebra td.itm,
+table.oi.x3-table tbody tr.zebra td.otm,
+html[data-theme="dark"] table.oi.x3-table tbody tr.zebra td.itm,
+html[data-theme="dark"] table.oi.x3-table tbody tr.zebra td.otm,
+html[data-theme="light"] table.oi.x3-table tbody tr.zebra td.itm,
+html[data-theme="light"] table.oi.x3-table tbody tr.zebra td.otm {
+  filter: none !important;
+}
+
+/* نطاقات هادئة — قريبة أوضح · بعيدة أخفت */
 table.oi.x3-table tbody tr.band-near td:not(.delta):not(.strike) {
-  background: rgba(59, 130, 246, 0.14) !important;
-  color: var(--text) !important;
+  background: #1a2d4a !important;
+  color: #e2e8f0 !important;
 }
 table.oi.x3-table tbody tr.band-mid td:not(.delta):not(.strike) {
-  background: rgba(30, 41, 59, 0.55) !important;
-  color: var(--text) !important;
+  background: #152033 !important;
+  color: #cbd5e1 !important;
 }
 table.oi.x3-table tbody tr.band-far td:not(.delta):not(.strike) {
-  background: rgba(15, 23, 42, 0.85) !important;
+  background: #0f172a !important;
   color: #94a3b8 !important;
 }
 
 html[data-theme="light"] table.oi.x3-table tbody tr.band-near td:not(.delta):not(.strike) {
-  background: rgba(59, 130, 246, 0.12) !important;
+  background: #dbeafe !important;
   color: #0f172a !important;
 }
 html[data-theme="light"] table.oi.x3-table tbody tr.band-mid td:not(.delta):not(.strike) {
-  background: rgba(226, 232, 240, 0.85) !important;
+  background: #e8eef7 !important;
   color: #334155 !important;
 }
 html[data-theme="light"] table.oi.x3-table tbody tr.band-far td:not(.delta):not(.strike) {
-  background: #f8fafc !important;
+  background: #f1f5f9 !important;
   color: #94a3b8 !important;
 }
 
-/* أعلى رقم يبقى ظاهرًا فوق النطاق */
-table.oi.x3-table tbody tr td.max-oi {
-  background: rgba(99, 102, 241, 0.32) !important;
-  color: #e0e7ff !important;
-  font-weight: 700 !important;
-}
-html[data-theme="light"] table.oi.x3-table tbody tr td.max-oi {
-  background: rgba(99, 102, 241, 0.18) !important;
-  color: #312e81 !important;
-}
-
-/* Δ رمادي دائمًا (حتى داخل النطاقات / الإغلاق) */
+/* Δ رمادي متماسك هادئ (أقل تباين مزعج) */
 table.oi.x3-table th.delta,
 table.oi.x3-table td.delta {
-  background: var(--delta-bg) !important;
-  color: #e7e5c8 !important;
+  background: #2a3340 !important;
+  color: #c8d0da !important;
+  border-color: #334155 !important;
 }
 html[data-theme="light"] table.oi.x3-table th.delta,
 html[data-theme="light"] table.oi.x3-table td.delta {
-  background: #e4e4d2 !important;
-  color: #3f3f2e !important;
-}
-table.oi.x3-table td.delta.max-oi {
-  background: rgba(99, 102, 241, 0.32) !important;
-  color: #e0e7ff !important;
+  background: #e8eae6 !important;
+  color: #4a5560 !important;
+  border-color: #d0d4cc !important;
 }
 
-/* صف الإغلاق: أخضر على البيانات فقط وليس Δ */
-table.oi.x3-table tr.close-bar td:not(.delta) {
-  background: var(--green-bar, #134e4a) !important;
-  color: var(--green-text, #5eead4) !important;
+/* أعلى رقم — أزرق راقي · يفوز على النطاق والإغلاق */
+table.oi.x3-table tbody tr td.max-oi,
+table.oi.x3-table tbody tr.close-bar td.max-oi,
+table.oi.x3-table tbody tr.band-near td.max-oi,
+table.oi.x3-table tbody tr.band-mid td.max-oi,
+table.oi.x3-table tbody tr.band-far td.max-oi {
+  background: #3b4a8a !important;
+  color: #e8ecff !important;
   font-weight: 700 !important;
 }
-table.oi.x3-table tr.close-bar td.delta {
-  background: var(--delta-bg) !important;
-  color: #e7e5c8 !important;
+table.oi.x3-table tbody tr td.delta.max-oi,
+table.oi.x3-table tbody tr.close-bar td.delta.max-oi {
+  background: #3b4a8a !important;
+  color: #e8ecff !important;
+  font-weight: 700 !important;
+}
+html[data-theme="light"] table.oi.x3-table tbody tr td.max-oi,
+html[data-theme="light"] table.oi.x3-table tbody tr.close-bar td.max-oi {
+  background: #c7d2fe !important;
+  color: #1e1b4b !important;
+}
+
+/* صف الإغلاق: أخضر على البيانات فقط — ليس Δ */
+table.oi.x3-table tr.close-bar td:not(.delta):not(.max-oi) {
+  background: #134e4a !important;
+  color: #5eead4 !important;
+  font-weight: 700 !important;
+}
+table.oi.x3-table tr.close-bar td.strike {
+  background: #134e4a !important;
+  color: #5eead4 !important;
+  font-weight: 700 !important;
+}
+table.oi.x3-table tr.close-bar td.delta:not(.max-oi) {
+  background: #2a3340 !important;
+  color: #c8d0da !important;
   font-weight: 600 !important;
 }
-html[data-theme="light"] table.oi.x3-table tr.close-bar td:not(.delta) {
+html[data-theme="light"] table.oi.x3-table tr.close-bar td:not(.delta):not(.max-oi) {
   background: #ecfdf5 !important;
   color: #0f766e !important;
 }
-html[data-theme="light"] table.oi.x3-table tr.close-bar td.delta {
-  background: #e4e4d2 !important;
-  color: #3f3f2e !important;
+html[data-theme="light"] table.oi.x3-table tr.close-bar td.delta:not(.max-oi) {
+  background: #e8eae6 !important;
+  color: #4a5560 !important;
 }
 
-/* راحة العرض: لابتوب 3 أعمدة · تابلت/جوال تكديس */
+/* عرض مريح */
 .x3-cols {
   display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
