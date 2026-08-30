@@ -7,9 +7,8 @@ for static hosting (GitHub Pages / Cloudflare Pages).
 
 from __future__ import annotations
 
-import math
-
 import json
+import math
 import os
 import re
 import sys
@@ -32,13 +31,28 @@ WEB_DATA_DIR = ROOT / "web" / "data"
 RETENTION_DAYS = 90
 
 
+
+def _json_sanitize(obj: Any) -> Any:
+    """JSON لا يدعم NaN/Infinity — حوّلها إلى null قبل الكتابة."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _json_sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_sanitize(v) for v in obj]
+    return obj
+
+
 def _write_json(path: Path, obj: Any, *, indent: int | None = None) -> None:
+    obj = _json_sanitize(obj)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         if indent is None:
-            json.dump(obj, f, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+            json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
         else:
-            json.dump(obj, f, ensure_ascii=False, indent=indent, allow_nan=False)
+            json.dump(obj, f, ensure_ascii=False, indent=indent)
 
 
 def mirror_to_web_data() -> None:
@@ -73,7 +87,6 @@ TICKER_URLS = {
     "MU": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=mu",
     "COHR": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=cohr",
     "SNDK": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=sndk",
-    "VOO": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=voo",
 }
 
 HEADERS = {
@@ -120,6 +133,10 @@ def session_pull_date(today: date | None = None) -> tuple[str, date]:
     return label, d
 
 
+
+
+
+
 def last_completed_session(today: date | None = None) -> date:
     """آخر يوم تداول مكتمل قبل today (يتخطى الويكند والعطل)."""
     d = (today or date.today()) - timedelta(days=1)
@@ -128,6 +145,7 @@ def last_completed_session(today: date | None = None) -> date:
             return d
         d -= timedelta(days=1)
     return d
+
 
 def get_close_bars(ticker: str) -> list[tuple[date, float]]:
     """
@@ -141,9 +159,7 @@ def get_close_bars(ticker: str) -> list[tuple[date, float]]:
         "AMZN": "AMZN", "META": "META", "GOOGL": "GOOGL", "AVGO": "AVGO",
         "MSTR": "MSTR", "AMD": "AMD", "MU": "MU", "COHR": "COHR",
         "SNDK": "SNDK",
-        "CRWD": "CRWD",
         "NDX": "^NDX",
-        "VOO": "VOO",
     }
     symbol = symbol_map.get(ticker, ticker)
     bars: list[tuple[date, float]] = []
@@ -225,6 +241,7 @@ def get_close_bars(ticker: str) -> list[tuple[date, float]]:
         merged[d] = c
     return [(d, merged[d]) for d in sorted(merged.keys())]
 
+
 def get_close(ticker: str, as_of: date | None = None) -> float | None:
     """
     إغلاق آخر جلسة مكتملة في أو قبل as_of.
@@ -243,13 +260,49 @@ def get_close(ticker: str, as_of: date | None = None) -> float | None:
         return best
     return bars[-1][1]
 
-def _product_matches(product: str, ticker: str) -> bool:
-    """SPX+SPXW · NDX+NDXP (يومي/أسبوعي/شهري PM)."""
+
+def _parse_pull_label(label: str, year: int | None = None) -> date | None:
+    """حوّل '17-8' → date."""
+    try:
+        parts = str(label).strip().split("-")
+        day_n = int(parts[0])
+        mon_n = int(parts[1])
+        y = year or date.today().year
+        return date(y, mon_n, day_n)
+    except Exception:
+        return None
+
+
+
+def _is_third_friday(exp: str) -> bool:
+    """ثالث جمعة من الشهر = OpEx الشهري (جذر SPX / تسوية AM)."""
+    try:
+        y, m, d = [int(x) for x in str(exp).split("-")[:3]]
+        dt = date(y, m, d)
+        return dt.weekday() == 4 and 15 <= dt.day <= 21
+    except Exception:
+        return False
+
+
+def _product_matches(product: str, ticker: str, exp: str | None = None) -> bool:
+    """
+    SPX:
+      - ثالث جمعة (أوبيكس الشهري) → من جذر SPX فقط
+      - بقية الأيام → من SPXW فقط
+    """
     p = (product or "").upper().strip()
     t = (ticker or "").upper().strip()
     if t == "SPX":
+        if exp and _is_third_friday(exp):
+            return p == "SPX"
+        if exp:
+            return p == "SPXW"
         return p in ("SPX", "SPXW")
     if t == "NDX":
+        if exp and _is_third_friday(exp):
+            return p == "NDX"
+        if exp:
+            return p in ("NDXP", "NDX")
         return p in ("NDX", "NDXP")
     return p == t
 
@@ -261,10 +314,11 @@ def parse_occ_text(ticker: str, text: str) -> list[dict[str, Any]]:
         parts = line.split()
         if len(parts) < 10:
             continue
-        if not _product_matches(parts[0], ticker):
-            continue
         try:
+            product = parts[0]
             exp = f"{parts[1]}-{parts[2].zfill(2)}-{parts[3].zfill(2)}"
+            if not _product_matches(product, ticker, exp):
+                continue
             strike = float(f"{parts[4]}.{parts[5]}")
             call_oi = int(parts[8])
             put_oi = int(parts[9])
@@ -309,7 +363,8 @@ def load_history(path: Path) -> dict[str, Any]:
 
 
 def merge_day(hist: dict[str, Any], pull_date: str, rows: list[dict[str, Any]]) -> None:
-    day = hist.setdefault("days", {}).setdefault(pull_date, {})
+    """استبدال كامل لعمود اليوم."""
+    day: dict[str, Any] = {}
     for rec in rows:
         exp = rec["expiration"]
         strike_key = str(rec["strike"])
@@ -317,6 +372,7 @@ def merge_day(hist: dict[str, Any], pull_date: str, rows: list[dict[str, Any]]) 
             "call_oi": rec["call_oi"],
             "put_oi": rec["put_oi"],
         }
+    hist.setdefault("days", {})[pull_date] = day
 
 
 
@@ -426,7 +482,32 @@ def build_public_snapshot(hist: dict[str, Any], ticker: str) -> dict[str, Any]:
                     row["calls"].append(int(cell.get("call_oi") or 0))
                     row["puts"].append(int(cell.get("put_oi") or 0))
             matrix.append(row)
-        by_exp[exp] = {"strikes": strike_list, "rows": matrix}
+
+        exp_pulls = list(pull_dates)
+        if matrix and exp_pulls:
+            first = 0
+            n = len(exp_pulls)
+            found = False
+            for i in range(n):
+                for row in matrix:
+                    if int(row["calls"][i] or 0) > 0 or int(row["puts"][i] or 0) > 0:
+                        first = i
+                        found = True
+                        break
+                if found:
+                    break
+            else:
+                first = max(0, n - 1)
+            if first > 0:
+                exp_pulls = exp_pulls[first:]
+                for row in matrix:
+                    row["calls"] = row["calls"][first:]
+                    row["puts"] = row["puts"][first:]
+        by_exp[exp] = {
+            "strikes": strike_list,
+            "rows": matrix,
+            "pull_dates": exp_pulls,
+        }
 
     close = None
     closes = hist.get("closes") or {}
@@ -697,6 +778,130 @@ def build_levels_for_ticker(hist: dict[str, Any], ticker: str, pull_date: str, c
     }
 
 
+
+def _session_done_path() -> Path:
+    return DATA_DIR / ".session_done"
+
+
+def day_oi_fingerprint(hist: dict[str, Any], pull_date: str) -> tuple:
+    day = (hist.get("days") or {}).get(pull_date) or {}
+    n = total_c = total_p = 0
+    for _exp, strikes in day.items():
+        if not isinstance(strikes, dict):
+            continue
+        for _sk, v in strikes.items():
+            if not isinstance(v, dict):
+                continue
+            n += 1
+            try:
+                total_c += int(v.get("call_oi") or 0)
+                total_p += int(v.get("put_oi") or 0)
+            except Exception:
+                pass
+    return (n, total_c, total_p)
+
+
+def is_stale_duplicate_of_prev(hist: dict[str, Any], pull_date: str) -> bool:
+    prev = previous_pull_date(hist, pull_date)
+    if not prev:
+        return False
+    fp_new = day_oi_fingerprint(hist, pull_date)
+    fp_old = day_oi_fingerprint(hist, prev)
+    if fp_new == (0, 0, 0):
+        return True
+    return fp_new == fp_old
+
+
+def session_already_synced(pull_date: str) -> bool:
+    marker = _session_done_path()
+    if not marker.exists():
+        return False
+    try:
+        if marker.read_text(encoding="utf-8").strip() != pull_date:
+            return False
+    except Exception:
+        return False
+    core = ["SPY", "QQQ", "IWM", "GLD", "SPX"]
+    ok = stale = 0
+    for tk in core:
+        hist_path = DATA_DIR / f"{tk}_history.json"
+        pub = DATA_DIR / f"{tk}.json"
+        if not pub.exists():
+            return False
+        try:
+            snap = json.loads(pub.read_text(encoding="utf-8"))
+            if pull_date not in (snap.get("pull_dates") or []):
+                return False
+            ok += 1
+            hist = load_history(hist_path)
+            if is_stale_duplicate_of_prev(hist, pull_date):
+                stale += 1
+        except Exception:
+            return False
+    if ok < 4:
+        return False
+    if stale >= 3:
+        print(f"[retry] {pull_date} مطابق لليوم السابق في {stale}/5 — نعيد السحب")
+        return False
+    return True
+
+
+def mark_session_done(pull_date: str) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _session_done_path().write_text(pull_date, encoding="utf-8")
+    try:
+        WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        (WEB_DATA_DIR / ".session_done").write_text(pull_date, encoding="utf-8")
+    except Exception:
+        pass
+
+
+def rebuild_levels_from_disk(pull_date: str) -> int:
+    """أعد بناء levels.json من ملفات التاريخ دون سحب OCC — يحافظ على الماب حية."""
+    levels_all: dict[str, Any] = {}
+    year_now = date.today().year
+    for ticker in list(TICKER_URLS.keys()):
+        hist_path = DATA_DIR / f"{ticker}_history.json"
+        if not hist_path.exists():
+            continue
+        try:
+            hist = load_history(hist_path)
+            # إغلاق: آخر جلسة مكتملة أو من closes
+            session_for_close = last_completed_session(date.today())
+            close = get_close(ticker, as_of=session_for_close)
+            if close is None:
+                closes_map = hist.get("closes") or {}
+                for pd in reversed(sort_pull_dates(list(closes_map.keys()), year_now)):
+                    try:
+                        close = float(closes_map[pd])
+                        if close and close > 0:
+                            break
+                    except Exception:
+                        continue
+            levels_all[ticker] = build_levels_for_ticker(hist, ticker, pull_date, close)
+            print(f"[levels] {ticker} close={close}")
+        except Exception as e:
+            print(f"[warn] levels rebuild {ticker}: {e}", file=sys.stderr)
+    if not levels_all:
+        print("[warn] levels rebuild empty — keep previous file")
+        return 0
+    payload = {"updated_at": datetime.utcnow().isoformat() + "Z", "tickers": levels_all}
+    _write_json(DATA_DIR / "levels.json", payload, indent=2)
+    try:
+        mirror_to_web_data()
+    except Exception as e:
+        print(f"[warn] mirror: {e}", file=sys.stderr)
+        # كتابة مباشرة
+        try:
+            WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
+            _write_json(WEB_DATA_DIR / "levels.json", payload, indent=2)
+        except Exception:
+            pass
+    print(f"[saved] levels.json ({len(levels_all)} tickers) [rebuild-only]")
+    return len(levels_all)
+
+
+
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     WEB_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -704,6 +909,15 @@ def main() -> int:
     pull_date, pull_day = session_pull_date()
     now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     print(f"session column: {pull_date} ({pull_day})")
+
+    force = os.environ.get("FORCE_UPDATE", "").strip().lower() in ("1", "true", "yes")
+    if not force and session_already_synced(pull_date):
+        print(f"[skip] عمود الجلسة {pull_date} مكتمل مسبقاً — إعادة بناء levels فقط")
+        try:
+            rebuild_levels_from_disk(pull_date)
+        except Exception as e:
+            print(f"[warn] levels rebuild on skip: {e}", file=sys.stderr)
+        return 0
 
     index = {
         "generated_at": now,
@@ -727,26 +941,63 @@ def main() -> int:
             continue
 
         if not rows:
-            print(f"[warn] {ticker}: zero rows", file=sys.stderr)
+            print(f"[warn] {ticker}: zero rows — skip merge", file=sys.stderr)
         else:
             merge_day(hist, pull_date, rows)
+            if is_stale_duplicate_of_prev(hist, pull_date):
+                print(f"[warn] {ticker}: {pull_date} مطابق لليوم السابق — OCC قد لا يكون حدّث بعد")
         pruned = prune_old_days(hist)
         if pruned:
             print(f"[prune] {ticker}: removed {pruned} day(s) older than {RETENTION_DAYS}d")
 
-        # إغلاق آخر جلسة مكتملة (مثل الخاص) — ليس بالضرورة عمود session اليوم
+        # الإغلاق المعروض = آخر جلسة مكتملة (اليوم السابق التداولي)
+        # مثال: اليوم 18-8 → إغلاق 17-8 | السبت → إغلاق الجمعة
         session_for_close = last_completed_session(date.today())
         close = get_close(ticker, as_of=session_for_close)
         print(f"[close] {ticker} as_of={session_for_close} → {close}")
+
+        # أعد بناء خريطة الإغلاقات من Yahoo بتواريخ صحيحة (ET)
         closes_map = hist.setdefault("closes", {})
-        if close is not None and not (isinstance(close, float) and (math.isnan(close) or math.isinf(close))):
-            close = float(close)
+        bars = get_close_bars(ticker)
+        bar_map = {d: c for d, c in bars}
+        # نظّف القديم
+        for ck in list(closes_map.keys()):
+            try:
+                cv = float(closes_map[ck])
+                if math.isnan(cv) or math.isinf(cv) or cv <= 0:
+                    closes_map.pop(ck, None)
+            except Exception:
+                closes_map.pop(ck, None)
+        # املأ/صحّح لكل pull_date معروف
+        year_now = date.today().year
+        for pd in (hist.get("pull_dates") or []):
+            d = _parse_pull_label(pd, year_now)
+            if d is None:
+                continue
+            # إغلاق ذلك اليوم إن وُجد، وإلا آخر إغلاق ≤ ذلك اليوم
+            if d in bar_map:
+                closes_map[pd] = bar_map[d]
+            else:
+                prev = None
+                for bd in sorted(bar_map.keys()):
+                    if bd <= d:
+                        prev = bar_map[bd]
+                if prev is not None:
+                    closes_map[pd] = prev
+        if close is not None:
+            # اربط إغلاق الجلسة المكتملة بعمودها إن وُجد
             close_label = f"{session_for_close.day}-{session_for_close.month}"
             closes_map[close_label] = close
-            # اربط أيضًا بعمود الجلسة الحالي إن وُجد سحب لنفس اليوم
-            closes_map[pull_date] = close
-        else:
-            close = closes_map.get(pull_date) or (list(closes_map.values())[-1] if closes_map else None)
+            closes_map[pull_date] = close  # مرجع سريع للعرض
+        elif closes_map:
+            try:
+                # آخر قيمة حسب ترتيب pull_dates
+                for pd in reversed(hist.get("pull_dates") or list(closes_map.keys())):
+                    if pd in closes_map:
+                        close = float(closes_map[pd])
+                        break
+            except Exception:
+                close = None
 
         hist["updated_at"] = now
         _write_json(hist_path, hist)
@@ -759,15 +1010,38 @@ def main() -> int:
         print(f"[saved] {pub_path.name} days={len(snap['pull_dates'])} exps={len(snap['expirations'])}")
 
     _write_json(DATA_DIR / "index.json", index, indent=2)
-    _write_json(
-        DATA_DIR / "levels.json",
-        {"updated_at": datetime.utcnow().isoformat() + "Z", "tickers": levels_all},
-        indent=2,
-    )
-    print("[saved] levels.json")
+    if levels_all:
+        _write_json(
+            DATA_DIR / "levels.json",
+            {"updated_at": datetime.utcnow().isoformat() + "Z", "tickers": levels_all},
+            indent=2,
+        )
+        print(f"[saved] levels.json ({len(levels_all)} tickers)")
+    else:
+        print("[warn] levels_all empty — preserving previous levels.json")
+        try:
+            rebuild_levels_from_disk(pull_date)
+        except Exception as e:
+            print(f"[warn] fallback rebuild failed: {e}", file=sys.stderr)
 
     # مهم لـ Cloudflare: نفس الملفات تحت web/data
     mirror_to_web_data()
+
+    core = ["SPY", "QQQ", "IWM", "GLD", "SPX"]
+    merged_ok = 0
+    for tk in core:
+        pub = DATA_DIR / f"{tk}.json"
+        if not pub.exists():
+            continue
+        try:
+            snap = json.loads(pub.read_text(encoding="utf-8"))
+            if pull_date in (snap.get("pull_dates") or []):
+                merged_ok += 1
+        except Exception:
+            pass
+    if merged_ok >= 4:
+        mark_session_done(pull_date)
+        print(f"[done] session {pull_date} marked ({merged_ok}/5)")
 
     print("done.")
     return 0
