@@ -20,8 +20,7 @@ const STOCKS_TICKERS = [
   { symbol: "AMD", name: "AMD", color: "#ED1C24" },
   { symbol: "MU", name: "Micron", color: "#111827" },
   { symbol: "COHR", name: "Coherent", color: "#00A3E0" },
-  { symbol: "SNDK", name: "Sandisk", color: "#E31C23" },
-  { symbol: "CRWD", name: "CrowdStrike", color: "#FF5A36" },
+  { symbol: "SNDK", name: "SanDisk", color: "#6366F1" },
   { symbol: "VOO", name: "Vanguard S&P 500", color: "#C41230" },
 ];
 
@@ -30,89 +29,111 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
-  expiration: null, showDelta: false, seriesMode: false, showGrowth: false, growthDays: 3, growthAuto: true,
+  expiration: null, showDelta: false, seriesMode: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
   archDays: "2", archStrikes: "30", archShowDelta: false, archExportMode: "multi", archSelected: [],
-  dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL", x3Mode: false,
 };
 
 const $ = (sel) => document.querySelector(sel);
+
+function placeFixedDropdown(btn, list) {
+  if (!btn || !list) return;
+  try {
+    if (!list._ddHome) list._ddHome = list.parentElement;
+    if (list.parentElement !== document.body) document.body.appendChild(list);
+    var r = btn.getBoundingClientRect();
+    var w = Math.max(1, Math.round(r.width));
+    var left = r.left;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+    if (left < 8) left = 8;
+    var top = r.bottom + 4;
+    if (top + 120 > window.innerHeight) {
+      top = Math.max(8, r.top - 4 - Math.min(320, window.innerHeight * 0.5));
+    }
+    list.classList.add("dd-fixed");
+    list.hidden = false;
+    list.removeAttribute("hidden");
+    list.style.setProperty("display", "block", "important");
+    list.style.setProperty("visibility", "visible", "important");
+    list.style.setProperty("pointer-events", "auto", "important");
+    list.style.setProperty("opacity", "1", "important");
+    list.style.setProperty("position", "fixed", "important");
+    list.style.setProperty("top", Math.round(top) + "px", "important");
+    list.style.setProperty("left", Math.round(left) + "px", "important");
+    list.style.setProperty("width", Math.round(w) + "px", "important");
+    list.style.setProperty("right", "auto", "important");
+    list.style.setProperty("bottom", "auto", "important");
+    list.style.setProperty("z-index", "10050", "important");
+    list.style.setProperty("max-height", "min(420px, 70vh)", "important");
+    list.style.setProperty("overflow-y", "auto", "important");
+  } catch (e) {}
+}
+function clearFixedDropdown(list) {
+  if (!list) return;
+  try {
+    list.classList.remove("dd-fixed");
+    ["display","visibility","pointer-events","opacity","position","top","left","width","right","bottom","z-index","max-height","overflow-y"].forEach(function (p) {
+      try { list.style.removeProperty(p); } catch (e0) {}
+    });
+    list.hidden = true;
+    list.setAttribute("hidden", "");
+    if (list._ddHome && list.parentElement === document.body) list._ddHome.appendChild(list);
+  } catch (e) {}
+}
+function positionDdList(btn, list) {
+  placeFixedDropdown(btn, list);
+}
+
 
 function formatUpdatedAt(s) {
   try {
     var d = new Date(s);
     if (isNaN(d.getTime())) return String(s);
-    // ميلادي دائمًا + أرقام لاتينية (وليس هجري)
-    return d.toLocaleString("en-GB", {
+    var date = d.toLocaleDateString("en-GB", {
       timeZone: "Asia/Riyadh",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
+    });
+    var time = d.toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Riyadh",
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
     });
+    return date + " · " + time;
   } catch (e) {
     return String(s);
   }
 }
 
 
-function dataBases() {
-  var preferred = (document.body && document.body.dataset && document.body.dataset.dataBase) || "/data";
-  preferred = String(preferred).replace(/\/$/, "");
-  // جذر Worker + web/data + نسبي — توافق نشر Git والرفع اليدوي
-  var list = [
-    preferred,
-    "/data",
-    "data",
-    "./data",
-    "../data",
-    "/web/data",
-    "web/data",
-    "."
-  ];
-  var out = [];
-  for (var i = 0; i < list.length; i++) {
-    if (list[i] && out.indexOf(list[i]) === -1) out.push(list[i]);
-  }
-  return out;
-}
-
 function dataUrl(ticker) {
-  var base = dataBases()[0];
+  const base = document.body.dataset.dataBase || "../data";
   return base + "/" + ticker + ".json?t=" + Date.now();
 }
 
 async function loadTicker(ticker) {
   if (state.cache[ticker]) return state.cache[ticker];
-  var bases = dataBases();
-  var lastStatus = 0;
-  for (var i = 0; i < bases.length; i++) {
-    try {
-      var res = await fetch(bases[i] + "/" + ticker + ".json?t=" + Date.now());
-      lastStatus = res.status;
-      if (res.ok) {
-        var text = await res.text();
-        // NaN غير صالح في JSON — حوّله قبل parse
-        text = text.replace(/\bNaN\b/g, "null").replace(/\b-?Infinity\b/g, "null");
-        var json;
-        try {
-          json = JSON.parse(text);
-        } catch (e) {
-          throw new Error("بيانات تالفة لـ " + ticker);
-        }
-        if (json && (json.close == null || (typeof json.close === "number" && isNaN(json.close)))) {
-          json.close = null;
-        }
-        state.cache[ticker] = json;
-        return json;
-      }
-    } catch (e) {
-      if (e && e.message && e.message.indexOf("بيانات تالفة") === 0) throw e;
-    }
+  const res = await fetch(dataUrl(ticker));
+  if (!res.ok) throw new Error("تعذر تحميل بيانات " + ticker);
+  var text = await res.text();
+  // ملفات قديمة قد تحتوي NaN (غير صالح في JSON) — صلّحها قبل parse
+  text = String(text)
+    .replace(/:\s*NaN\b/g, ":null")
+    .replace(/:\s*-?Infinity\b/g, ":null");
+  var json;
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    throw new Error("بيانات تالفة لـ " + ticker + " — شغّل Actions لإعادة التوليد");
   }
-  throw new Error("تعذر تحميل بيانات " + ticker);
+  if (json && (json.close == null || (typeof json.close === "number" && isNaN(json.close)))) {
+    json.close = null;
+  }
+  state.cache[ticker] = json;
+  return json;
 }
+
 
 /** قبل 7 ص الرياض يُبقى انتهاء أمس للمراجعة الليلية؛ بعد 7 ص يُحذف */
 function expirationCutoffDate() {
@@ -149,8 +170,6 @@ function futureExpirations(list) {
   });
 }
 
-
-/** ثالث جمعة من الشهر الميلادي (انتهاء SPX الشهري التقليدي) */
 function isThirdFridayExp(exp) {
   try {
     var d = new Date(String(exp) + "T12:00:00");
@@ -162,9 +181,8 @@ function isThirdFridayExp(exp) {
   }
 }
 
-/** قائمة الانتهاءات المستقبلية (SPX يبقي الشهري+اليومي حسب مصدر السحب) */
 
-/** أدنى يوم سحب نظيف لـ SPX ثالث جمعة (AM) — ما قبله مخفي لأنه مخلوط */
+/** أدنى يوم سحب نظيف لـ SPX ثالث جمعة AM — ما قبله مخفي لأنه مخلوط */
 var SPX_AM_PULL_CUTOFF = "17-8";
 
 function pullDateSortKey(pd) {
@@ -195,6 +213,7 @@ function filterSpxMonthlyPullDates(pullDates) {
 
 
 
+/** آخر يوم بيانات فعلي من pull_dates (لا يعتمد على منتصف الليل) */
 function dataSessionFromPull(data) {
   try {
     var pulls = (data && data.pull_dates) || [];
@@ -207,6 +226,7 @@ function dataSessionFromPull(data) {
     var day = parts[0], month = parts[1];
     if (!day || !month) return null;
     var year = new Date().getFullYear();
+    // نهاية السنة: لو الشهر أكبر بكثير من الحالي اعتبر السنة السابقة
     var nowM = new Date().getMonth() + 1;
     if (month > nowM + 6) year -= 1;
     return { year: year, month: month, day: day, label: last };
@@ -214,11 +234,19 @@ function dataSessionFromPull(data) {
     return null;
   }
 }
+
 function dataSessionYmd(data) {
   var s = dataSessionFromPull(data);
-  if (!s) return (typeof riyadhYmd === "function" ? riyadhYmd() : new Date().toISOString().slice(0, 10));
-  return s.year + "-" + String(s.month).padStart(2, "0") + "-" + String(s.day).padStart(2, "0");
+  if (!s) return riyadhYmd();
+  return (
+    s.year +
+    "-" +
+    String(s.month).padStart(2, "0") +
+    "-" +
+    String(s.day).padStart(2, "0")
+  );
 }
+
 function dataSessionCutoffDate(data) {
   var s = dataSessionFromPull(data);
   if (s) {
@@ -240,67 +268,6 @@ function filterTickerExpirations(ticker, list) {
 
 
 
-/** ضع القائمة بـ position:fixed تحت الزر — تخرج من overflow شريط التحكم */
-
-/** قائمة منسدلة خارج الشريط: تُنقل لـ body + position:fixed بأولوية !important */
-function placeFixedDropdown(btn, list) {
-  if (!btn || !list) return;
-  try {
-    if (!list.getAttribute("data-dd-home")) {
-      var home = list.parentElement;
-      if (home) {
-        list.setAttribute("data-dd-home", home.id || "");
-        list._ddHome = home;
-      }
-    }
-    if (list.parentElement !== document.body) {
-      document.body.appendChild(list);
-    }
-    var r = btn.getBoundingClientRect();
-    /* عرض القائمة = عرض الزر؛ للانتهاء حد أدنى حتى لا تُقص التواريخ */
-    var w = Math.max(1, Math.round(r.width));
-    if (list && list.id === "expDdList") w = Math.max(w, 178);
-    var left = r.left;
-    if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
-    if (left < 8) left = 8;
-    var top = r.bottom + 4;
-    if (top + 120 > window.innerHeight) {
-      top = Math.max(8, r.top - 4 - Math.min(320, window.innerHeight * 0.5));
-    }
-    list.classList.add("dd-fixed");
-    list.hidden = false;
-    list.removeAttribute("hidden");
-    list.style.setProperty("display", "block", "important");
-    list.style.setProperty("visibility", "visible", "important");
-    list.style.setProperty("pointer-events", "auto", "important");
-    list.style.setProperty("opacity", "1", "important");
-    list.style.setProperty("position", "fixed", "important");
-    list.style.setProperty("top", Math.round(top) + "px", "important");
-    list.style.setProperty("left", Math.round(left) + "px", "important");
-    list.style.setProperty("width", Math.round(w) + "px", "important");
-    list.style.setProperty("right", "auto", "important");
-    list.style.setProperty("bottom", "auto", "important");
-    list.style.setProperty("z-index", "10050", "important");
-    list.style.setProperty("max-height", "min(420px, 70vh)", "important");
-    list.style.setProperty("overflow-y", "auto", "important");
-  } catch (e) {}
-}
-function clearFixedDropdown(list) {
-  if (!list) return;
-  try {
-    list.classList.remove("dd-fixed");
-    ["display","visibility","pointer-events","opacity","position","top","left","width","right","bottom","z-index","max-height","overflow-y"].forEach(function (p) {
-      try { list.style.removeProperty(p); } catch (e0) {}
-    });
-    list.hidden = true;
-    list.setAttribute("hidden", "");
-    var home = list._ddHome;
-    if (home && list.parentElement === document.body) {
-      home.appendChild(list);
-    }
-  } catch (e) {}
-}
-
 function ensureExpDropdownUI() {
   var sel = $("#expSelect");
   if (!sel) return null;
@@ -308,9 +275,11 @@ function ensureExpDropdownUI() {
   if (!parent) return null;
   var dd = document.getElementById("expDropdown");
   if (dd) return dd;
-  sel.classList.add("exp-select-hidden");
-  sel.setAttribute("aria-hidden", "true");
-  sel.tabIndex = -1;
+  try {
+    sel.classList.add("exp-select-hidden");
+    sel.setAttribute("aria-hidden", "true");
+    sel.tabIndex = -1;
+  } catch (e) {}
   dd = document.createElement("div");
   dd.id = "expDropdown";
   dd.className = "exp-dd";
@@ -336,21 +305,12 @@ function ensureExpDropdownUI() {
   return dd;
 }
 
-function isAmSettlementTicker(ticker) {
-  var t = String(ticker || state.ticker || "").toUpperCase();
-  // SPX و NDX: التسوية الصباحية للشهري (ثالث جمعة)
-  return t === "SPX" || t === "NDX";
-}
-
 function formatExpDisplay(exp) {
-  /* مثل OCC: Aug 21, 2026 */
   try {
     var s = String(exp || "");
     var p = s.split("-");
     if (p.length < 3) return s;
-    var y = parseInt(p[0], 10);
-    var m = parseInt(p[1], 10);
-    var d = parseInt(p[2], 10);
+    var y = parseInt(p[0], 10), m = parseInt(p[1], 10), d = parseInt(p[2], 10);
     if (!y || !m || !d) return s;
     var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     return months[m - 1] + " " + d + ", " + y;
@@ -358,7 +318,10 @@ function formatExpDisplay(exp) {
     return String(exp || "");
   }
 }
-
+function isAmSettlementTicker(ticker) {
+  var t = String(ticker || state.ticker || "").toUpperCase();
+  return t === "SPX" || t === "NDX";
+}
 function expOptionLabelHtml(exp) {
   var label = formatExpDisplay(exp);
   var showAm =
@@ -366,11 +329,7 @@ function expOptionLabelHtml(exp) {
     typeof isThirdFridayExp === "function" &&
     isThirdFridayExp(exp);
   if (showAm) {
-    return (
-      '<span class="exp-date">' +
-      label +
-      '</span> <span class="exp-am">AM</span>'
-    );
+    return '<span class="exp-date">' + label + '</span> <span class="exp-am">AM</span>';
   }
   return '<span class="exp-date">' + label + "</span>";
 }
@@ -380,112 +339,144 @@ function syncExpDropdownLabel() {
   if (!lab) return;
   var exp = state.expiration;
   if (!exp) {
-    lab.innerHTML = "—";
+    lab.textContent = "—";
     return;
   }
   lab.innerHTML = expOptionLabelHtml(exp);
 }
 
+function safeSetSelectValue(sel, value) {
+  if (!sel) return;
+  try {
+    var v = value == null ? "" : String(value);
+    // لا تعيّن قيمة غير موجودة ضمن options (Safari: pattern error)
+    if (v) {
+      var ok = false;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === v) {
+          ok = true;
+          break;
+        }
+      }
+      if (!ok) {
+        sel.selectedIndex = sel.options.length ? 0 : -1;
+        return;
+      }
+    }
+    sel.value = v;
+  } catch (e) {
+    try {
+      sel.selectedIndex = 0;
+    } catch (e2) {}
+  }
+}
+
 function fillExpDropdown(exps) {
-  ensureExpDropdownUI();
+  try {
+    ensureExpDropdownUI();
+  } catch (e) {}
   var sel = $("#expSelect");
   var list = $("#expDdList");
   var btn = $("#expDdBtn");
-  if (!sel || !list || !btn) return;
+  if (!sel) return;
 
-  // أبقِ نص الزر ظاهرًا أثناء إعادة البناء حتى لا ينهار الشريط
-  var prevLabelHtml = "";
+  var listExps = (exps || []).slice();
   try {
-    var labKeep = document.getElementById("expDdLabel");
-    if (labKeep) prevLabelHtml = labKeep.innerHTML;
-  } catch (eL) {}
+    sel.innerHTML = "";
+  } catch (e) {}
+  if (list) list.innerHTML = "";
 
-  sel.innerHTML = "";
-  list.innerHTML = "";
-  (exps || []).forEach(function (exp) {
-    var o = document.createElement("option");
-    o.value = exp;
-    o.textContent = typeof formatExpDisplay === "function" ? formatExpDisplay(exp) : exp;
-    sel.appendChild(o);
+  listExps.forEach(function (exp) {
+    try {
+      var o = document.createElement("option");
+      o.value = String(exp);
+      o.text = String(exp);
+      sel.appendChild(o);
+    } catch (e) {}
 
-    var item = document.createElement("button");
-    item.type = "button";
-    item.className =
-      "exp-dd-item" + (exp === state.expiration ? " active" : "");
-    item.setAttribute("role", "option");
-    item.dataset.value = exp;
-    item.innerHTML = expOptionLabelHtml(exp);
-    item.onclick = function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      state.expiration = exp;
-      sel.value = exp;
-      list.hidden = true;
-      list.setAttribute("hidden", "");
-      btn.classList.remove("open");
-      var wrap = document.getElementById("expDropdown");
-      if (wrap) wrap.classList.remove("open");
-      clearFixedDropdown(list);
-      syncExpDropdownLabel();
-      fillExpDropdown(exps);
-      renderTable();
-    };
-    list.appendChild(item);
+    if (list) {
+      var item = document.createElement("button");
+      item.type = "button";
+      item.className =
+        "exp-dd-item" + (exp === state.expiration ? " active" : "");
+      item.setAttribute("role", "option");
+      item.setAttribute("data-value", String(exp));
+      item.innerHTML = expOptionLabelHtml(exp);
+      item.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        state.expiration = exp;
+        safeSetSelectValue(sel, exp);
+        if (list) {
+          list.hidden = true;
+          list.setAttribute("hidden", "");
+          clearFixedDropdown(list);
+        }
+        if (btn) btn.classList.remove("open");
+        var wrap = document.getElementById("expDropdown");
+        if (wrap) wrap.classList.remove("open");
+        if (list && list.parentElement) list.parentElement.classList.remove("open");
+        syncExpDropdownLabel();
+        try {
+          var nodes = list.querySelectorAll(".exp-dd-item");
+          for (var i = 0; i < nodes.length; i++) {
+            nodes[i].classList.toggle(
+              "active",
+              nodes[i].getAttribute("data-value") === String(exp)
+            );
+          }
+        } catch (e3) {}
+        renderTable();
+      };
+      list.appendChild(item);
+    }
   });
 
-  if (!state.expiration || exps.indexOf(state.expiration) < 0) {
-    state.expiration = exps[0] || null;
+  if (!state.expiration || listExps.indexOf(state.expiration) < 0) {
+    state.expiration = listExps[0] || null;
   }
-  sel.value = state.expiration || "";
+  safeSetSelectValue(sel, state.expiration || "");
   syncExpDropdownLabel();
-  try {
-    var lab2 = document.getElementById("expDdLabel");
-    if (lab2 && (!lab2.innerHTML || lab2.innerHTML === "—") && prevLabelHtml && prevLabelHtml !== "—") {
-      // لا تستبدل بلابل قديم إن صار لدينا انتهاء فعلي
-      if (!state.expiration) lab2.innerHTML = prevLabelHtml;
-    }
-  } catch (eL2) {}
 
-  btn.onclick = function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    var wrap = document.getElementById("expDropdown") || (list && list.parentElement);
-    var isOpen = wrap && wrap.classList.contains("open");
-    // أغلق STOCKS
-    try {
-      var sWrap = document.getElementById("stocksDd");
-      var sBtn = document.getElementById("stocksDdBtn");
-      var sList = document.getElementById("stocksDdList");
-      if (sWrap) sWrap.classList.remove("open");
-      if (sBtn) sBtn.classList.remove("open");
-      if (sList) { sList.hidden = true; sList.setAttribute("hidden", ""); clearFixedDropdown(sList); }
-    } catch (eS) {}
-    if (isOpen) {
-      if (wrap) wrap.classList.remove("open");
-      btn.classList.remove("open");
-      list.hidden = true;
-      list.setAttribute("hidden", "");
-      clearFixedDropdown(list);
-    } else {
-      if (wrap) wrap.classList.add("open");
-      btn.classList.add("open");
-      list.hidden = false;
-      list.removeAttribute("hidden");
-      placeFixedDropdown(btn, list);
-    }
-  };
-  // بعد إعادة البناء أبقِ مغلقة
+  if (btn && list) {
+    btn.onclick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var wrap = document.getElementById("expDropdown") || (list.parentElement);
+      var isOpen = wrap && wrap.classList.contains("open");
+      // أغلق STOCKS إن كانت مفتوحة
+      try {
+        var sWrap = document.getElementById("stocksDd");
+        var sBtn = document.getElementById("stocksDdBtn");
+        var sList = document.getElementById("stocksDdList");
+        if (sWrap) sWrap.classList.remove("open");
+        if (sBtn) sBtn.classList.remove("open");
+        if (sList) { sList.hidden = true; sList.setAttribute("hidden", ""); clearFixedDropdown(sList); }
+      } catch (eS) {}
+      if (isOpen) {
+        if (wrap) wrap.classList.remove("open");
+        btn.classList.remove("open");
+        list.hidden = true;
+        list.setAttribute("hidden", "");
+        clearFixedDropdown(list);
+      } else {
+        if (wrap) wrap.classList.add("open");
+        btn.classList.add("open");
+        list.hidden = false;
+        list.removeAttribute("hidden");
+        placeFixedDropdown(btn, list);
+      }
+    };
+  }
+  // تأكد أنها مغلقة بعد إعادة البناء
   try {
-    var w0 = document.getElementById("expDropdown");
-    if (w0) w0.classList.remove("open");
-    btn.classList.remove("open");
-    list.hidden = true;
-    list.setAttribute("hidden", "");
-  } catch (e0) {}
+    var wrap0 = document.getElementById("expDropdown");
+    if (wrap0) wrap0.classList.remove("open");
+    if (btn) btn.classList.remove("open");
+    if (list) { list.hidden = true; list.setAttribute("hidden", ""); }
+  } catch (eClose) {}
 }
 
-
-/** تاريخ جلسة الرياض (ويكند → الاثنين القادم تقريبًا عبر أول انتهاء متاح) */
 function riyadhYmd() {
   try {
     var parts = new Intl.DateTimeFormat("en-CA", {
@@ -498,8 +489,7 @@ function riyadhYmd() {
     };
     return get("year") + "-" + get("month") + "-" + get("day");
   } catch (e) {
-    var n = new Date();
-    return n.toISOString().slice(0, 10);
+    return new Date().toISOString().slice(0, 10);
   }
 }
 
@@ -512,15 +502,10 @@ function isFridayIso(iso) {
   return !isNaN(d.getTime()) && d.getDay() === 5;
 }
 
-/**
- * ثلاثة انتهاءات لوضع x3: اليوم · يوم بعد · الأسبوع
- * مع دمج التسميات عند التطابق (خميس/جمعة)
- */
 function pickX3Targets(exps, data) {
   var list = (exps || []).slice().sort();
   if (!list.length) return [];
-  var todayStr = (typeof dataSessionYmd === "function" ? dataSessionYmd(data) : riyadhYmd());
-  // أول انتهاء >= اليوم (أو الأول إن كنا بعد السوق/ويكند والبيانات للجلسة القادمة)
+  var todayStr = dataSessionYmd(data);
   var iToday = 0;
   for (var i = 0; i < list.length; i++) {
     if (expIsoDay(list[i]) >= todayStr) {
@@ -555,9 +540,13 @@ function pickX3Targets(exps, data) {
   } else {
     out.push({ exp: expToday, label: "اليوم" });
     if (expTomorrow) out.push({ exp: expTomorrow, label: "يوم بعد" });
-    if (expWeek && expIsoDay(expWeek) !== expIsoDay(expToday) &&
-        (!expTomorrow || expIsoDay(expWeek) !== expIsoDay(expTomorrow))) {
-      out.push({ exp: expWeek, label: "الأسبوع" });
+    if (
+      expWeek &&
+      expIsoDay(expWeek) !== expIsoDay(expToday) &&
+      (!expTomorrow || expIsoDay(expWeek) !== expIsoDay(expTomorrow))
+    ) {
+      var wlab = isThirdFridayExp(expWeek) ? "الأسبوع · OPX" : "الأسبوع";
+      out.push({ exp: expWeek, label: wlab });
     }
   }
   return out;
@@ -600,29 +589,6 @@ function positiveDelta(last, prev) {
   return d > 0 ? d : null;
 }
 
-
-/** أيام النمو الفعلية: تلقائي = كل الأعمدة المتوفرة − 1، أو يدوي مع سقف حسب المتوفر */
-function resolveGrowthDays(nPull, requested, isAuto) {
-  var maxG = Math.max(1, (nPull || 0) - 1);
-  if (isAuto || requested == null || requested === "" || requested === "auto") {
-    return maxG;
-  }
-  var n = parseInt(requested, 10);
-  if (!n || n < 1) return maxG;
-  return Math.min(n, maxG);
-}
-
-/** نمو السترايك: أحدث قيمة − قيمة قبل growthDays أعمدة (موجب فقط) */
-function positiveGrowth(arr, daysBack) {
-  if (!arr || !arr.length) return null;
-  var n = Number(daysBack) || 0;
-  if (n < 1) return null;
-  var lastI = arr.length - 1;
-  var prevI = lastI - n;
-  if (prevI < 0) return null;
-  return positiveDelta(arr[lastI], arr[prevI]);
-}
-
 function setStatus(msg, cls) {
   const el = $("#status");
   el.textContent = msg;
@@ -656,7 +622,8 @@ function renderTickers() {
       state.ticker = t.symbol;
       state.expiration = null;
       state.livePrice = null;
-      renderStocksDropdown();
+      state.sessionClose = null;
+      if (typeof renderStocksDropdown === "function") renderStocksDropdown();
       renderTickers();
       refresh();
       refreshLivePrice();
@@ -670,43 +637,31 @@ function renderTickers() {
 function renderStocksDropdown() {
   const host = $("#stocksRow");
   if (!host) return;
-  const cur = isIndexTicker(state.ticker) ? "" : state.ticker;
-
+  const cur = typeof isIndexTicker === "function" && isIndexTicker(state.ticker) ? "" : state.ticker;
   var itemsHtml =
-    '<button type="button" class="stocks-dd-item' +
-    (!cur ? " active" : "") +
+    '<button type="button" class="stocks-dd-item' + (!cur ? " active" : "") +
     '" data-value="" role="option">----</button>';
   STOCKS_TICKERS.forEach(function (t) {
     itemsHtml +=
       '<button type="button" class="stocks-dd-item' +
       (t.symbol === cur ? " active" : "") +
-      '" data-value="' +
-      t.symbol +
-      '" role="option">' +
-      t.symbol +
-      "</button>";
+      '" data-value="' + t.symbol + '" role="option">' + t.symbol + "</button>";
   });
-
   host.innerHTML =
     '<label class="stocks-label">STOCKS</label>' +
     '<div class="stocks-dd" id="stocksDd">' +
     '<button type="button" class="stocks-dd-btn" id="stocksDdBtn" aria-haspopup="listbox">' +
-    '<span id="stocksDdLabel">' +
-    (cur || "----") +
-    "</span></button>" +
-    '<div class="stocks-dd-list" id="stocksDdList" role="listbox" hidden>' +
-    itemsHtml +
-    "</div></div>";
-
+    '<span id="stocksDdLabel">' + (cur || "----") + "</span></button>" +
+    '<div class="stocks-dd-list" id="stocksDdList" role="listbox" hidden>' + itemsHtml + "</div></div>";
   var btn = $("#stocksDdBtn");
   var list = $("#stocksDdList");
   if (!btn || !list) return;
-
   btn.onclick = function (e) {
     e.preventDefault();
     e.stopPropagation();
     var wrap = document.getElementById("stocksDd");
     var isOpen = wrap && wrap.classList.contains("open");
+    // أغلق قائمة التواريخ
     try {
       var eWrap = document.getElementById("expDropdown");
       var eBtn = document.getElementById("expDdBtn");
@@ -720,8 +675,8 @@ function renderStocksDropdown() {
       btn.classList.remove("open");
       list.hidden = true;
       list.setAttribute("hidden", "");
-      clearFixedDropdown(list);
-    } else {
+        clearFixedDropdown(list);
+      } else {
       if (wrap) wrap.classList.add("open");
       btn.classList.add("open");
       list.hidden = false;
@@ -729,7 +684,6 @@ function renderStocksDropdown() {
       placeFixedDropdown(btn, list);
     }
   };
-
   list.querySelectorAll(".stocks-dd-item").forEach(function (item) {
     item.onclick = function (e) {
       e.preventDefault();
@@ -747,18 +701,11 @@ function renderStocksDropdown() {
       state.livePrice = null;
       var lab = $("#stocksDdLabel");
       if (lab) lab.textContent = v;
-      list.querySelectorAll(".stocks-dd-item").forEach(function (el) {
-        el.classList.toggle(
-          "active",
-          (el.getAttribute("data-value") || "") === v
-        );
-      });
       renderTickers();
       refresh();
-      refreshLivePrice();
+      if (typeof refreshLivePrice === "function") refreshLivePrice();
     };
   });
-
   if (!window.__stocksDdOutsideBound) {
     window.__stocksDdOutsideBound = true;
     document.addEventListener("click", function (e) {
@@ -766,6 +713,7 @@ function renderStocksDropdown() {
       var btnEl = $("#stocksDdBtn");
       var wrap = $("#stocksDd");
       if (!listEl || !btnEl) return;
+      if (btnEl.contains(e.target) || listEl.contains(e.target)) return;
       if (wrap && wrap.contains(e.target)) return;
       listEl.hidden = true;
       listEl.setAttribute("hidden", "");
@@ -775,6 +723,7 @@ function renderStocksDropdown() {
     });
   }
 }
+
 
 function renderChips(rowId, options, key) {
   const row = $(rowId);
@@ -798,18 +747,12 @@ function trimLeadingZeroColumns(pullDates, rows) {
   if (!pullDates || !pullDates.length || !rows || !rows.length) {
     return { pullDates: pullDates || [], rows: rows || [] };
   }
-  var n = pullDates.length;
-  var first = 0;
-  var found = false;
+  var n = pullDates.length, first = 0, found = false;
   for (var i = 0; i < n; i++) {
     for (var r = 0; r < rows.length; r++) {
       var c = rows[r].calls && rows[r].calls[i] != null ? rows[r].calls[i] : 0;
       var p = rows[r].puts && rows[r].puts[i] != null ? rows[r].puts[i] : 0;
-      if (Number(c) > 0 || Number(p) > 0) {
-        first = i;
-        found = true;
-        break;
-      }
+      if (Number(c) > 0 || Number(p) > 0) { first = i; found = true; break; }
     }
     if (found) break;
   }
@@ -818,15 +761,10 @@ function trimLeadingZeroColumns(pullDates, rows) {
   return {
     pullDates: pullDates.slice(first),
     rows: rows.map(function (row) {
-      return {
-        strike: row.strike,
-        calls: (row.calls || []).slice(first),
-        puts: (row.puts || []).slice(first),
-      };
+      return { strike: row.strike, calls: (row.calls || []).slice(first), puts: (row.puts || []).slice(first) };
     }),
   };
 }
-
 function getViewRows(data) {
   const block = data.by_expiration[state.expiration];
   if (!block) return null;
@@ -839,6 +777,7 @@ function getViewRows(data) {
     typeof isThirdFridayExp === "function" &&
     isThirdFridayExp(state.expiration)
   ) {
+    // من 17-8 فصاعدًا فقط — ما قبله مخفي؛ غدًا 18-8 يتراكم بجانب 17-8
     basePull = filterSpxMonthlyPullDates(basePull);
   }
   var fullDates = (block.pull_dates && block.pull_dates.length)
@@ -871,43 +810,60 @@ function getViewRows(data) {
 
 async function refresh() {
   setStatus("جاري التحميل...");
-  // ثبّت واجهة الانتهاء أثناء التحميل (لا تفرّغ القائمة فتحدث وميض/انهيار الشريط)
-  try {
-    if (typeof ensureExpDropdownUI === "function") ensureExpDropdownUI();
-  } catch (e0) {}
   try {
     const data = await loadTicker(state.ticker);
     const exps = filterTickerExpirations(state.ticker, data.expirations || []);
-    fillExpDropdown(exps);
-    $("#updatedAt").textContent = data.updated_at
-      ? "آخر تحديث: " + formatUpdatedAt(data.updated_at)
-      : "لا يوجد تحديث بعد — شغّل Actions أولاً";
+    try {
+      fillExpDropdown(exps);
+    } catch (eFill) {
+      // احتياط: تعبئة select العادي إن فشلت القائمة المخصّصة
+      var sel = $("#expSelect");
+      if (sel) {
+        sel.innerHTML = "";
+        (exps || []).forEach(function (exp) {
+          var o = document.createElement("option");
+          o.value = exp;
+          o.textContent = exp;
+          sel.appendChild(o);
+        });
+        if (!state.expiration || exps.indexOf(state.expiration) < 0) {
+          state.expiration = exps[0] || null;
+        }
+        try { sel.value = state.expiration || ""; } catch (e2) {}
+      }
+    }
+    var up = $("#updatedAt");
+    if (up) {
+      var ts = data.data_captured_at || data.updated_at;
+      up.textContent = ts
+        ? "آخر تحديث: " + formatUpdatedAt(ts)
+        : "لا يوجد تحديث بعد — شغّل Actions أولاً";
+    }
     renderTable();
     setStatus("جاهز", "ok");
-    if (typeof fetchSessionClose === "function") {
-      fetchSessionClose(state.ticker).then(function (px) {
-        if (px != null) {
-          state.sessionClose = px;
-          if (state.cache[state.ticker]) state.cache[state.ticker].close = px;
-          renderTable();
-        }
-      });
-    }
+    // حدّث إغلاق آخر جلسة مكتملة من Yahoo (لا يعتمد على JSON القديم)
+    fetchSessionClose(state.ticker).then(function (px) {
+      if (px != null) {
+        state.sessionClose = px;
+        if (state.cache[state.ticker]) state.cache[state.ticker].close = px;
+        renderTable();
+      }
+    });
   } catch (e) {
     setStatus(String(e.message || e), "err");
-    $("#tableHost").innerHTML = '<p class="status err">' + (e.message || e) + "</p>";
+    var host = $("#tableHost");
+    if (host) host.innerHTML = '<p class="status err">' + (e.message || e) + "</p>";
   }
 }
 
-function greenBarRow(canDelta, canGrowth, n, close) {
-  const sideExtra = (canDelta ? 1 : 0) + (canGrowth ? 1 : 0);
-  const cols = sideExtra + n + 1 + n + sideExtra;
-  const strikeAt = sideExtra + n;
+function greenBarRow(canDelta, n, close) {
+  const cols = (canDelta ? 1 : 0) + n + 1 + n + (canDelta ? 1 : 0);
   let html = "<tr>";
   for (let i = 0; i < cols; i++) {
+    const isStrike = i === (canDelta ? 1 : 0) + n;
     html +=
       '<td class="green">' +
-      (i === strikeAt
+      (isStrike
         ? Number(close).toLocaleString(undefined, { maximumFractionDigits: 2 })
         : "") +
       "</td>";
@@ -932,24 +888,11 @@ function arabicDayMonth(exp) {
   }
 }
 
-/** تسمية بطاقة ×3: «اليوم 17 أوغست» بدون تاريخ ISO كامل */
 function x3PanelTitle(label, exp) {
   var dm = arabicDayMonth(exp);
-  var lab = String(label || "");
-  lab = lab.replace(/\d{4}-\d{2}-\d{2}/g, "").trim();
-  var am = "";
-  if (
-    typeof isAmSettlementTicker === "function" &&
-    isAmSettlementTicker(state.ticker) &&
-    typeof isThirdFridayExp === "function" &&
-    isThirdFridayExp(exp)
-  ) {
-    am = ' <span class="exp-am">AM</span>';
-  }
-  if (/اليوم|يوم بعد|الأسبوع|OPX/i.test(lab)) {
-    return lab + " " + dm + am;
-  }
-  return lab + " " + dm + am;
+  var lab = String(label || "").replace(/\d{4}-\d{2}-\d{2}/g, "").trim();
+  if (/اليوم|يوم بعد|الأسبوع|OPX/i.test(lab)) return lab + " " + dm;
+  return lab + " " + dm;
 }
 
 function renderOneMiniTable(data, expiration, label, opts) {
@@ -958,8 +901,6 @@ function renderOneMiniTable(data, expiration, label, opts) {
     expiration: state.expiration,
     days: state.days,
     showDelta: state.showDelta,
-    showGrowth: state.showGrowth,
-    growthAuto: state.growthAuto,
   };
   state.expiration = expiration;
   state.days = "2";
@@ -967,8 +908,6 @@ function renderOneMiniTable(data, expiration, label, opts) {
   state.expiration = saved.expiration;
   state.days = saved.days;
   state.showDelta = saved.showDelta;
-  state.showGrowth = saved.showGrowth;
-  if (saved.growthAuto != null) state.growthAuto = !!saved.growthAuto;
 
   var title = x3PanelTitle(label, expiration);
   if (!view || !view.rows.length) {
@@ -980,21 +919,16 @@ function renderOneMiniTable(data, expiration, label, opts) {
   }
   var pullDates = view.pullDates;
   var rows = view.rows;
-  // محاذاة صفوف x3: نفس قائمة السترايك في الجداول الثلاثة
   if (opts.sharedStrikes && opts.sharedStrikes.length) {
     var byS = {};
-    rows.forEach(function (r) {
-      byS[String(Math.round(Number(r.strike) * 100) / 100)] = r;
-    });
-    rows = opts.sharedStrikes.map(function (s) {
-      var k = String(Math.round(Number(s) * 100) / 100);
-      if (byS[k]) return byS[k];
-      var emptyC = [], emptyP = [];
-      for (var ei = 0; ei < pullDates.length; ei++) {
-        emptyC.push(0);
-        emptyP.push(0);
-      }
-      return { strike: Number(s), calls: emptyC, puts: emptyP };
+    rows.forEach(function (r) { byS[String(r.strike)] = r; });
+    rows = opts.sharedStrikes.map(function (sk) {
+      if (byS[String(sk)]) return byS[String(sk)];
+      return {
+        strike: sk,
+        calls: pullDates.map(function () { return 0; }),
+        puts: pullDates.map(function () { return 0; }),
+      };
     });
   }
   var close = effectiveClose(data);
@@ -1024,17 +958,12 @@ function renderOneMiniTable(data, expiration, label, opts) {
     });
   }
 
-  // أقرب سترايك للإغلاق لصف الشريط الأخضر
   var closeStrike = null;
   if (close != null && !isNaN(Number(close)) && rows.length) {
-    var best = rows[0].strike;
-    var bestD = Math.abs(rows[0].strike - close);
+    var best = rows[0].strike, bestD = Math.abs(rows[0].strike - close);
     rows.forEach(function (r) {
       var d = Math.abs(r.strike - close);
-      if (d < bestD) {
-        bestD = d;
-        best = r.strike;
-      }
+      if (d < bestD) { bestD = d; best = r.strike; }
     });
     closeStrike = best;
   }
@@ -1042,7 +971,15 @@ function renderOneMiniTable(data, expiration, label, opts) {
   var html =
     '<div class="x3-col' + (opts.active ? " active" : "") + '">' +
     '<div class="x3-col-h">' + title + "</div>" +
-    '<div class="x3-table-wrap"><table class="oi x3-table"><thead><tr>';
+    '<div class="x3-table-wrap"><table class="oi x3-table"><thead>';
+  var nColsX = pullDates.length;
+  html += '<tr class="side-label-row">';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += '<th class="side-label call-side" colspan="' + nColsX + '">CALL</th>';
+  html += '<th class="strike side-mid"></th>';
+  html += '<th class="side-label put-side" colspan="' + nColsX + '">PUT</th>';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += "</tr><tr>";
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (var hi = pullDates.length - 1; hi >= 0; hi--) {
     var f = formatPullDate(pullDates[hi]);
@@ -1057,30 +994,28 @@ function renderOneMiniTable(data, expiration, label, opts) {
   html += "</tr></thead><tbody>";
 
   rows.forEach(function (r, ri) {
-    var zebra = ri % 2 === 1 ? " zebra" : "";
-    var isCloseRow =
-      closeStrike != null && Number(r.strike) === Number(closeStrike);
-    var rowCls = zebra + (isCloseRow ? " close-bar" : "");
-    var above = close != null && r.strike > close;
-    var below = close != null && r.strike < close;
-    var callCls = below || (close != null && r.strike === close) ? "itm" : "otm";
-    var putCls = above || (close != null && r.strike === close) ? "itm" : "otm";
-    html += '<tr class="' + rowCls.trim() + '">';
+    var isCloseRow = closeStrike != null && Number(r.strike) === Number(closeStrike);
+    /* ×3 نطاقات: بدون زيبرا وبدون itm/otm — التلوين بالنطاق فقط */
+    var callCls = "";
+    var putCls = "";
+    var band = "";
+    if (close != null && !isNaN(Number(close)) && !isCloseRow) {
+      var dist = Math.abs(Number(r.strike) - Number(close));
+      if (dist <= 3) band = " band-near";
+      else if (dist <= 8) band = " band-mid";
+      else band = " band-far";
+    }
+    html += '<tr class="' + (isCloseRow ? "close-bar" : "") + band + '">';
     if (canDelta) {
       var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
       var maxD = dc != null && deltaCallMax > 0 && dc === deltaCallMax ? " max-oi" : "";
-      html +=
-        '<td class="delta' + maxD + '">' +
-        (dc != null ? dc.toLocaleString() : "") +
-        "</td>";
+      html += '<td class="delta' + maxD + '">' + (dc != null ? dc.toLocaleString() : "") + "</td>";
     }
     for (var ci = pullDates.length - 1; ci >= 0; ci--) {
       var cv = r.calls[ci] || 0;
       var maxC = callMax[ci] > 0 && cv === callMax[ci] ? " max-oi" : "";
-      html +=
-        '<td class="' + callCls + maxC + '">' + cv.toLocaleString() + "</td>";
+      html += '<td class="' + callCls + maxC + '">' + cv.toLocaleString() + "</td>";
     }
-    // شريط الإغلاق: في عمود السترايك نعرض رقم الإغلاق إن وُجد
     if (isCloseRow && close != null) {
       html +=
         '<td class="strike close-strike">' +
@@ -1092,16 +1027,12 @@ function renderOneMiniTable(data, expiration, label, opts) {
     for (var pi = 0; pi < pullDates.length; pi++) {
       var pv = r.puts[pi] || 0;
       var maxP = putMax[pi] > 0 && pv === putMax[pi] ? " max-oi" : "";
-      html +=
-        '<td class="' + putCls + maxP + '">' + pv.toLocaleString() + "</td>";
+      html += '<td class="' + putCls + maxP + '">' + pv.toLocaleString() + "</td>";
     }
     if (canDelta) {
       var dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
       var maxDp = dp != null && deltaPutMax > 0 && dp === deltaPutMax ? " max-oi" : "";
-      html +=
-        '<td class="delta' + maxDp + '">' +
-        (dp != null ? dp.toLocaleString() : "") +
-        "</td>";
+      html += '<td class="delta' + maxDp + '">' + (dp != null ? dp.toLocaleString() : "") + "</td>";
     }
     html += "</tr>";
   });
@@ -1122,37 +1053,32 @@ function renderX3() {
     host.innerHTML = '<p class="status">لا تواريخ لوضع ×3</p>';
     return;
   }
-
   var tl = '<div class="x3-timeline">';
   targets.forEach(function (t, i) {
     if (i > 0) tl += '<div class="x3-line"></div>';
-    var nodeLab = String(t.label || "");
-    // الخط الزمني: اليوم 17 أوغست
-    var nodeTitle = x3PanelTitle(nodeLab, t.exp);
     tl +=
       '<div class="x3-node">' +
       '<div class="x3-dot' + (i === 0 ? " on" : "") + '"></div>' +
-      '<div class="x3-lab">' + nodeTitle + "</div>" +
+      '<div class="x3-lab">' + x3PanelTitle(t.label, t.exp) + "</div>" +
       "</div>";
   });
   tl += "</div>";
-
-  // سترايكات موحّدة = قائمة جدول «اليوم» فقط حتى تتطابق الصفوف عموديًا
-  var sharedStrikes = [];
-  if (targets.length) {
-    var saved0 = { expiration: state.expiration, days: state.days };
-    state.expiration = targets[0].exp;
-    state.days = "2";
-    var view0 = getViewRows(data);
-    state.expiration = saved0.expiration;
-    state.days = saved0.days;
-    if (view0 && view0.rows) {
-      sharedStrikes = view0.rows.map(function (r) { return Number(r.strike); });
-      sharedStrikes.sort(function (a, b) { return a - b; });
-    }
-  }
-
   var cols = '<div class="x3-cols">';
+  var sharedStrikes = null;
+  try {
+    var t0 = targets[0];
+    if (t0) {
+      var savedExp = state.expiration, savedDays = state.days;
+      state.expiration = t0.exp;
+      state.days = "2";
+      var masterView = getViewRows(data);
+      state.expiration = savedExp;
+      state.days = savedDays;
+      if (masterView && masterView.rows && masterView.rows.length) {
+        sharedStrikes = masterView.rows.map(function (r) { return r.strike; });
+      }
+    }
+  } catch (e0) {}
   targets.forEach(function (t, i) {
     cols += renderOneMiniTable(data, t.exp, t.label, {
       active: i === 0,
@@ -1160,11 +1086,180 @@ function renderX3() {
     });
   });
   cols += "</div>";
+  host.innerHTML = '<div class="x3-board' + (state.showDelta ? ' with-delta' : '') + '">' + tl + cols + "</div>";
+}
 
-  host.innerHTML = '<div class="x3-board">' + tl + cols + "</div>";
+
+
+
+/** تحويل انتهاء ISO → مفتاح سحب d-m مثل 25-8 */
+function expToPullDateLabel(exp) {
+  try {
+    var p = String(exp).split("-");
+    if (p.length < 3) return null;
+    return parseInt(p[2], 10) + "-" + parseInt(p[1], 10);
+  } catch (e) {
+    return null;
+  }
+}
+
+function expSortKey(exp) {
+  try {
+    return new Date(String(exp) + "T12:00:00").getTime();
+  } catch (e) {
+    return 0;
+  }
+}
+
+/** مفتاح سحب d-m + سنة → ISO انتهاء YYYY-MM-DD */
+function pullLabelToExpIso(label, year) {
+  try {
+    var parts = String(label).split("-").map(Number);
+    var day = parts[0], month = parts[1];
+    if (!day || !month) return null;
+    var y = year || new Date().getFullYear();
+    return (
+      y +
+      "-" +
+      String(month).padStart(2, "0") +
+      "-" +
+      String(day).padStart(2, "0")
+    );
+  } catch (e) {
+    return null;
+  }
+}
+
+function findExpBlockForPullDay(data, pullLabel, yearHint) {
+  var y = yearHint || new Date().getFullYear();
+  var tries = [y, y - 1, y + 1];
+  for (var i = 0; i < tries.length; i++) {
+    var exp = pullLabelToExpIso(pullLabel, tries[i]);
+    if (exp && data.by_expiration && data.by_expiration[exp]) {
+      return { exp: exp, block: data.by_expiration[exp] };
+    }
+  }
+  return null;
+}
+
+/**
+ * جدول «اليوم بالسابق»:
+ * الأعمدة = أيام السحب الفعلية (10-8، 11-8، … 25-8).
+ * كل عمود يأخذ أرقام عقد الانتهاء الذي ينتهي في نفس ذلك اليوم (0DTE لذلك اليوم).
+ * مثال: عمود 25-8 ← انتهاء 2026-08-25 | عمود 26-8 ← انتهاء 2026-08-26
+ * لا يُدرج يناير/يونيو البعيدة لأنها ليست أيام سحب في السلسلة.
+ */
+function getSeriesPrevDayView(data) {
+  if (!data || !data.by_expiration) return null;
+
+  var pulls = (data.pull_dates || []).slice();
+  if (!pulls.length) {
+    // احتياط: اجمع أيام السحب من كل الانتهاءات
+    var seen = {};
+    Object.keys(data.by_expiration).forEach(function (exp) {
+      var bp = data.by_expiration[exp].pull_dates || [];
+      bp.forEach(function (pd) {
+        seen[pd] = true;
+      });
+    });
+    pulls = Object.keys(seen);
+  }
+  if (!pulls.length) return null;
+
+  pulls.sort(function (a, b) {
+    return pullDateSortKey(a) - pullDateSortKey(b);
+  });
+
+  var session = dataSessionFromPull(data);
+  var yearHint = session ? session.year : new Date().getFullYear();
+
+  var columns = [];
+  pulls.forEach(function (pd) {
+    var found = findExpBlockForPullDay(data, pd, yearHint);
+    if (!found) return; // لا عقد ينتهي في هذا اليوم ضمن البيانات
+    var block = found.block;
+    var exp = found.exp;
+    if (!block.rows || !block.rows.length) return;
+
+    var bpulls =
+      block.pull_dates && block.pull_dates.length
+        ? block.pull_dates
+        : data.pull_dates || [];
+    var idx = bpulls.indexOf(pd);
+    // نفس يوم السحب إن وُجد؛ وإلا آخر سحب لهذا الانتهاء
+    if (idx < 0) idx = bpulls.length - 1;
+    if (idx < 0) return;
+
+    var strikeMap = {};
+    (block.rows || []).forEach(function (r) {
+      var c = (r.calls && r.calls[idx]) || 0;
+      var p = (r.puts && r.puts[idx]) || 0;
+      strikeMap[String(r.strike)] = { c: c, p: p, strike: r.strike };
+    });
+    columns.push({ exp: exp, label: pd, strikeMap: strikeMap });
+  });
+
+  if (!columns.length) return null;
+
+  // Days: آخر N أيام سحب (آخرها = اليوم الحالي في البيانات، مثل 25-8)
+  columns = lastN(columns, state.days);
+  var pullDates = columns.map(function (c) {
+    return c.label;
+  });
+
+  var strikeSet = {};
+  columns.forEach(function (col) {
+    Object.keys(col.strikeMap).forEach(function (k) {
+      strikeSet[k] = col.strikeMap[k].strike;
+    });
+  });
+  var strikes = Object.keys(strikeSet)
+    .map(Number)
+    .sort(function (a, b) {
+      return a - b;
+    });
+
+  var rows = strikes.map(function (s) {
+    var key = String(s);
+    return {
+      strike: s,
+      calls: columns.map(function (col) {
+        var m = col.strikeMap[key];
+        return m ? m.c : 0;
+      }),
+      puts: columns.map(function (col) {
+        var m = col.strikeMap[key];
+        return m ? m.p : 0;
+      }),
+    };
+  });
+
+  var closePx =
+    data.close != null
+      ? data.close
+      : typeof effectiveClose === "function"
+        ? effectiveClose(data)
+        : null;
+  rows = filterStrikes(rows, closePx, state.strikes);
+  return {
+    pullDates: pullDates,
+    rows: rows,
+    close: closePx,
+    seriesExps: columns.map(function (c) {
+      return c.exp;
+    }),
+  };
 }
 
 /** جدول «اليوم بالسابق»: أعمدة = تواريخ انتهاء يومية متتالية (25 ثم 26 ثم…) وليس أيام سحب لنفس الانتهاء */
+/** ألوان أعمدة «اليوم بالسابق» — متسلسلة بدون تناظر كول/بوت */
+function seriesColClass(pos, totalCols) {
+  var tones = ["sc-a", "sc-b", "sc-c", "sc-d", "sc-e", "sc-f", "sc-g"];
+  if (!totalCols || totalCols < 1) return tones[0];
+  var p = Math.max(0, Math.min(totalCols - 1, pos | 0));
+  return tones[p % tones.length];
+}
+
 function renderSeriesTable() {
   const data = state.cache[state.ticker];
   const host = $("#tableHost");
@@ -1198,17 +1293,29 @@ function renderSeriesTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll"><table class="oi series-oi"><thead><tr>';
-
+  html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi" style="width:auto;max-width:none"><thead>';
+  var nCols = pullDates.length;
+  var totalSideCols = nCols * 2;
+  // صف CALL | PUT
+  html += '<tr class="side-label-row">';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += '<th class="side-label call-side" colspan="' + nCols + '">CALL</th>';
+  html += '<th class="strike side-mid"></th>';
+  html += '<th class="side-label put-side" colspan="' + nCols + '">PUT</th>';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += "</tr><tr>";
+  var colPos = 0;
   if (canDelta) html += '<th class="delta">Δ</th>';
-  for (let i = pullDates.length - 1; i >= 0; i--) {
+  for (let i = nCols - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
-    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    const sc = seriesColClass(colPos++, totalSideCols);
+    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   html += '<th class="strike">STRIKE</th>';
-  for (let j = 0; j < pullDates.length; j++) {
+  for (let j = 0; j < nCols; j++) {
     const f = formatPullDate(pullDates[j]);
-    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    const sc = seriesColClass(colPos++, totalSideCols);
+    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
   html += "</tr></thead><tbody>";
@@ -1269,12 +1376,13 @@ function renderSeriesTable() {
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
+    var bodyPos = 0;
     for (let i = pullDates.length - 1; i >= 0; i--) {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
       html +=
         '<td class="' +
-        callCls +
+        seriesColClass(bodyPos++, pullDates.length * 2) +
         maxCls +
         '">' +
         cv.toLocaleString() +
@@ -1286,7 +1394,7 @@ function renderSeriesTable() {
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
       html +=
         '<td class="' +
-        putCls +
+        seriesColClass(bodyPos++, pullDates.length * 2) +
         maxCls +
         '">' +
         pv.toLocaleString() +
@@ -1314,18 +1422,14 @@ function renderSeriesTable() {
 
 
 function renderTable() {
-  if (state.seriesMode && typeof renderSeriesTable === 'function') {
-    return renderSeriesTable();
-  }
-  if (state.seriesMode && typeof buildSeriesTableHtml === 'function') {
-    var seriesHost = document.getElementById('tableHost');
-    if (seriesHost) seriesHost.innerHTML = buildSeriesTableHtml();
-    return;
-  }
   const data = state.cache[state.ticker];
   const host = $("#tableHost");
   if (state.x3Mode) {
     renderX3();
+    return;
+  }
+  if (state.seriesMode) {
+    renderSeriesTable();
     return;
   }
   if (!data || !state.expiration) {
@@ -1341,8 +1445,6 @@ function renderTable() {
   const rows = view.rows;
   const close = effectiveClose(data);
   const canDelta = state.showDelta && pullDates.length >= 2;
-  const gDays = resolveGrowthDays(pullDates.length, state.growthDays, state.growthAuto);
-  const canGrowth = state.showGrowth && pullDates.length > gDays;
   const lastI = pullDates.length - 1;
   const prevI = pullDates.length - 2;
 
@@ -1361,10 +1463,15 @@ function renderTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll"><table class="oi"><thead><tr>';
-
-  // ترتيب الطرف: G (خارج) ثم Δ ثم التواريخ — نفس المنطق لكلا الجهتين
-  if (canGrowth) html += '<th class="growth">G<br><span class="subh">' + gDays + "d</span></th>";
+  html += '</div><div class="table-scroll"><table class="oi" style="width:auto;max-width:none"><thead>';
+  var nCols = pullDates.length;
+  html += '<tr class="side-label-row">';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += '<th class="side-label call-side" colspan="' + nCols + '">CALL</th>';
+  html += '<th class="strike side-mid"></th>';
+  html += '<th class="side-label put-side" colspan="' + nCols + '">PUT</th>';
+  if (canDelta) html += '<th class="delta side-pad"></th>';
+  html += "</tr><tr>";
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (let i = pullDates.length - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
@@ -1376,9 +1483,9 @@ function renderTable() {
     html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
-  if (canGrowth) html += '<th class="growth">G<br><span class="subh">' + gDays + "d</span></th>";
   html += "</tr></thead><tbody>";
 
+  // أعلى قيمة لكل عمود Call/Put (بدون Strike)
   const callMax = [];
   const putMax = [];
   for (let i = 0; i < pullDates.length; i++) {
@@ -1401,20 +1508,11 @@ function renderTable() {
       if (dp != null && dp > deltaPutMax) deltaPutMax = dp;
     });
   }
-  let growthCallMax = 0, growthPutMax = 0;
-  if (canGrowth) {
-    rows.forEach(function (r) {
-      const gc = positiveGrowth(r.calls, gDays);
-      const gp = positiveGrowth(r.puts, gDays);
-      if (gc != null && gc > growthCallMax) growthCallMax = gc;
-      if (gp != null && gp > growthPutMax) growthPutMax = gp;
-    });
-  }
 
   let barDone = false;
   rows.forEach(function (r, ri) {
     if (close != null && !barDone && r.strike > close) {
-      html += greenBarRow(canDelta, canGrowth, pullDates.length, close);
+      html += greenBarRow(canDelta, pullDates.length, close);
       barDone = true;
     }
     const zebra = ri % 2 === 1 ? " zebra" : "";
@@ -1426,19 +1524,13 @@ function renderTable() {
       above || (close != null && r.strike === close) ? "itm" : "otm";
 
     html += '<tr class="' + zebra + '">';
-    if (canGrowth) {
-      const g = positiveGrowth(r.calls, gDays);
-      const maxCls = g != null && growthCallMax > 0 && g === growthCallMax ? " max-oi" : "";
-      html +=
-        '<td class="growth' + maxCls + '">' +
-        (g != null ? g.toLocaleString() : "") +
-        "</td>";
-    }
     if (canDelta) {
       const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
       const maxCls = d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
       html +=
-        '<td class="delta' + maxCls + '">' +
+        '<td class="delta' +
+        maxCls +
+        '">' +
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
@@ -1446,7 +1538,10 @@ function renderTable() {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
       html +=
-        '<td class="' + callCls + maxCls + '">' +
+        '<td class="' +
+        callCls +
+        maxCls +
+        '">' +
         cv.toLocaleString() +
         "</td>";
     }
@@ -1455,7 +1550,10 @@ function renderTable() {
       const pv = r.puts[i] || 0;
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
       html +=
-        '<td class="' + putCls + maxCls + '">' +
+        '<td class="' +
+        putCls +
+        maxCls +
+        '">' +
         pv.toLocaleString() +
         "</td>";
     }
@@ -1463,22 +1561,16 @@ function renderTable() {
       const d = positiveDelta(r.puts[lastI], r.puts[prevI]);
       const maxCls = d != null && deltaPutMax > 0 && d === deltaPutMax ? " max-oi" : "";
       html +=
-        '<td class="delta' + maxCls + '">' +
+        '<td class="delta' +
+        maxCls +
+        '">' +
         (d != null ? d.toLocaleString() : "") +
-        "</td>";
-    }
-    if (canGrowth) {
-      const g = positiveGrowth(r.puts, gDays);
-      const maxCls = g != null && growthPutMax > 0 && g === growthPutMax ? " max-oi" : "";
-      html +=
-        '<td class="growth' + maxCls + '">' +
-        (g != null ? g.toLocaleString() : "") +
         "</td>";
     }
     html += "</tr>";
   });
   if (close != null && !barDone) {
-    html += greenBarRow(canDelta, canGrowth, pullDates.length, close);
+    html += greenBarRow(canDelta, pullDates.length, close);
   }
   html += "</tbody></table></div>";
   host.innerHTML = html;
@@ -1486,10 +1578,12 @@ function renderTable() {
 
 
 function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
+  /* نفس منطق getViewRows: فهرسة على block.pull_dates وليس data.pull_dates العامة
+     (بعد قص أعمدة الأصفار لكل انتهاء تختلف أطوال المصفوفات) */
   if (!data || !expiration) return null;
   const block = data.by_expiration[expiration];
   if (!block) return null;
-  var basePullFor = (block.pull_dates && block.pull_dates.length)
+  var basePull = (block.pull_dates && block.pull_dates.length)
     ? block.pull_dates.slice()
     : (data.pull_dates || []).slice();
   if (
@@ -1498,12 +1592,21 @@ function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
     typeof isThirdFridayExp === "function" &&
     isThirdFridayExp(expiration)
   ) {
-    basePullFor = filterSpxMonthlyPullDates(basePullFor);
+    basePull = filterSpxMonthlyPullDates(basePull);
+  }
+  if (
+    String(state.ticker).toUpperCase() === "NDX" &&
+    expiration &&
+    typeof isThirdFridayExp === "function" &&
+    isThirdFridayExp(expiration) &&
+    typeof filterSpxMonthlyPullDates === "function"
+  ) {
+    basePull = filterSpxMonthlyPullDates(basePull);
   }
   var fullDates = (block.pull_dates && block.pull_dates.length)
     ? block.pull_dates
     : (data.pull_dates || []);
-  var idxFull = basePullFor.map(function (d) { return fullDates.indexOf(d); });
+  var idxFull = basePull.map(function (d) { return fullDates.indexOf(d); });
   var rowsAligned = (block.rows || []).map(function (r) {
     return {
       strike: r.strike,
@@ -1511,17 +1614,19 @@ function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
       puts: idxFull.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
     };
   });
-  var trimmed = trimLeadingZeroColumns(basePullFor, rowsAligned);
-  basePullFor = trimmed.pullDates;
-  rowsAligned = trimmed.rows;
-  var pullDates = lastN(basePullFor, daysLimit);
+  if (typeof trimLeadingZeroColumns === "function") {
+    var trimmed = trimLeadingZeroColumns(basePull, rowsAligned);
+    basePull = trimmed.pullDates;
+    rowsAligned = trimmed.rows;
+  }
+  var pullDates = lastN(basePull, daysLimit);
   if (!pullDates.length) return null;
-  const idx = pullDates.map(function (d) { return basePullFor.indexOf(d); });
+  const idx = pullDates.map(function (d) { return basePull.indexOf(d); });
   let rows = rowsAligned.map(function (r) {
     return {
       strike: r.strike,
-      calls: idx.map(function (i) { return i >= 0 ? r.calls[i] : 0; }),
-      puts: idx.map(function (i) { return i >= 0 ? r.puts[i] : 0; }),
+      calls: idx.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
+      puts: idx.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
     };
   });
   rows = filterStrikes(rows, data.close, strikesLimit);
@@ -1530,8 +1635,8 @@ function getViewRowsFor(data, expiration, daysLimit, strikesLimit) {
 }
 
 
-/** يكتب جدول انتهاء من B2 بدون أعمدة pad إضافية */
-function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta, showGrowth, growthDays) {
+/** يكتب جدول انتهاء بنفس تنسيق الديسكتوب (B2، pad=2، تواريخ 13-8، هيدر ناعم) */
+function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   const arabicMonths = {
     1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل",
     5: "مايو", 6: "يونيو", 7: "يوليو", 8: "أغسطس",
@@ -1541,26 +1646,25 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta, sh
   const rows = view.rows;
   const n = pullDates.length;
   const hasDelta = !!(showDelta && n >= 2);
-  const gDays = (growthDays === "auto" || growthDays == null)
-    ? resolveGrowthDays(n, null, true)
-    : resolveGrowthDays(n, growthDays, false);
-  const hasGrowth = !!(showGrowth && n > gDays);
   const lastI = n - 1;
   const prevI = n - 2;
-  const pad = 0; // بدون أعمدة فارغة على الجانبين
+  const pad = 2;
 
   const fillTicker = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE7E6E6" } };
   const fillPutCall = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EFDA" } };
   const fillRow3 = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
   const fillRow4 = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDD9C4" } };
   const fillDelta = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
-  const fillGrowth = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD8E7E7" } };
   const fillMax = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
   const fontB = { name: "Calibri", size: 11, bold: true, color: { argb: "FF000000" } };
   const fontN = { name: "Calibri", size: 11, color: { argb: "FF000000" } };
   const alignC = { horizontal: "center", vertical: "middle" };
-  // بلا حدود رمادية — مظهر متصل
-  const border = undefined;
+  const border = {
+    top: { style: "thin", color: { argb: "FFD9D9D9" } },
+    bottom: { style: "thin", color: { argb: "FFD9D9D9" } },
+    left: { style: "thin", color: { argb: "FFD9D9D9" } },
+    right: { style: "thin", color: { argb: "FFD9D9D9" } },
+  };
 
   let headerDate = view.expiration || "";
   try {
@@ -1574,14 +1678,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta, sh
   const rExp = startRow + 3;
   const dataStart = startRow + 4;
 
-  // Put side (تواريخ تنازلي في العرض RTL): G ثم Δ ثم تواريخ
   let col = startCol + pad;
-  let putGrowthCol = null;
   let putDeltaCol = null;
-  if (hasGrowth) {
-    putGrowthCol = col;
-    col += 1;
-  }
   if (hasDelta) {
     putDeltaCol = col;
     col += 1;
@@ -1599,13 +1697,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta, sh
     col += 1;
   }
   let callDeltaCol = null;
-  let callGrowthCol = null;
   if (hasDelta) {
     callDeltaCol = col;
-    col += 1;
-  }
-  if (hasGrowth) {
-    callGrowthCol = col;
     col += 1;
   }
   const contentEnd = col - 1;
@@ -1628,14 +1721,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta, sh
   ws.getCell(rTitle, strikeCol).value = ticker;
 
   // Section labels Put / Strike / Call
-  const putCols = []
-    .concat(putGrowthCol ? [putGrowthCol] : [])
-    .concat(putDeltaCol ? [putDeltaCol] : [])
-    .concat(putDateCols.map(function (x) { return x.c; }));
-  const callCols = callDateCols
-    .map(function (x) { return x.c; })
-    .concat(callDeltaCol ? [callDeltaCol] : [])
-    .concat(callGrowthCol ? [callGrowthCol] : []);
+  const putCols = (putDeltaCol ? [putDeltaCol] : []).concat(putDateCols.map(function (x) { return x.c; }));
+  const callCols = callDateCols.map(function (x) { return x.c; }).concat(callDeltaCol ? [callDeltaCol] : []);
   if (putCols.length) {
     ws.mergeCells(rSection, Math.min.apply(null, putCols), rSection, Math.max.apply(null, putCols));
     const cell = ws.getCell(rSection, Math.min.apply(null, putCols));
@@ -1702,66 +1789,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta, sh
     callMax[x.c] = m;
   });
 
-  let putDeltaMax = 0, callDeltaMax = 0, putGrowthMax = 0, callGrowthMax = 0;
-  if (hasDelta) {
-    rows.forEach(function (r) {
-      const dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
-      const dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
-      if (dp != null && dp > putDeltaMax) putDeltaMax = dp;
-      if (dc != null && dc > callDeltaMax) callDeltaMax = dc;
-    });
-  }
-  if (hasGrowth) {
-    rows.forEach(function (r) {
-      const gp = positiveGrowth(r.puts, gDays);
-      const gc = positiveGrowth(r.calls, gDays);
-      if (gp != null && gp > putGrowthMax) putGrowthMax = gp;
-      if (gc != null && gc > callGrowthMax) callGrowthMax = gc;
-    });
-  }
-
-  // ترويسة G / Δ
-  if (hasGrowth && putGrowthCol) {
-    const cell = ws.getCell(rDates, putGrowthCol);
-    cell.value = "G·" + gDays;
-    cell.fill = fillGrowth;
-    cell.font = fontB;
-    cell.alignment = alignC;
-  }
-  if (hasDelta && putDeltaCol) {
-    const cell = ws.getCell(rDates, putDeltaCol);
-    cell.value = "Δ";
-    cell.fill = fillDelta;
-    cell.font = fontB;
-    cell.alignment = alignC;
-  }
-  if (hasDelta && callDeltaCol) {
-    const cell = ws.getCell(rDates, callDeltaCol);
-    cell.value = "Δ";
-    cell.fill = fillDelta;
-    cell.font = fontB;
-    cell.alignment = alignC;
-  }
-  if (hasGrowth && callGrowthCol) {
-    const cell = ws.getCell(rDates, callGrowthCol);
-    cell.value = "G·" + gDays;
-    cell.fill = fillGrowth;
-    cell.font = fontB;
-    cell.alignment = alignC;
-  }
-
   rows.forEach(function (r, ri) {
     const rowIdx = dataStart + ri;
-    if (hasGrowth && putGrowthCol) {
-      const g = positiveGrowth(r.puts, gDays);
-      const cell = ws.getCell(rowIdx, putGrowthCol);
-      cell.value = g != null ? g : "";
-      cell.numFmt = "#,##0";
-      cell.font = fontN;
-      cell.alignment = alignC;
-      cell.border = border;
-      cell.fill = (g != null && putGrowthMax > 0 && g === putGrowthMax) ? fillMax : fillGrowth;
-    }
     if (hasDelta && putDeltaCol) {
       const dlt = positiveDelta(r.puts[lastI], r.puts[prevI]);
       const cell = ws.getCell(rowIdx, putDeltaCol);
@@ -1770,7 +1799,7 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta, sh
       cell.font = fontN;
       cell.alignment = alignC;
       cell.border = border;
-      cell.fill = (dlt != null && putDeltaMax > 0 && dlt === putDeltaMax) ? fillMax : fillDelta;
+      cell.fill = fillDelta;
     }
     putDateCols.forEach(function (x) {
       const val = r.puts[x.idx] || 0;
@@ -1812,17 +1841,7 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta, sh
       cell.font = fontN;
       cell.alignment = alignC;
       cell.border = border;
-      cell.fill = (dlt != null && callDeltaMax > 0 && dlt === callDeltaMax) ? fillMax : fillDelta;
-    }
-    if (hasGrowth && callGrowthCol) {
-      const g = positiveGrowth(r.calls, gDays);
-      const cell = ws.getCell(rowIdx, callGrowthCol);
-      cell.value = g != null ? g : "";
-      cell.numFmt = "#,##0";
-      cell.font = fontN;
-      cell.alignment = alignC;
-      cell.border = border;
-      cell.fill = (g != null && callGrowthMax > 0 && g === callGrowthMax) ? fillMax : fillGrowth;
+      cell.fill = fillDelta;
     }
   });
 
@@ -2066,27 +2085,25 @@ function runExportFromDialog(emode, edays, estrikes) {
     const wb = new ExcelJS.Workbook();
     const GAP = 4;
     const showDelta = !!state.showDelta;
-    const showGrowth = !!state.showGrowth;
-    const growthDays = state.growthAuto ? "auto" : state.growthDays;
 
     if (emode === "multi") {
       chosen.forEach(function (exp, i) {
         const view = getViewRowsFor(data, exp, edays, estrikes);
         if (!view) return;
         const ws = wb.addWorksheet(String(exp).slice(0, 31), {
-          views: [{ rightToLeft: true }],
+          views: [{ rightToLeft: true, state: "frozen", ySplit: 5 }],
         });
-        writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta, showGrowth, growthDays);
+        writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta);
       });
     } else {
       const ws = wb.addWorksheet("Export", {
-        views: [{ rightToLeft: true }],
+        views: [{ rightToLeft: true, state: "frozen", ySplit: 5 }],
       });
       let col = 2;
       chosen.forEach(function (exp) {
         const view = getViewRowsFor(data, exp, edays, estrikes);
         if (!view) return;
-        const last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta, showGrowth, growthDays);
+        const last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta);
         col = last + 1 + GAP;
       });
     }
@@ -2136,12 +2153,7 @@ function exportExcel() {
 }
 
 // —— سعر مباشر للشريط الأخضر (ويب فقط، مع قيود الاستضافة الثابتة) ——
-const YAHOO_MAP = {
-  SPY: "SPY", QQQ: "QQQ", IWM: "IWM", GLD: "GLD", SPX: "^GSPC",
-  AAPL: "AAPL", MSFT: "MSFT", NVDA: "NVDA", TSLA: "TSLA", AMZN: "AMZN",
-  META: "META", GOOGL: "GOOGL", AVGO: "AVGO", MSTR: "MSTR", AMD: "AMD",
-  MU: "MU", COHR: "COHR", SNDK: "SNDK", CRWD: "CRWD", VOO: "VOO", NDX: "^NDX",
-};
+const YAHOO_MAP = { SPY: "SPY", QQQ: "QQQ", IWM: "IWM", GLD: "GLD", SPX: "^GSPC" };
 let liveTimer = null;
 
 function isUsMarketHours() {
@@ -2164,12 +2176,13 @@ function isUsMarketHours() {
   }
 }
 
+
 async function fetchSessionClose(ticker) {
   /**
-   * إغلاق آخر جلسة مكتملة من Yahoo:
+   * إغلاق آخر جلسة مكتملة من Yahoo (مع وكيل CORS عند الحاجة):
    * - يقرأ الشموع اليومية
    * - إن كان آخر يوم close=null يستخدم regularMarketPrice
-   * - يعيد آخر إغلاق ≤ أمس (جلسة مكتملة) وليس السعر اللحظي أثناء الجلسة إن وُجد شريط أمس
+   * - يعيد آخر إغلاق ≤ أمس (جلسة مكتملة)
    */
   try {
     var symbol = (typeof YAHOO_MAP !== "undefined" && YAHOO_MAP[ticker]) ? YAHOO_MAP[ticker] : ticker;
@@ -2179,9 +2192,20 @@ async function fetchSessionClose(ticker) {
       "https://query1.finance.yahoo.com/v8/finance/chart/" +
       encodeURIComponent(symbol) +
       "?range=15d&interval=1d";
-    var res = await fetch(url);
-    if (!res.ok) return null;
-    var j = await res.json();
+    async function loadJson(u) {
+      try {
+        var r = await fetch(u);
+        if (!r.ok) return null;
+        return await r.json();
+      } catch (e) {
+        return null;
+      }
+    }
+    var j = await loadJson(url);
+    if (!j) {
+      j = await loadJson("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
+    }
+    if (!j) return null;
     var result = j && j.chart && j.chart.result && j.chart.result[0];
     if (!result) return null;
     var ts = result.timestamp || [];
@@ -2230,6 +2254,7 @@ async function fetchSessionClose(ticker) {
   }
 }
 
+
 async function fetchLivePrice(ticker) {
   const sym = YAHOO_MAP[ticker] || ticker;
   const yahoo =
@@ -2263,11 +2288,55 @@ async function fetchLivePrice(ticker) {
   }
 }
 
+function estimateCloseFromRows(data) {
+  try {
+    if (!data || !data.by_expiration) return null;
+    var exp = state.expiration || (data.expirations && data.expirations[0]);
+    if (!exp) return null;
+    var block = data.by_expiration[exp];
+    if (!block || !block.rows || !block.rows.length) return null;
+    var bestS = null, bestT = -1;
+    var lastIdx = (data.pull_dates || []).length - 1;
+    if (lastIdx < 0) lastIdx = 0;
+    block.rows.forEach(function (r) {
+      var c = 0, p = 0;
+      if (r.calls && r.calls.length) c = r.calls[Math.min(lastIdx, r.calls.length - 1)] || 0;
+      if (r.puts && r.puts.length) p = r.puts[Math.min(lastIdx, r.puts.length - 1)] || 0;
+      var tot = c + p;
+      if (tot > bestT) {
+        bestT = tot;
+        bestS = r.strike;
+      }
+    });
+    return bestS != null ? Number(bestS) : null;
+  } catch (e) {
+    return null;
+  }
+}
 
 function effectiveClose(data) {
-  if (state.livePrice != null && !isNaN(state.livePrice)) return state.livePrice;
-  return data && data.close != null ? data.close : null;
+  if (state.livePrice != null && !isNaN(Number(state.livePrice))) {
+    return Number(state.livePrice);
+  }
+  if (state.sessionClose != null && !isNaN(Number(state.sessionClose))) {
+    return Number(state.sessionClose);
+  }
+  if (data && data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
+    return Number(data.close);
+  }
+  if (data && data.closes && typeof data.closes === "object") {
+    var keys = Object.keys(data.closes);
+    for (var i = keys.length - 1; i >= 0; i--) {
+      var v = Number(data.closes[keys[i]]);
+      if (!isNaN(v) && v > 0) return v;
+    }
+  }
+  var est = estimateCloseFromRows(data);
+  if (est != null && !isNaN(est)) return est;
+  return null;
 }
+
+
 
 async function refreshLivePrice() {
   if (!isUsMarketHours()) {
@@ -2294,31 +2363,39 @@ function toggleTheme() {
 }
 
 function init() {
-  if ($("#seriesBtn")) {
-    $("#seriesBtn").onclick = function () {
-      state.seriesMode = !state.seriesMode;
-      if (state.seriesMode) {
-        state.x3Mode = false;
-        var x3 = $("#x3Btn"); if (x3) x3.classList.remove("active");
-      }
-      $("#seriesBtn").classList.toggle("active", state.seriesMode);
-      renderTable();
-    };
-  }
-
   state.dark = true;
   try { localStorage.setItem("oi-theme", "dark"); } catch (e) {}
   applyTheme();
   renderTickers();
   renderChips("#daysRow", ["2", "3", "5", "10", "ALL"], "days");
   renderChips("#strikesRow", ["30", "50", "ALL"], "strikes");
-  $("#expSelect").onchange = function (e) {
-    state.expiration = e.target.value;
-    renderTable();
-  };
+  
+  if ($("#seriesBtn")) {
+    $("#seriesBtn").onclick = function () {
+      state.seriesMode = !state.seriesMode;
+      if (state.seriesMode) {
+        state.x3Mode = false;
+        var xb = $("#x3Btn");
+        if (xb) xb.classList.remove("active");
+      }
+      $("#seriesBtn").classList.toggle("active", state.seriesMode);
+      renderTable();
+    };
+  }
+
+if ($("#expSelect")) {
+    $("#expSelect").onchange = function (e) {
+      try {
+        state.expiration = e.target.value || null;
+        syncExpDropdownLabel();
+        renderTable();
+      } catch (err) {}
+    };
+  }
   if ($("#x3Btn")) {
     $("#x3Btn").onclick = function () {
       state.x3Mode = !state.x3Mode;
+      if (state.x3Mode) { state.seriesMode = false; var sb = $("#seriesBtn"); if (sb) sb.classList.remove("active"); }
       $("#x3Btn").classList.toggle("active", state.x3Mode);
       renderTable();
     };
@@ -2328,37 +2405,6 @@ function init() {
     $("#deltaBtn").classList.toggle("active", state.showDelta);
     renderTable();
   };
-  if ($("#growthBtn")) {
-    $("#growthBtn").onclick = function () {
-      if (!state.showGrowth) {
-        var ans = window.prompt("أيام النمو — فارغ = تلقائي", "");
-        if (ans == null) return;
-        ans = String(ans).trim();
-        if (ans === "" || ans === "auto" || ans === "تلقائي") {
-          state.growthAuto = true;
-          state.growthDays = 0;
-        } else {
-          var n = parseInt(ans, 10);
-          if (!n || n < 1) {
-            setStatus("رقم غير صالح", "err");
-            return;
-          }
-          state.growthAuto = false;
-          state.growthDays = n;
-        }
-        state.showGrowth = true;
-      } else {
-        state.showGrowth = false;
-      }
-      $("#growthBtn").classList.toggle("active", state.showGrowth);
-      $("#growthBtn").title = !state.showGrowth
-        ? "النمو"
-        : state.growthAuto
-          ? "نمو تلقائي حسب الأعمدة (إيقاف)"
-          : "نمو " + state.growthDays + " يوم (إيقاف)";
-      renderTable();
-    };
-  }
   $("#exportBtn").onclick = function () {
     try {
       exportExcel();
@@ -2369,34 +2415,27 @@ function init() {
   };
   if ($("#themeSwitch")) $("#themeSwitch").onclick = toggleTheme;
   if ($("#mapBtn")) $("#mapBtn").onclick = function () { openMap(); };
+
   if ($("#archiveBtn")) $("#archiveBtn").onclick = function () { openArchive(); };
-  if ($("#archiveClose")) $("#archiveClose").onclick = function () { closeArchive(); };
-  if ($("#archExportBtn")) $("#archExportBtn").onclick = function () {
-    try { exportArchiveExcel(); } catch (err) {
-      setStatus("خطأ أرشيف: " + (err && err.message ? err.message : err), "err");
-    }
-  };
-  var archMode = $("#archExportMode");
-  if (archMode) archMode.onchange = function () {
-    state.archExportMode = archMode.value || "multi";
-  };
+  if ($("#archiveClose")) $("#archiveClose").onclick = closeArchive;
+  if ($("#archiveModal")) $("#archiveModal").addEventListener("click", function (e) {
+    if (e.target.id === "archiveModal") closeArchive();
+  });
   if ($("#archDeltaBtn")) $("#archDeltaBtn").onclick = function () {
     state.archShowDelta = !state.archShowDelta;
-    $("#archDeltaBtn").classList.toggle("active", state.archShowDelta);
+    renderArchChips();
+  };
+  if ($("#archExportBtn")) $("#archExportBtn").onclick = function () {
+    try { exportArchiveExcel(); } catch (err) {
+      setStatus("خطأ تصدير الأرشيف: " + (err && err.message ? err.message : err), "err");
+    }
+  };
+  if ($("#archExportMode")) $("#archExportMode").onchange = function (e) {
+    state.archExportMode = e.target.value || "multi";
   };
 
   if ($("#mapClose")) $("#mapClose").onclick = closeMap;
   if ($("#exportClose")) $("#exportClose").onclick = closeExportDialog;
-  if ($("#reportsBtn")) $("#reportsBtn").onclick = function () {
-    try { openReports(); } catch (err) {
-      setStatus("Reports: " + (err && err.message ? err.message : err), "err");
-      console.error(err);
-    }
-  };
-  if ($("#reportsClose")) $("#reportsClose").onclick = closeReports;
-  if ($("#reportsModal")) $("#reportsModal").addEventListener("click", function (e) {
-    if (e.target.id === "reportsModal") closeReports();
-  });
   if ($("#feedbackBtn")) $("#feedbackBtn").onclick = openFeedback;
   if ($("#feedbackClose")) $("#feedbackClose").onclick = closeFeedback;
   if ($("#fbCancel")) $("#fbCancel").onclick = closeFeedback;
@@ -2415,12 +2454,6 @@ function init() {
     levelsCache = null;
     refresh();
   };
-  // ابنِ شريط التحكم كاملًا قبل أول تحميل حتى لا يظهر select فارغ أثناء "جاري التحميل"
-  try {
-    if (typeof ensureExpDropdownUI === "function") ensureExpDropdownUI();
-    if (typeof syncExpDropdownLabel === "function") syncExpDropdownLabel();
-    if (typeof renderStocksDropdown === "function") renderStocksDropdown();
-  } catch (eInitUi) {}
   refresh();
   startLivePriceLoop();
 }
@@ -2428,6 +2461,7 @@ function init() {
 
 
 
+// ========== أرشيف الأسبوع (جداول الانتهاء الأساسية) ==========
 function isoFromDate(d) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
@@ -2535,7 +2569,7 @@ function buildOneArchiveTableHtml(exp, view, showDelta) {
   var title = formatArchDayTitle(exp);
   var html = '<div class="archive-day">';
   html += '<div class="archive-day-head"><span>' + title.top + '</span><em>' + title.sub + '</em></div>';
-  html += '<div class="table-scroll"><table class="oi"><thead><tr>';
+  html += '<div class="table-scroll"><table class="oi" style="width:auto;max-width:none"><thead><tr>';
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (var i = pullDates.length - 1; i >= 0; i--) {
     var f = formatPullDate(pullDates[i]);
@@ -2885,7 +2919,7 @@ async function exportArchiveExcel() {
       var ws = wb.addWorksheet(String(exp).slice(0, 31), {
         views: [{ rightToLeft: true }],
       });
-      writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta, false, 3);
+      writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta);
     });
   } else {
     var ws = wb.addWorksheet("Archive", {
@@ -2895,7 +2929,7 @@ async function exportArchiveExcel() {
     exps.forEach(function (exp) {
       var view = getArchiveViewRows(data, exp, edays, estrikes);
       if (!view) return;
-      var last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta, false, 3);
+      var last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta);
       col = last + 1 + GAP;
     });
   }
@@ -2933,25 +2967,195 @@ async function exportArchiveExcel() {
 
 
 
-
 // ========== Levels Map (3 phases) ==========
 let levelsCache = null;
-let mapRawL = null;
+
+async function buildLevelsFromTicker(ticker) {
+  var data = await loadTicker(ticker);
+  if (!data) return null;
+  var close = data.close != null ? data.close : null;
+  var pullDates = data.pull_dates || [];
+  var asOf = pullDates.length ? pullDates[pullDates.length - 1] : null;
+  var exps = (data.expirations || Object.keys(data.by_expiration || {})).slice().sort();
+
+  var HOLIDAYS = {
+    "2025-01-01":1,"2025-01-20":1,"2025-02-17":1,"2025-04-18":1,"2025-05-26":1,
+    "2025-06-19":1,"2025-07-04":1,"2025-09-01":1,"2025-11-27":1,"2025-12-25":1,
+    "2026-01-01":1,"2026-01-19":1,"2026-02-16":1,"2026-04-03":1,"2026-05-25":1,
+    "2026-06-19":1,"2026-07-03":1,"2026-09-07":1,"2026-11-26":1,"2026-12-25":1,
+    "2027-01-01":1,"2027-01-18":1,"2027-02-15":1,"2027-03-26":1,"2027-05-31":1,
+    "2027-06-18":1,"2027-07-05":1,"2027-09-06":1,"2027-11-25":1,"2027-12-24":1
+  };
+  function toIso(d) {
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  function isTradingDay(d) {
+    var w = d.getDay();
+    if (w === 0 || w === 6) return false;
+    return !HOLIDAYS[toIso(d)];
+  }
+  function sessionDay(now) {
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  function nextTrading(from) {
+    var d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    d.setDate(d.getDate() + 1);
+    while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  function fridayForWeek(session) {
+    var d = new Date(session.getFullYear(), session.getMonth(), session.getDate());
+    var add = (5 - d.getDay() + 7) % 7;
+    if (d.getDay() !== 5) d.setDate(d.getDate() + add);
+    var isNext = false;
+    while (!isTradingDay(d)) { d.setDate(d.getDate() + 7); isNext = true; }
+    return { date: d, isNextWeek: isNext };
+  }
+  function thirdFriday(year, monthIndex) {
+    var d = new Date(year, monthIndex, 1), count = 0;
+    while (d.getMonth() === monthIndex) {
+      if (d.getDay() === 5) { count++; if (count === 3) return d; }
+      d.setDate(d.getDate() + 1);
+    }
+    return new Date(year, monthIndex, 15);
+  }
+  function pickExp(isoTarget) {
+    if (!isoTarget || !exps.length) return null;
+    for (var i = 0; i < exps.length; i++) if (exps[i] === isoTarget) return exps[i];
+    for (var j = 0; j < exps.length; j++) if (exps[j] >= isoTarget) return exps[j];
+    return exps[exps.length - 1];
+  }
+
+  var now = new Date();
+  var session = sessionDay(now);
+  var tom = nextTrading(session);
+  var fri = fridayForWeek(session);
+  var week = fri.date;
+  var opx = thirdFriday(session.getFullYear(), session.getMonth());
+  if (toIso(opx) < toIso(session)) {
+    var nm = session.getMonth() + 1, ny = session.getFullYear();
+    if (nm > 11) { nm = 0; ny++; }
+    opx = thirdFriday(ny, nm);
+  }
+  var nextOpx = opx.getMonth() === 11
+    ? thirdFriday(opx.getFullYear() + 1, 0)
+    : thirdFriday(opx.getFullYear(), opx.getMonth() + 1);
+
+  var expDaily = pickExp(toIso(session));
+  var expTom = pickExp(toIso(tom));
+  var expWeek = pickExp(toIso(week));
+  var expOpx = pickExp(toIso(opx));
+  var expNext = pickExp(toIso(nextOpx));
+
+  return {
+    ticker: ticker,
+    close: close,
+    as_of: asOf,
+    updated_at: data.updated_at || null,
+    daily: { exp: expDaily, target: toIso(session) },
+    tomorrow: { exp: expTom, target: toIso(tom) },
+    weekly: { exp: expWeek, target: toIso(week) },
+    opx: { exp: expOpx, target: toIso(opx) },
+    next_opx: { exp: expNext, target: toIso(nextOpx) },
+    meta: {
+      session_iso: toIso(session),
+      tomorrow_iso: toIso(tom),
+      week_iso: toIso(week),
+      weekly_is_next_week: !!fri.isNextWeek,
+      today_is_weekly: !!(expDaily && expWeek && expDaily === expWeek),
+      tomorrow_merged_weekly: !!(expTom && expWeek && expTom === expWeek),
+    },
+  };
+}
 
 async function loadLevels() {
   if (levelsCache) return levelsCache;
-  var bases = dataBases();
-  for (var i = 0; i < bases.length; i++) {
+  const base = document.body.dataset.dataBase || "../data";
+  const paths = [
+    base + "/levels.json",
+    "../data/levels.json",
+    "./data/levels.json",
+    "data/levels.json",
+    "levels.json",
+  ];
+  var lastErr = null;
+  for (var i = 0; i < paths.length; i++) {
     try {
-      var res = await fetch(bases[i] + "/levels.json?t=" + Date.now());
-      if (res.ok) {
-        levelsCache = await res.json();
+      const res = await fetch(paths[i] + "?t=" + Date.now());
+      if (!res.ok) continue;
+      const json = await res.json();
+      if (json && (json.tickers || json.SPY)) {
+        levelsCache = json.tickers ? json : { tickers: json };
         return levelsCache;
       }
-    } catch (e) {}
+    } catch (e) {
+      lastErr = e;
+    }
   }
-  throw new Error("لا يوجد levels.json بعد — شغّل Actions أولًا");
+  throw lastErr || new Error("لا يوجد levels.json بعد — شغّل Actions أولًا");
 }
+
+async function openMap() {
+  levelsCache = null;
+
+  const modal = $("#mapModal");
+  const body = $("#mapBody");
+  const title = $("#mapTitle");
+  const sub = $("#mapSub");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  body.innerHTML = '<p style="color:#94a3b8">جاري تحميل المستويات…</p>';
+  try {
+    var raw = null;
+    try {
+      const all = await loadLevels();
+      raw = (all.tickers || {})[state.ticker] || null;
+    } catch (eLoad) {
+      console.warn("levels.json:", eLoad);
+    }
+    // احتياطي جذري: ابنِ المستويات من ملف الرمز نفسه (مثل منطق الخاص)
+    // دائمًا: فرض مواعيد البطاقات من تقويم التداول (لا نثق بـ levels.json فيها)
+    try {
+      var built = await buildLevelsFromTicker(state.ticker);
+      if (built) {
+        if (!raw) raw = built;
+        else {
+          raw.close = built.close != null ? built.close : raw.close;
+          raw.as_of = built.as_of || raw.as_of;
+          raw.daily = built.daily;
+          raw.tomorrow = built.tomorrow;
+          raw.weekly = built.weekly;
+          raw.opx = built.opx;
+          raw.next_opx = built.next_opx;
+          raw.meta = Object.assign({}, raw.meta || {}, built.meta || {});
+        }
+      }
+    } catch (eBuild) {
+      console.warn("buildLevelsFromTicker:", eBuild);
+    }
+    if (!raw) throw new Error("لا مستويات لـ " + state.ticker);
+    mapZoom = 1;
+    mapRawL = raw;
+    const L = await levelsForMapRange(raw, state.mapRange || "ALL");
+    title.textContent = state.ticker;
+    if (sub) {
+      sub.textContent = "";
+      sub.style.display = "none";
+    }
+    body.innerHTML = renderMapPanel(L);
+    bindMapZoom(L);
+  } catch (e) {
+    body.innerHTML =
+      '<p style="color:#f87171">' + (e.message || e) + "</p>" +
+      '<p style="color:#94a3b8;font-size:12px">تحقّق من بيانات الرمز أو شغّل Actions لتحديث levels.json</p>';
+  }
+}
+
+let mapRawL = null;
+
+
 
 function fmtNum(v, d) {
   if (v == null || isNaN(v)) return "—";
@@ -3298,6 +3502,7 @@ function getMapBandDefs(L) {
     !!(t.exp && weekly.exp && String(t.exp) === String(weekly.exp));
 
   function addNextOpx(bands) {
+    // دائمًا بطاقة OPX+ (حتى على التابلت) — القيم — إن نقصت
     if (!opx.exp || !nextOpx.exp || String(nextOpx.exp) !== String(opx.exp)) {
       bands.push({ key: "next_opx", label: "OPX+" });
     } else if (nextOpx.exp) {
@@ -3447,7 +3652,7 @@ function renderMapPanel(L) {
     const block = L[b.key] || {};
     const peak = block.resistance;
     const floor = block.support;
-    // أظهر البطاقة حتى بدون بيانات
+    // أظهر البطاقة حتى بدون بيانات (قمة/قاع —) — مهم للتابلت OPX+
     const c = cmp[b.key] || {};
     const aR = levelArrow(peak, c.prev_resistance);
     const aS = levelArrow(floor, c.prev_support);
@@ -3614,71 +3819,7 @@ function mapRangeN(range) {
   return null;
 }
 
-/**
- * أعلى Put = قاع، أعلى Call = قمة — بنفس منطق الجدول الرئيسي.
- * مهم: كل انتهاء له pull_dates خاصة (أقصر من العامة) — يجب استخدام فهرسها لا العام.
- */
-function maxOiNearClose(data, exp, close, nEach, dateIdx) {
-  var block = data && data.by_expiration && data.by_expiration[exp];
-  if (!block || !block.rows || !block.rows.length) {
-    return { support: null, resistance: null };
-  }
-  // فهارس صحيحة لهذا الانتهاء فقط
-  var pulls = (block.pull_dates && block.pull_dates.length)
-    ? block.pull_dates
-    : (data.pull_dates || []);
-  var idx = dateIdx;
-  if (idx == null || idx < 0) {
-    // آخر عمود غير صفري لهذا الانتهاء
-    idx = pulls.length - 1;
-    while (idx >= 0) {
-      var sum = 0;
-      for (var ri = 0; ri < block.rows.length; ri++) {
-        var rr = block.rows[ri];
-        var cc = (rr.calls && rr.calls[idx]) || 0;
-        var pp = (rr.puts && rr.puts[idx]) || 0;
-        sum += Number(cc) + Number(pp);
-      }
-      if (sum > 0) break;
-      idx--;
-    }
-  }
-  if (idx < 0) return { support: null, resistance: null };
-
-  var rows = block.rows.map(function (r) {
-    var callArr = r.calls || [];
-    var putArr = r.puts || [];
-    return {
-      strike: Number(r.strike),
-      call: Number(idx < callArr.length ? callArr[idx] : 0) || 0,
-      put: Number(idx < putArr.length ? putArr[idx] : 0) || 0,
-    };
-  });
-  // نفس منطق filterStrikes: أقرب n تحت + n فوق من الإغلاق
-  if (close != null && !isNaN(Number(close)) && nEach != null) {
-    var c = Number(close);
-    rows = rows
-      .map(function (r) { return { r: r, dist: Math.abs(r.strike - c) }; })
-      .sort(function (a, b) { return a.dist - b.dist; })
-      .slice(0, nEach * 2)
-      .map(function (x) { return x.r; })
-      .sort(function (a, b) { return a.strike - b.strike; });
-  } else {
-    rows.sort(function (a, b) { return a.strike - b.strike; });
-  }
-  var maxPut = -1, maxCall = -1, sup = null, res = null;
-  rows.forEach(function (r) {
-    if (r.put > maxPut) { maxPut = r.put; sup = r.strike; }
-    if (r.call > maxCall) { maxCall = r.call; res = r.strike; }
-  });
-  // إذا كل القيم صفر لا تُرجع سترايك عشوائي
-  if (maxPut <= 0 && maxCall <= 0) {
-    return { support: null, resistance: null };
-  }
-  return { support: sup, resistance: res, _idx: idx, _pull: pulls[idx] || null };
-}
-
-/** فهرس آخر سحب حقيقي لانتهاء معيّن (+ السابق للمقارنة) */
+/** فهرس آخر سحب حقيقي لانتهاء معيّن (مصفوفة pull_dates الخاصة به) */
 function expPullIndices(data, exp) {
   var block = data && data.by_expiration && data.by_expiration[exp];
   if (!block) return { last: -1, prev: -1, pulls: [] };
@@ -3695,23 +3836,71 @@ function expPullIndices(data, exp) {
     if (sum > 0) break;
     last--;
   }
-  var prev = last > 0 ? last - 1 : -1;
-  return { last: last, prev: prev, pulls: pulls };
+  return { last: last, prev: last > 0 ? last - 1 : -1, pulls: pulls };
+}
+
+/**
+ * أعلى Put = قاع، أعلى Call = قمة — بنفس منطق الجدول.
+ * يستخدم فهرس pull_dates الخاص بالانتهاء (لا العام).
+ */
+function maxOiNearClose(data, exp, close, nEach, dateIdx) {
+  var block = data && data.by_expiration && data.by_expiration[exp];
+  if (!block || !block.rows || !block.rows.length) {
+    return { support: null, resistance: null };
+  }
+  var pulls = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates
+    : (data.pull_dates || []);
+  var idx = dateIdx;
+  if (idx == null || idx < 0) {
+    idx = pulls.length - 1;
+    while (idx >= 0) {
+      var sum = 0;
+      for (var ri = 0; ri < block.rows.length; ri++) {
+        var rr = block.rows[ri];
+        sum += Number((rr.calls && rr.calls[idx]) || 0) + Number((rr.puts && rr.puts[idx]) || 0);
+      }
+      if (sum > 0) break;
+      idx--;
+    }
+  }
+  if (idx < 0) return { support: null, resistance: null };
+
+  var rows = block.rows.map(function (r) {
+    var callArr = r.calls || [];
+    var putArr = r.puts || [];
+    return {
+      strike: Number(r.strike),
+      call: Number(idx < callArr.length ? callArr[idx] : 0) || 0,
+      put: Number(idx < putArr.length ? putArr[idx] : 0) || 0,
+    };
+  });
+  if (close != null && !isNaN(Number(close)) && nEach != null) {
+    var cnum = Number(close);
+    rows = rows
+      .map(function (r) { return { r: r, dist: Math.abs(r.strike - cnum) }; })
+      .sort(function (a, b) { return a.dist - b.dist; })
+      .slice(0, nEach * 2)
+      .map(function (x) { return x.r; })
+      .sort(function (a, b) { return a.strike - b.strike; });
+  } else {
+    rows.sort(function (a, b) { return a.strike - b.strike; });
+  }
+  var maxPut = -1, maxCall = -1, sup = null, res = null;
+  rows.forEach(function (r) {
+    if (r.put > maxPut) { maxPut = r.put; sup = r.strike; }
+    if (r.call > maxCall) { maxCall = r.call; res = r.strike; }
+  });
+  if (maxPut <= 0 && maxCall <= 0) return { support: null, resistance: null };
+  return { support: sup, resistance: res, _idx: idx, _pull: pulls[idx] || null };
 }
 
 async function levelsForMapRange(baseL, range) {
   if (!baseL) return baseL;
   var data;
   try { data = await loadTicker(state.ticker); } catch (e) { return baseL; }
-  var nEach = mapRangeN(range); // null = ALL
-  var close = null;
-  if (baseL.close != null && !isNaN(Number(baseL.close)) && Number(baseL.close) > 0) {
-    close = Number(baseL.close);
-  } else if (typeof effectiveClose === "function") {
-    close = effectiveClose(data);
-  } else if (data.close != null && !isNaN(Number(data.close)) && Number(data.close) > 0) {
-    close = Number(data.close);
-  }
+  var nEach = mapRangeN(range);
+  var close = baseL.close != null ? baseL.close : data.close;
   var L2 = JSON.parse(JSON.stringify(baseL));
   L2.mapRange = range || "ALL";
   L2.close = close;
@@ -3719,12 +3908,9 @@ async function levelsForMapRange(baseL, range) {
     var band = L2[key] || {};
     var exp = band.exp;
     if (!exp) return;
-    // فهرس السحب من pull_dates الخاصة بهذا الانتهاء — لا من القائمة العامة
     var ix = expPullIndices(data, exp);
     var useLastOnly =
-      String(state.ticker).toUpperCase() === "SPX" &&
-      typeof isThirdFridayExp === "function" &&
-      isThirdFridayExp(exp);
+      String(state.ticker).toUpperCase() === "SPX" && isThirdFridayExp(exp);
     var cur = maxOiNearClose(data, exp, close, nEach, ix.last);
     var old = (!useLastOnly && ix.prev >= 0)
       ? maxOiNearClose(data, exp, close, nEach, ix.prev)
@@ -3757,139 +3943,6 @@ function mapRangeHint(range) {
 }
 
 
-/* ===== تقويم تداول الماب: اليوم / يوم بعد / أسبوع مع عطل ===== */
-var US_MARKET_HOLIDAYS = {
-  "2025-01-01":1,"2025-01-20":1,"2025-02-17":1,"2025-04-18":1,"2025-05-26":1,
-  "2025-06-19":1,"2025-07-04":1,"2025-09-01":1,"2025-11-27":1,"2025-12-25":1,
-  "2026-01-01":1,"2026-01-19":1,"2026-02-16":1,"2026-04-03":1,"2026-05-25":1,
-  "2026-06-19":1,"2026-07-03":1,"2026-09-07":1,"2026-11-26":1,"2026-12-25":1,
-  "2027-01-01":1,"2027-01-18":1,"2027-02-15":1,"2027-03-26":1,"2027-05-31":1,
-  "2027-06-18":1,"2027-07-05":1,"2027-09-06":1,"2027-11-25":1,"2027-12-24":1
-};
-function toIsoDate(d) {
-  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
-}
-function isUsHoliday(d) { return !!US_MARKET_HOLIDAYS[toIsoDate(d)]; }
-function isTradingDay(d) {
-  var w = d.getDay();
-  if (w === 0 || w === 6) return false;
-  return !isUsHoliday(d);
-}
-function sessionTradingDay(now) {
-  var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
-  return d;
-}
-function nextTradingDayAfter(from) {
-  var d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-  d.setDate(d.getDate() + 1);
-  while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
-  return d;
-}
-function fridayForWeek(session) {
-  var d = new Date(session.getFullYear(), session.getMonth(), session.getDate());
-  var add = (5 - d.getDay() + 7) % 7;
-  if (d.getDay() !== 5) d.setDate(d.getDate() + add);
-  var isNext = false;
-  while (!isTradingDay(d)) { d.setDate(d.getDate() + 7); isNext = true; }
-  return { date: d, isNextWeek: isNext };
-}
-function thirdFridayOfMonth(year, monthIndex) {
-  var d = new Date(year, monthIndex, 1), count = 0;
-  while (d.getMonth() === monthIndex) {
-    if (d.getDay() === 5) { count++; if (count === 3) return d; }
-    d.setDate(d.getDate() + 1);
-  }
-  return new Date(year, monthIndex, 15);
-}
-
-/** يفرض مواعيد بطاقات الماب من تقويم التداول + expirations الفعلية */
-async function assignMapBandExps(raw, ticker) {
-  var data = await loadTicker(ticker);
-  if (!data) return raw;
-  var exps = (data.expirations || Object.keys(data.by_expiration || {})).slice().sort();
-  function pickExp(iso) {
-    if (!iso || !exps.length) return null;
-    for (var i = 0; i < exps.length; i++) if (exps[i] === iso) return exps[i];
-    for (var j = 0; j < exps.length; j++) if (exps[j] >= iso) return exps[j];
-    return exps[exps.length - 1];
-  }
-  var now = new Date();
-  var session = sessionTradingDay(now);
-  var tom = nextTradingDayAfter(session);
-  var fri = fridayForWeek(session);
-  var week = fri.date;
-  var opx = thirdFridayOfMonth(session.getFullYear(), session.getMonth());
-  if (toIsoDate(opx) < toIsoDate(session)) {
-    var nm = session.getMonth() + 1, ny = session.getFullYear();
-    if (nm > 11) { nm = 0; ny++; }
-    opx = thirdFridayOfMonth(ny, nm);
-  }
-  var nextOpx = opx.getMonth() === 11
-    ? thirdFridayOfMonth(opx.getFullYear() + 1, 0)
-    : thirdFridayOfMonth(opx.getFullYear(), opx.getMonth() + 1);
-
-  var expDaily = pickExp(toIsoDate(session));
-  var expTom = pickExp(toIsoDate(tom));
-  var expWeek = pickExp(toIsoDate(week));
-  var expOpx = pickExp(toIsoDate(opx));
-  var expNext = pickExp(toIsoDate(nextOpx));
-
-  if (!raw) raw = { ticker: ticker };
-  raw.close = (data.close != null ? data.close : raw.close);
-  raw.daily = Object.assign({}, raw.daily || {}, { exp: expDaily, target: toIsoDate(session) });
-  raw.tomorrow = Object.assign({}, raw.tomorrow || {}, { exp: expTom, target: toIsoDate(tom) });
-  raw.weekly = Object.assign({}, raw.weekly || {}, { exp: expWeek, target: toIsoDate(week) });
-  raw.opx = Object.assign({}, raw.opx || {}, { exp: expOpx, target: toIsoDate(opx) });
-  raw.next_opx = Object.assign({}, raw.next_opx || {}, { exp: expNext, target: toIsoDate(nextOpx) });
-  raw.meta = Object.assign({}, raw.meta || {}, {
-    session_iso: toIsoDate(session),
-    tomorrow_iso: toIsoDate(tom),
-    week_iso: toIsoDate(week),
-    weekly_is_next_week: !!fri.isNextWeek,
-    today_is_weekly: !!(expDaily && expWeek && expDaily === expWeek),
-    tomorrow_merged_weekly: !!(expTom && expWeek && expTom === expWeek),
-  });
-  return raw;
-}
-
-async function openMap() {
-  levelsCache = null; // إعادة قراءة levels + حساب من JSON الحالي
-
-  const modal = $("#mapModal");
-  const body = $("#mapBody");
-  const title = $("#mapTitle");
-  const sub = $("#mapSub");
-  if (!modal) return;
-  modal.classList.remove("hidden"); modal.style.display = ""; modal.setAttribute("aria-hidden", "false");
-  body.innerHTML = '<p style="color:#94a3b8">جاري تحميل المستويات…</p>';
-  try {
-    var raw = null;
-    try {
-      const all = await loadLevels();
-      raw = (all.tickers || {})[state.ticker] || null;
-    } catch (eLoad) {
-      console.warn("levels.json:", eLoad);
-    }
-    // فرض مواعيد اليوم/يوم بعد من التقويم + إغلاق من JSON الرمز
-    raw = await assignMapBandExps(raw, state.ticker);
-    if (!raw || !raw.daily) throw new Error("لا مستويات لـ " + state.ticker);
-    mapZoom = 1;
-    mapRawL = raw;
-    const L = await levelsForMapRange(raw, state.mapRange || "ALL");
-    title.textContent = state.ticker;
-    if (sub) {
-      sub.textContent = "";
-      sub.style.display = "none";
-    }
-    body.innerHTML = renderMapPanel(L);
-    bindMapZoom(L);
-  } catch (e) {
-    body.innerHTML =
-      '<p style="color:#f87171">' + (e.message || e) + "</p>" +
-      '<p style="color:#94a3b8;font-size:12px">بعد دمج الكود، شغّل Actions مرة لينشأ data/levels.json</p>';
-  }
-}
 
 async function setMapRange(range) {
   state.mapRange = range || "ALL";
@@ -3900,13 +3953,10 @@ async function setMapRange(range) {
   try {
     var raw = mapRawL;
     if (!raw) {
-      try {
-        const all = await loadLevels();
-        raw = (all.tickers || {})[state.ticker];
-      } catch (e) {}
+      const all = await loadLevels();
+      raw = (all.tickers || {})[state.ticker];
+      mapRawL = raw;
     }
-    raw = await assignMapBandExps(raw, state.ticker);
-    mapRawL = raw;
     if (!raw) throw new Error("لا بيانات");
     mapZoom = 1;
     const L = await levelsForMapRange(raw, state.mapRange);
@@ -3919,11 +3969,7 @@ async function setMapRange(range) {
 
 function closeMap() {
   const modal = $("#mapModal");
-  if (modal) {
-    modal.classList.add("hidden");
-    modal.setAttribute("aria-hidden", "true");
-    modal.style.display = "none";
-  }
+  if (modal) modal.classList.add("hidden");
 }
 
 
@@ -3937,7 +3983,7 @@ function openFeedback() {
   if (!modal) return;
   const st = $("#fbStatus");
   if (st) st.textContent = "";
-  modal.classList.remove("hidden"); modal.style.display = ""; modal.setAttribute("aria-hidden", "false");
+  modal.classList.remove("hidden");
 }
 function closeFeedback() {
   const modal = $("#feedbackModal");
@@ -4002,1038 +4048,3 @@ async function submitFeedback(e) {
 })();
 
 document.addEventListener("DOMContentLoaded", init);
-
-// ========== Reports ==========
-function getViewForExp(data, expiration, daysLimit, strikesLimit) {
-  var block = data.by_expiration[expiration];
-  if (!block) return null;
-  var pullDates = lastN(data.pull_dates || [], daysLimit);
-  if (!pullDates.length) return null;
-  var fullDates = data.pull_dates || [];
-  var idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
-  var rows = block.rows.map(function (r) {
-    return {
-      strike: r.strike,
-      calls: idx.map(function (i) { return i >= 0 ? (r.calls[i] || 0) : 0; }),
-      puts: idx.map(function (i) { return i >= 0 ? (r.puts[i] || 0) : 0; }),
-    };
-  });
-  rows = filterStrikes(rows, data.close, strikesLimit);
-  return { pullDates: pullDates, rows: rows, close: data.close, expiration: expiration };
-}
-
-function topNMetric(rows, side, metric, gDays, limit) {
-  var items = [];
-  rows.forEach(function (r) {
-    var arr = side === "call" ? r.calls : r.puts;
-    if (!arr || arr.length < 2) return;
-    var val = metric === "delta"
-      ? positiveDelta(arr[arr.length - 1], arr[arr.length - 2])
-      : positiveGrowth(arr, gDays);
-    if (val != null && val > 0) {
-      items.push({ strike: r.strike, value: val, side: side });
-    }
-  });
-  items.sort(function (a, b) { return b.value - a.value; });
-  return items.slice(0, limit);
-}
-
-function peakTroughOfView(view) {
-  var lastI = view.pullDates.length - 1;
-  var prevI = lastI - 1;
-  var maxCall = -1, maxCallStrike = null;
-  var maxPut = -1, maxPutStrike = null;
-  var prevMaxCallStrike = null, prevMaxPutStrike = null;
-  view.rows.forEach(function (r) {
-    var c = r.calls[lastI] || 0;
-    var p = r.puts[lastI] || 0;
-    if (c > maxCall) { maxCall = c; maxCallStrike = r.strike; }
-    if (p > maxPut) { maxPut = p; maxPutStrike = r.strike; }
-  });
-  if (prevI >= 0) {
-    var pc = -1, pp = -1;
-    view.rows.forEach(function (r) {
-      var c = r.calls[prevI] || 0;
-      var p = r.puts[prevI] || 0;
-      if (c > pc) { pc = c; prevMaxCallStrike = r.strike; }
-      if (p > pp) { pp = p; prevMaxPutStrike = r.strike; }
-    });
-  }
-  function move(cur, prev) {
-    if (cur == null || prev == null) return "—";
-    if (Number(cur) === Number(prev)) return "ثابت";
-    if (Number(cur) > Number(prev)) return "↑";
-    return "↓";
-  }
-  return {
-    // قاع = أعلى Put OI | قمة = أعلى Call OI
-    trough: {
-      strike: maxPutStrike,
-      oi: maxPut > 0 ? maxPut : null,
-      move: move(maxPutStrike, prevMaxPutStrike),
-      exp: view.expiration,
-    },
-    peak: {
-      strike: maxCallStrike,
-      oi: maxCall > 0 ? maxCall : null,
-      move: move(maxCallStrike, prevMaxCallStrike),
-      exp: view.expiration,
-    },
-  };
-}
-
-function buildStrikeScores(deltaCall, deltaPut, growthCall, growthPut, troughs, peaks, close) {
-  function makeSide(deltaList, growthList, levelList, levelTag) {
-    var map = {};
-    function bump(strike, pts, reason) {
-      if (strike == null) return;
-      var k = String(strike);
-      if (!map[k]) map[k] = { strike: Number(strike), score: 0, reasons: [] };
-      map[k].score += pts;
-      if (reason) map[k].reasons.push(reason);
-    }
-    (deltaList || []).forEach(function (x, i) {
-      bump(x.strike, Math.max(1, 6 - i), "Δ #" + (i + 1));
-    });
-    (growthList || []).forEach(function (x, i) {
-      bump(x.strike, Math.max(1, 5 - i), "G #" + (i + 1));
-    });
-    (levelList || []).forEach(function (t) {
-      if (t && t.oi) bump(t.strike, 4, levelTag + " " + formatExpAr(t.exp));
-    });
-    if (close != null) {
-      Object.keys(map).forEach(function (k) {
-        var dist = Math.abs(map[k].strike - close);
-        if (dist <= close * 0.02) {
-          map[k].score += 3;
-          map[k].reasons.push("قرب الإغلاق");
-        } else if (dist <= close * 0.05) {
-          map[k].score += 1;
-          map[k].reasons.push("قريب من السعر");
-        }
-      });
-    }
-    var list = Object.keys(map).map(function (k) { return map[k]; });
-    list.sort(function (a, b) { return b.score - a.score; });
-    return list.slice(0, 12);
-  }
-
-  var scoresCall = makeSide(deltaCall, growthCall, peaks, "قمة");
-  var scoresPut = makeSide(deltaPut, growthPut, troughs, "قاع");
-
-  var map = {};
-  function merge(list, prefix) {
-    (list || []).forEach(function (s) {
-      var k = String(s.strike);
-      if (!map[k]) map[k] = { strike: s.strike, score: 0, reasons: [], sideHint: {} };
-      map[k].score += s.score;
-      (s.reasons || []).forEach(function (r) {
-        map[k].reasons.push(prefix + " " + r);
-      });
-      map[k].sideHint[prefix] = (map[k].sideHint[prefix] || 0) + s.score;
-    });
-  }
-  merge(scoresCall, "Call");
-  merge(scoresPut, "Put");
-  var combined = Object.keys(map).map(function (k) {
-    var o = map[k];
-    var c = o.sideHint.Call || 0;
-    var p = o.sideHint.Put || 0;
-    o.side = c > p + 2 ? "Call" : p > c + 2 ? "Put" : "مشترك";
-    return o;
-  });
-  combined.sort(function (a, b) { return b.score - a.score; });
-  return {
-    call: scoresCall,
-    put: scoresPut,
-    combined: combined.slice(0, 12),
-  };
-}
-
-function repeatedStrikes(items) {
-  // items: [{strike, exp}]
-  var dict = {};
-  items.forEach(function (it) {
-    if (it.strike == null) return;
-    var k = String(it.strike);
-    if (!dict[k]) dict[k] = [];
-    if (dict[k].indexOf(it.exp) < 0) dict[k].push(it.exp);
-  });
-  var out = [];
-  Object.keys(dict).forEach(function (k) {
-    if (dict[k].length > 1) {
-      out.push({ strike: Number(k), days: dict[k].slice().sort() });
-    }
-  });
-  out.sort(function (a, b) { return b.strike - a.strike; });
-  return out;
-}
-
-function confidenceOf(top) {
-  if (!top) return { level: "low", label: "منخفضة" };
-  if (top.score >= 12) return { level: "high", label: "عالية" };
-  if (top.score >= 7) return { level: "mid", label: "متوسطة" };
-  return { level: "low", label: "منخفضة" };
-}
-
-function computeReports(data, selectedExps, daysLimit, strikesLimit, topN, gDays) {
-  var deltaCall = [], deltaPut = [], growthCall = [], growthPut = [];
-  var troughs = [], peaks = [];
-  selectedExps.forEach(function (exp) {
-    var view = getViewForExp(data, exp, daysLimit, strikesLimit);
-    if (!view || !view.rows.length) return;
-    topNMetric(view.rows, "call", "delta", gDays, topN).forEach(function (x) {
-      x.exp = exp; deltaCall.push(x);
-    });
-    topNMetric(view.rows, "put", "delta", gDays, topN).forEach(function (x) {
-      x.exp = exp; deltaPut.push(x);
-    });
-    topNMetric(view.rows, "call", "growth", gDays, topN).forEach(function (x) {
-      x.exp = exp; growthCall.push(x);
-    });
-    topNMetric(view.rows, "put", "growth", gDays, topN).forEach(function (x) {
-      x.exp = exp; growthPut.push(x);
-    });
-    var pt = peakTroughOfView(view);
-    troughs.push(pt.trough);
-    peaks.push(pt.peak);
-  });
-  // merge top across exps by value
-  function mergeTop(arr, limit) {
-    var copy = arr.slice();
-    copy.sort(function (a, b) { return b.value - a.value; });
-    return copy.slice(0, limit);
-  }
-  deltaCall = mergeTop(deltaCall, topN);
-  deltaPut = mergeTop(deltaPut, topN);
-  growthCall = mergeTop(growthCall, topN);
-  growthPut = mergeTop(growthPut, topN);
-
-  var scoresPack = buildStrikeScores(
-    deltaCall, deltaPut, growthCall, growthPut, troughs, peaks, data.close
-  );
-  var scoresCall = scoresPack.call || [];
-  var scoresPut = scoresPack.put || [];
-  var scores = scoresPack.combined || [];
-  var top = scores[0] || null;
-  var topCall = scoresCall[0] || null;
-  var topPut = scoresPut[0] || null;
-  var conf = confidenceOf(top);
-  return {
-    deltaCall: deltaCall,
-    deltaPut: deltaPut,
-    growthCall: growthCall,
-    growthPut: growthPut,
-    troughs: troughs,
-    peaks: peaks,
-    repTrough: repeatedStrikes(troughs.map(function (t) { return { strike: t.strike, exp: t.exp }; })),
-    repPeak: repeatedStrikes(peaks.map(function (p) { return { strike: p.strike, exp: p.exp }; })),
-    scores: scores,
-    scoresCall: scoresCall,
-    scoresPut: scoresPut,
-    top: top,
-    topCall: topCall,
-    topPut: topPut,
-    conf: conf,
-    close: data.close,
-    gDays: gDays,
-    topN: topN,
-    selectedExps: selectedExps.slice(),
-  };
-}
-
-function repRowsHtml(items, valueLabel) {
-  if (!items || !items.length) {
-    return '<tr><td colspan="4" style="color:var(--gray)">لا نتائج</td></tr>';
-  }
-  return items
-    .map(function (x, i) {
-      return (
-        "<tr><td>" +
-        (i + 1) +
-        "</td><td>" +
-        x.strike +
-        "</td><td>" +
-        Number(x.value).toLocaleString() +
-        "</td><td>" +
-        (x.exp || "") +
-        "</td></tr>"
-      );
-    })
-    .join("");
-}
-
-
-function formatExpAr(iso) {
-  if (!iso) return "";
-  var p = String(iso).split("-");
-  if (p.length < 3) return iso;
-  var months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-  var m = parseInt(p[1], 10);
-  var d = parseInt(p[2], 10);
-  if (!m || !d) return iso;
-  return d + " " + months[m - 1];
-}
-
-function buildInsightSentence(rep, ticker) {
-  var top = rep.top;
-  var topCall = rep.topCall;
-  var topPut = rep.topPut;
-  if (!top && !topCall && !topPut) {
-    return {
-      line1: "لا يظهر مستوى بارز ضمن التواريخ المختارة",
-      line2: "",
-      line3: "",
-      side: "",
-      strike: null,
-      conf: "",
-    };
-  }
-
-  var conf = (rep.conf && rep.conf.label) || "—";
-  var lead = top || topCall || topPut;
-  var strike = lead.strike;
-  var callScore = topCall ? topCall.score : 0;
-  var putScore = topPut ? topPut.score : 0;
-  var side = "مشترك";
-  if (callScore > putScore + 2) side = "Call";
-  else if (putScore > callScore + 2) side = "Put";
-  else if (top && top.side) side = top.side;
-
-  // سطر 1: أبرز مستوى + السترايك فقط (بدون اسم الرمز وبدون ثقة)
-  var line1 = "أبرز مستوى: " + strike;
-
-  // سطر 2: كما هو
-  var line2 = "";
-  if (topCall && topPut) {
-    line2 =
-      "Call الأقوى: " +
-      topCall.strike +
-      " (" +
-      topCall.score +
-      ") · Put الأقوى: " +
-      topPut.strike +
-      " (" +
-      topPut.score +
-      ")";
-  } else if (topCall) {
-    line2 = "Call الأقوى: " + topCall.strike + " (" + topCall.score + ")";
-  } else if (topPut) {
-    line2 = "Put الأقوى: " + topPut.strike + " (" + topPut.score + ")";
-  }
-
-  // سطر 3: محذوف
-  var line3 = "";
-
-  return {
-    line1: line1,
-    line2: line2,
-    line3: line3,
-    side: side,
-    strike: strike,
-    conf: conf,
-  };
-}
-
-function moveIcon(move) {
-  if (move === "↑") return '<span class="mv-up">↑</span>';
-  if (move === "↓") return '<span class="mv-down">↓</span>';
-  if (move === "ثابت") return '<span class="mv-flat">●</span>';
-  return move || "—";
-}
-
-function renderReportsResult(rep, ticker) {
-  var insight = buildInsightSentence(rep, ticker || state.ticker);
-  if (typeof insight === "string") {
-    insight = { line1: insight, line2: "", line3: "", side: "", strike: null, conf: "" };
-  }
-  rep.insightText = [insight.line1, insight.line2, insight.line3].filter(Boolean).join(" | ");
-
-  var html = "";
-  html += '<div class="rep-insight rep-insight-soft">';
-  html += '<div class="rep-insight-title">الملخص</div>';
-  html += '<div class="rep-insight-main">🎯 ' + insight.line1 + "</div>";
-  if (insight.line2) html += '<div class="rep-insight-sub">⚖️ ' + insight.line2 + "</div>";
-    html += '<div class="rep-insight-meta">';
-  html += "G = " + rep.gDays + " يوم · أعلى " + rep.topN + " لكل جهة";
-  if (rep.conf && rep.conf.label) {
-    html +=
-      ' · <span class="rep-badge ' +
-      (rep.conf.level || "") +
-      '">' +
-      rep.conf.label +
-      "</span>";
-  }
-  html += "</div></div>";
-
-  function metricCard(title, rows) {
-    var h = '<div class="rep-card">';
-    h += '<div class="rep-card-title center">' + title + "</div>";
-    h +=
-      '<table class="rep-table" dir="ltr"><thead><tr>' +
-      "<th>الترتيب</th><th>Strike</th><th>القيمة</th><th>اليوم</th>" +
-      "</tr></thead><tbody>";
-    if (!rows || !rows.length) {
-      h += '<tr><td colspan="4" class="rep-empty">لا نتائج</td></tr>';
-    } else {
-      rows.forEach(function (x, i) {
-        h +=
-          "<tr><td>" +
-          (i + 1) +
-          "</td><td><b>" +
-          x.strike +
-          "</b></td><td>" +
-          Number(x.value).toLocaleString() +
-          "</td><td>" +
-          formatExpAr(x.exp) +
-          "</td></tr>";
-      });
-    }
-    h += "</tbody></table></div>";
-    return h;
-  }
-
-  // يسار النمو · يمين التزايد (في LTR: النمو أولاً ثم التزايد)
-  html += '<div class="rep-section-label">Call</div>';
-  html += '<div class="rep-grid rep-grid-2">';
-  html += metricCard("النمو · G", rep.growthCall);
-  html += metricCard("التزايد · Δ", rep.deltaCall);
-  html += "</div>";
-
-  html += '<div class="rep-section-label">Put</div>';
-  html += '<div class="rep-grid rep-grid-2">';
-  html += metricCard("النمو · G", rep.growthPut);
-  html += metricCard("التزايد · Δ", rep.deltaPut);
-  html += "</div>";
-
-  function levelCard(kind, rows, repeated) {
-    var isPeak = kind === "peak";
-    var title = isPeak ? "القمم" : "القيعان";
-    var cls = isPeak ? "rep-card-peak" : "rep-card-trough";
-    var repLabel = isPeak ? "قمم متكررة" : "قيعان متكررة";
-    var h = '<div class="rep-card ' + cls + '">';
-    h += '<div class="rep-card-title center">' + title + "</div>";
-    h +=
-      '<table class="rep-table" dir="ltr"><thead><tr>' +
-      "<th>Strike</th><th>OI</th><th>الحركة</th><th>اليوم</th>" +
-      "</tr></thead><tbody>";
-    if (!rows || !rows.length) {
-      h += '<tr><td colspan="4" class="rep-empty">—</td></tr>';
-    } else {
-      rows.forEach(function (x) {
-        h +=
-          "<tr><td><b>" +
-          (x.strike != null ? x.strike : "—") +
-          "</b></td><td>" +
-          (x.oi != null ? Number(x.oi).toLocaleString() : "—") +
-          "</td><td>" +
-          moveIcon(x.move) +
-          "</td><td>" +
-          formatExpAr(x.exp) +
-          "</td></tr>";
-      });
-    }
-    h += "</tbody></table>";
-    if (repeated && repeated.length) {
-      h += '<div class="rep-repeat-title">' + repLabel + "</div>";
-      h += '<div class="rep-repeat-list">';
-      repeated.forEach(function (r) {
-        h +=
-          '<div class="rep-repeat-line"><b>' +
-          r.strike +
-          "</b> — " +
-          r.days.map(formatExpAr).join(" · ") +
-          "</div>";
-      });
-      h += "</div>";
-    }
-    h += "</div>";
-    return h;
-  }
-
-  html += '<div class="rep-spacer"></div>';
-  html += '<div class="rep-grid rep-grid-2">';
-  html += levelCard("trough", rep.troughs, rep.repTrough);
-  html += levelCard("peak", rep.peaks, rep.repPeak);
-  html += "</div>";
-
-  function scoreTable(list) {
-    var h =
-      '<table class="rep-table" dir="ltr"><thead><tr>' +
-      "<th>#</th><th>Strike</th><th>النقاط</th><th>لماذا</th>" +
-      "</tr></thead><tbody>";
-    if (!list || !list.length) {
-      h += '<tr><td colspan="4" class="rep-empty">—</td></tr>';
-    } else {
-      list.forEach(function (s, i) {
-        var chips = (s.reasons || [])
-          .map(function (r) {
-            var cls = "chip-reason";
-            if (String(r).indexOf("Δ") >= 0) cls += " chip-call";
-            if (String(r).indexOf("G") >= 0) cls += " chip-put";
-            if (String(r).indexOf("قمة") >= 0) cls += " chip-peak";
-            if (String(r).indexOf("قاع") >= 0) cls += " chip-trough";
-            return '<span class="' + cls + '">' + r + "</span>";
-          })
-          .join("");
-        h +=
-          "<tr class='" +
-          (i === 0 ? "rep-top-row" : "") +
-          "'><td>" +
-          (i + 1) +
-          "</td><td><b>" +
-          s.strike +
-          "</b></td><td><b>" +
-          s.score +
-          "</b></td><td class='rep-reasons'>" +
-          chips +
-          "</td></tr>";
-      });
-    }
-    h += "</tbody></table>";
-    return h;
-  }
-
-  html += '<div class="rep-spacer"></div>';
-  html += '<div class="rep-grid rep-grid-2">';
-  html += '<div class="rep-card rep-score-card">';
-  html += '<div class="rep-card-title center">Score · Call</div>';
-  html += scoreTable(rep.scoresCall);
-  html += "</div>";
-  html += '<div class="rep-card rep-score-card">';
-  html += '<div class="rep-card-title center">Score · Put</div>';
-  html += scoreTable(rep.scoresPut);
-  html += "</div>";
-  html += "</div>";
-
-  html += '<div class="rep-spacer"></div>';
-  html += '<div id="repLensBox" class="rep-lens-box"></div>';
-
-  return html;
-}
-
-function analyzeStrikeLens(data, selectedExps, strike, daysLimit, strikesLimit, gDays) {
-  var target = Number(strike);
-  if (isNaN(target)) return { error: "أدخلي رقم سترايك صحيح" };
-  var close = data.close;
-  var lines = [];
-  var found = 0;
-  (selectedExps || []).forEach(function (exp) {
-    var view = getViewForExp(data, exp, daysLimit, strikesLimit);
-    if (!view) view = null;
-    var row = null;
-    if (view) {
-      for (var i = 0; i < view.rows.length; i++) {
-        if (Number(view.rows[i].strike) === target) {
-          row = view.rows[i];
-          break;
-        }
-      }
-    }
-    if (!row) {
-      var block = data.by_expiration && data.by_expiration[exp];
-      if (block && block.rows) {
-        for (var j = 0; j < block.rows.length; j++) {
-          if (Number(block.rows[j].strike) === target) {
-            var fullDates = data.pull_dates || [];
-            var pullDates = lastN(fullDates, daysLimit);
-            var idx = pullDates.map(function (d) { return fullDates.indexOf(d); });
-            row = {
-              strike: target,
-              calls: idx.map(function (ix) {
-                return ix >= 0 ? block.rows[j].calls[ix] || 0 : 0;
-              }),
-              puts: idx.map(function (ix) {
-                return ix >= 0 ? block.rows[j].puts[ix] || 0 : 0;
-              }),
-            };
-            view = { pullDates: pullDates, rows: [row], close: close, expiration: exp };
-            break;
-          }
-        }
-      }
-    }
-    if (!row || !view) return;
-    found++;
-    var n = view.pullDates.length;
-    var lastI = n - 1;
-    var prevI = n - 2;
-    var g = Math.max(1, parseInt(gDays, 10) || 3);
-    lines.push({
-      exp: exp,
-      callLast: row.calls[lastI] || 0,
-      putLast: row.puts[lastI] || 0,
-      dCall: prevI >= 0 ? positiveDelta(row.calls[lastI], row.calls[prevI]) : null,
-      dPut: prevI >= 0 ? positiveDelta(row.puts[lastI], row.puts[prevI]) : null,
-      gCall: positiveGrowth(row.calls, g),
-      gPut: positiveGrowth(row.puts, g),
-    });
-  });
-  if (!found) return { error: "السترايك " + target + " غير موجود في التواريخ المحددة" };
-
-  var maxPut = 0, maxCall = 0, maxPutExp = "", maxCallExp = "";
-  lines.forEach(function (L) {
-    if (L.putLast > maxPut) { maxPut = L.putLast; maxPutExp = L.exp; }
-    if (L.callLast > maxCall) { maxCall = L.callLast; maxCallExp = L.exp; }
-  });
-
-  var bullets = [];
-  bullets.push("عدد الانتهاءات: " + found);
-  if (close != null) {
-    var pos =
-      target > close ? "فوق الإغلاق" : target < close ? "تحت الإغلاق" : "عند الإغلاق";
-    bullets.push("الموقع: " + pos + " (إغلاق " + Number(close).toLocaleString() + ")");
-  }
-  if (maxCall > 0) {
-    bullets.push(
-      "أعلى Call OI: " + maxCall.toLocaleString() + " @ " + formatExpAr(maxCallExp)
-    );
-  }
-  if (maxPut > 0) {
-    bullets.push(
-      "أعلى Put OI: " + maxPut.toLocaleString() + " @ " + formatExpAr(maxPutExp)
-    );
-  }
-  if (maxCall >= maxPut && maxCall > 0) {
-    bullets.push("الخلاصة: تركّز Call — غالبًا مقاومة يُختبر عند الاقتراب");
-  } else if (maxPut > 0) {
-    bullets.push("الخلاصة: تركّز Put — غالبًا دعم يُحترم عند اللمس");
-  }
-
-  return { strike: target, lines: lines, bullets: bullets, close: close };
-}
-
-function renderLensResult(res) {
-  if (!res) return "";
-  if (res.error) return '<div class="rep-lens-err">' + res.error + "</div>";
-  var h = '<div class="rep-card rep-lens-card">';
-  h += '<div class="rep-card-title center">🔍 ' + res.strike + "</div>";
-  h += '<ul class="rep-lens-bullets">';
-  (res.bullets || []).forEach(function (b) {
-    h += "<li>" + b + "</li>";
-  });
-  h += "</ul>";
-  h +=
-    '<table class="rep-table" dir="ltr"><thead><tr>' +
-    "<th>اليوم</th><th>Call OI</th><th>Put OI</th><th>Δ Call</th><th>Δ Put</th><th>G Call</th><th>G Put</th>" +
-    "</tr></thead><tbody>";
-  (res.lines || []).forEach(function (L) {
-    h +=
-      "<tr><td>" +
-      formatExpAr(L.exp) +
-      "</td><td>" +
-      Number(L.callLast).toLocaleString() +
-      "</td><td>" +
-      Number(L.putLast).toLocaleString() +
-      "</td><td>" +
-      (L.dCall != null ? Number(L.dCall).toLocaleString() : "—") +
-      "</td><td>" +
-      (L.dPut != null ? Number(L.dPut).toLocaleString() : "—") +
-      "</td><td>" +
-      (L.gCall != null ? Number(L.gCall).toLocaleString() : "—") +
-      "</td><td>" +
-      (L.gPut != null ? Number(L.gPut).toLocaleString() : "—") +
-      "</td></tr>";
-  });
-  h += "</tbody></table></div>";
-  return h;
-}
-
-function paintCell(cell, argb, bold, align) {
-  if (!cell) return;
-  cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: argb } };
-  cell.font = { name: "Calibri", size: 11, bold: !!bold };
-  cell.alignment = {
-    horizontal: align || "center",
-    vertical: "middle",
-    wrapText: true,
-  };
-}
-
-async function exportReportsExcel(rep, ticker) {
-  if (typeof ExcelJS === "undefined") throw new Error("ExcelJS غير محمّل");
-  var wb = new ExcelJS.Workbook();
-  var ws = wb.addWorksheet("Reports");
-  for (var c = 1; c <= 13; c++) ws.getColumn(c).width = 12;
-
-  try {
-    ws.views = [{ state: "normal", rightToLeft: true, activeCell: "A1", showGridLines: false }];
-  } catch (e) {}
-
-  ws.getCell(2, 2).value = String(ticker) + " · Reports";
-  ws.getCell(2, 2).font = { name: "Calibri", size: 16, bold: true };
-  ws.getCell(2, 2).alignment = { horizontal: "center", vertical: "middle" };
-  try {
-    ws.mergeCells(2, 2, 2, 11);
-  } catch (e) {}
-
-  var fillD = "FFE4E4D2";
-  var fillG = "FFD8E7E7";
-  var headD = "FFD4D0B8";
-  var headG = "FFB8D4D4";
-  var fillPeak = "FFE6FFFA";
-  var headPeak = "FF99F6E4";
-  var fillTrough = "FFF3E8FF";
-  var headTrough = "FFE9D5FF";
-  var headS = "FFC8C4D6";
-
-  function writeMetricBlock(r, col, title, items, headFill, bodyFill) {
-    ws.getCell(r, col).value = title;
-    for (var i = 0; i < 4; i++) paintCell(ws.getCell(r, col + i), headFill, true);
-    try {
-      ws.mergeCells(r, col, r, col + 3);
-    } catch (e) {}
-    r++;
-    ["الترتيب", "Strike", "القيمة", "اليوم"].forEach(function (h, idx) {
-      ws.getCell(r, col + idx).value = h;
-      paintCell(ws.getCell(r, col + idx), "FFF1F5F9", true);
-    });
-    r++;
-    var list = items || [];
-    if (!list.length) {
-      ws.getCell(r, col).value = "—";
-      for (var z = 0; z < 4; z++) paintCell(ws.getCell(r, col + z), bodyFill, false);
-      r++;
-    } else {
-      for (var k = 0; k < list.length; k++) {
-        var x = list[k];
-        ws.getCell(r, col).value = k + 1;
-        ws.getCell(r, col + 1).value = x.strike;
-        ws.getCell(r, col + 2).value = x.value;
-        ws.getCell(r, col + 2).numFmt = "#,##0";
-        ws.getCell(r, col + 3).value = formatExpAr(x.exp);
-        for (var z2 = 0; z2 < 4; z2++) paintCell(ws.getCell(r, col + z2), bodyFill, false);
-        r++;
-      }
-    }
-    return r;
-  }
-
-  function writeLevels(r, col, title, list, repeated, headFill, bodyFill, repTitle) {
-    ws.getCell(r, col).value = title;
-    for (var i = 0; i < 4; i++) paintCell(ws.getCell(r, col + i), headFill, true);
-    try {
-      ws.mergeCells(r, col, r, col + 3);
-    } catch (e) {}
-    r++;
-    ["Strike", "OI", "الحركة", "اليوم"].forEach(function (h, idx) {
-      ws.getCell(r, col + idx).value = h;
-      paintCell(ws.getCell(r, col + idx), "FFF8FAFC", true);
-    });
-    r++;
-    (list || []).forEach(function (x) {
-      ws.getCell(r, col).value = x.strike != null ? x.strike : "";
-      ws.getCell(r, col + 1).value = x.oi != null ? x.oi : "";
-      if (x.oi != null) ws.getCell(r, col + 1).numFmt = "#,##0";
-      ws.getCell(r, col + 2).value = x.move || "";
-      ws.getCell(r, col + 3).value = formatExpAr(x.exp);
-      for (var z = 0; z < 4; z++) paintCell(ws.getCell(r, col + z), bodyFill, false);
-      r++;
-    });
-    if (repeated && repeated.length) {
-      ws.getCell(r, col).value = repTitle;
-      for (var i2 = 0; i2 < 4; i2++) paintCell(ws.getCell(r, col + i2), headFill, true);
-      try {
-        ws.mergeCells(r, col, r, col + 3);
-      } catch (e) {}
-      r++;
-      repeated.forEach(function (rp) {
-        ws.getCell(r, col).value = rp.strike;
-        ws.getCell(r, col + 1).value = rp.days.map(formatExpAr).join(" · ");
-        try {
-          ws.mergeCells(r, col + 1, r, col + 3);
-        } catch (e) {}
-        for (var z3 = 0; z3 < 4; z3++) paintCell(ws.getCell(r, col + z3), bodyFill, false);
-        r++;
-      });
-    }
-    return r;
-  }
-
-  var row = 6;
-  // ورقة RTL: العمود الأصغر يظهر يمينًا → التزايد يمين، النمو يسار
-  var r1 = writeMetricBlock(row, 2, "التزايد · Call · Δ", rep.deltaCall, headD, fillD);
-  var r2 = writeMetricBlock(row, 7, "النمو · Call · G", rep.growthCall, headG, fillG);
-  row = Math.max(r1, r2) + 1;
-
-  r1 = writeMetricBlock(row, 2, "التزايد · Put · Δ", rep.deltaPut, headD, fillD);
-  r2 = writeMetricBlock(row, 7, "النمو · Put · G", rep.growthPut, headG, fillG);
-  row = Math.max(r1, r2) + 1;
-
-  r1 = writeLevels(row, 2, "القمم", rep.peaks, rep.repPeak, headPeak, fillPeak, "قمم متكررة");
-  r2 = writeLevels(row, 7, "القيعان", rep.troughs, rep.repTrough, headTrough, fillTrough, "قيعان متكررة");
-  row = Math.max(r1, r2) + 1;
-
-  // Score + الملخص محذوفان من تصدير Excel حسب الطلب
-
-  var buf = await wb.xlsx.writeBuffer();
-  var blob = new Blob([buf], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  var fname = String(ticker) + "_Reports.xlsx";
-  var downloaded = false;
-  try {
-    if (typeof saveAs === "function") {
-      saveAs(blob, fname);
-      downloaded = true;
-    }
-  } catch (eSave) {
-    console.warn("saveAs failed", eSave);
-  }
-  if (!downloaded) {
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = fname;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function () {
-      try { URL.revokeObjectURL(url); } catch (e) {}
-      try { a.remove(); } catch (e) {}
-    }, 2000);
-  }
-}
-
-function openReports() {
-  var data = state.cache[state.ticker];
-  if (!data) {
-    setStatus("لا بيانات — انتظر التحميل أو حدد مؤشرًا", "err");
-    return;
-  }
-  var modal = document.getElementById("reportsModal");
-  var body = document.getElementById("reportsBody");
-  var sub = document.getElementById("reportsSub");
-  if (!modal || !body) {
-    setStatus("نافذة Reports غير موجودة", "err");
-    return;
-  }
-  if (sub) sub.textContent = state.ticker + " · حدد التواريخ ثم توليد التقرير";
-
-  var allExps = Object.keys(data.by_expiration || {}).sort();
-  var exps = filterTickerExpirations(state.ticker, allExps);
-  if (!exps.length) {
-    setStatus("لا تواريخ انتهاء متاحة", "err");
-    return;
-  }
-  var curExp = state.expiration;
-  var html = "";
-  html += '<div class="rep-controls">';
-  html += '<div class="exp-export-block"><div class="exp-export-head"><b>تواريخ الانتهاء</b>';
-  html += '<button type="button" class="btn btn-sm" id="repSelectAll">تحديد الكل</button></div>';
-  html += '<div class="exp-checks">';
-  exps.forEach(function (exp) {
-    var chk = exp === curExp ? " checked" : "";
-    html +=
-      '<label class="exp-check"><input type="checkbox" data-rexp="' +
-      exp +
-      '"' +
-      chk +
-      "/> " +
-      exp +
-      "</label>";
-  });
-  html += "</div></div>";
-
-  html += '<div class="exp-export-row"><span>Days</span>';
-  ["2", "3", "5", "10", "ALL"].forEach(function (d) {
-    var on = String(state.days) === d ? " on" : "";
-    html +=
-      '<button type="button" class="chip' + on + '" data-rdays="' + d + '">' + d + "</button>";
-  });
-  html += "</div>";
-
-  html += '<div class="exp-export-row"><span>Strikes</span>';
-  ["30", "50", "100", "ALL"].forEach(function (s) {
-    var on = String(state.strikes) === s ? " on" : "";
-    html +=
-      '<button type="button" class="chip' + on + '" data-rstrikes="' + s + '">' + s + "</button>";
-  });
-  html += "</div>";
-
-  html += '<div class="exp-export-row rep-input-row rep-tools-row">';
-  html += '<span class="rep-tool-label">N</span>';
-  html +=
-    '<input id="repTopInput" class="rep-input" type="number" min="1" max="50" value="5" title="أعلى نتائج" />';
-  html += '<span class="rep-tools-gap"></span>';
-  html += '<span class="rep-tool-label">G</span>';
-  html +=
-    '<input id="repGrowthInput" class="rep-input" type="number" min="1" max="30" value="' +
-    (parseInt(state.growthDays, 10) || 3) +
-    '" title="أيام النمو" />';
-  html += '<span class="rep-tools-gap rep-tools-gap-lg"></span>';
-  html +=
-    '<button type="button" class="btn btn-lens" id="repLensBtn" title="بحث سترايك">🔍</button>';
-  html +=
-    '<input id="repLensInput" class="rep-input rep-lens-input" type="number" step="0.5" placeholder="سترايك" title="عدسة السترايك" />';
-  html += "</div>";
-
-  html += '<div class="rep-actions">';
-  html += '<button type="button" class="btn btn-teal" id="repRunBtn">توليد التقرير</button>';
-  html +=
-    '<button type="button" class="btn btn-excel" id="repExcelBtn" disabled>تصدير Excel</button>';
-  html += "</div></div>";
-  html += '<div id="repResult" class="rep-result"></div>';
-  body.innerHTML = html;
-  modal.classList.remove("hidden"); modal.style.display = ""; modal.setAttribute("aria-hidden", "false");
-  // إظهار أعلى نافذة التقارير عند الفتح
-  try {
-    body.scrollTop = 0;
-    if (typeof body.scrollTo === "function") body.scrollTo(0, 0);
-    modal.scrollTop = 0;
-    if (typeof modal.scrollTo === "function") modal.scrollTo(0, 0);
-    var panel = modal.querySelector(".map-panel, .reports-panel");
-    if (panel) panel.scrollTop = 0;
-  } catch (eOpenScroll) {}
-
-  var rdays = String(state.days || "2");
-  var rstrikes = String(state.strikes || "30");
-  var lastRep = null;
-
-  body.querySelectorAll("[data-rdays]").forEach(function (btn) {
-    btn.onclick = function () {
-      rdays = btn.getAttribute("data-rdays");
-      body.querySelectorAll("[data-rdays]").forEach(function (b) {
-        b.classList.toggle("on", b === btn);
-      });
-    };
-  });
-  body.querySelectorAll("[data-rstrikes]").forEach(function (btn) {
-    btn.onclick = function () {
-      rstrikes = btn.getAttribute("data-rstrikes");
-      body.querySelectorAll("[data-rstrikes]").forEach(function (b) {
-        b.classList.toggle("on", b === btn);
-      });
-    };
-  });
-
-  var selAll = document.getElementById("repSelectAll");
-  if (selAll) {
-    selAll.onclick = function () {
-      body.querySelectorAll("input[data-rexp]").forEach(function (cb) {
-        cb.checked = true;
-      });
-    };
-  }
-
-  var runBtn = document.getElementById("repRunBtn");
-  var excelBtn = document.getElementById("repExcelBtn");
-  var resultHost = document.getElementById("repResult");
-
-  if (runBtn) {
-    runBtn.onclick = function () {
-      try {
-        var selected = [];
-        body.querySelectorAll("input[data-rexp]:checked").forEach(function (cb) {
-          selected.push(cb.getAttribute("data-rexp"));
-        });
-        if (!selected.length) {
-          if (resultHost)
-            resultHost.innerHTML = '<p class="status err">حدد تاريخ انتهاء واحد على الأقل</p>';
-          setStatus("حدد تاريخ انتهاء واحد على الأقل", "err");
-          return;
-        }
-        var topEl = document.getElementById("repTopInput");
-        var gEl = document.getElementById("repGrowthInput");
-        var rtop = parseInt(topEl && topEl.value, 10) || 5;
-        var rgrowth = parseInt(gEl && gEl.value, 10) || 3;
-        if (rtop < 1) rtop = 5;
-        if (rgrowth < 1) rgrowth = 3;
-        lastRep = computeReports(data, selected, rdays, rstrikes, rtop, rgrowth);
-        if (resultHost) {
-          resultHost.innerHTML = renderReportsResult(lastRep, state.ticker);
-          // العودة لأعلى التقرير (الملخص أولاً) بدل القفز لمنتصف النافذة
-          try {
-            body.scrollTop = 0;
-            if (typeof body.scrollTo === "function") body.scrollTo(0, 0);
-            modal.scrollTop = 0;
-            resultHost.scrollTop = 0;
-          } catch (e) {}
-        }
-        if (excelBtn) excelBtn.disabled = false;
-        if (sub)
-          sub.textContent = state.ticker + " · " + selected.length + " انتهاء · N " + rtop;
-        setStatus("تم توليد التقرير", "ok");
-      } catch (err) {
-        console.error(err);
-        if (resultHost)
-          resultHost.innerHTML =
-            '<p class="status err">خطأ: ' + (err && err.message ? err.message : err) + "</p>";
-        setStatus("خطأ في التقرير: " + (err && err.message ? err.message : err), "err");
-      }
-    };
-  }
-  if (excelBtn) {
-    excelBtn.onclick = async function () {
-      if (!lastRep) {
-        setStatus("ولّد التقرير أولًا قبل التصدير", "err");
-        return;
-      }
-      excelBtn.disabled = true;
-      setStatus("جاري تصدير Excel…", "");
-      try {
-        await exportReportsExcel(lastRep, state.ticker);
-        setStatus("✅ تم تصدير Excel", "ok");
-      } catch (err) {
-        console.error(err);
-        setStatus("فشل التصدير: " + (err && err.message ? err.message : err), "err");
-        alert("فشل تصدير Excel: " + (err && err.message ? err.message : err));
-      } finally {
-        excelBtn.disabled = false;
-      }
-    };
-  }
-
-  var lensBtn = document.getElementById("repLensBtn");
-  if (lensBtn) {
-    lensBtn.onclick = function () {
-      try {
-        var selected = [];
-        body.querySelectorAll("input[data-rexp]:checked").forEach(function (cb) {
-          selected.push(cb.getAttribute("data-rexp"));
-        });
-        if (!selected.length) {
-          setStatus("حددي تواريخًا أولًا للعدسة", "err");
-          return;
-        }
-        var lensEl = document.getElementById("repLensInput");
-        var strikeVal = lensEl && lensEl.value;
-        if (!strikeVal) {
-          setStatus("أدخلي رقم السترايك", "err");
-          return;
-        }
-        var gEl = document.getElementById("repGrowthInput");
-        var rgrowth = parseInt(gEl && gEl.value, 10) || 3;
-        var res = analyzeStrikeLens(data, selected, strikeVal, rdays, rstrikes, rgrowth);
-        // إن لم يُولَّد تقرير بعد، أنشئ حاوية نتيجة
-        if (!document.getElementById("repResult") || !resultHost) {
-          setStatus("افتح التقرير أولًا", "err");
-          return;
-        }
-        if (!lastRep) {
-          // اعرض العدسة وحدها
-          resultHost.innerHTML = renderLensResult(res);
-        } else {
-          var box = document.getElementById("repLensBox");
-          if (box) box.innerHTML = renderLensResult(res);
-          else resultHost.innerHTML = renderReportsResult(lastRep, state.ticker) + renderLensResult(res);
-        }
-        setStatus(res.error ? res.error : "تم فحص السترايك " + strikeVal, res.error ? "err" : "ok");
-        try {
-          var target = document.getElementById("repLensBox") || resultHost;
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
-        } catch (e) {}
-      } catch (err) {
-        console.error(err);
-        setStatus("خطأ العدسة: " + (err && err.message ? err.message : err), "err");
-      }
-    };
-  }
-}
-
-function closeReports() {
-  var modal = document.getElementById("reportsModal");
-  if (modal) modal.classList.add("hidden");
-}
-
-
