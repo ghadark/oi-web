@@ -10,7 +10,7 @@
   --otm: #f8fafc;
   --green-bar: #ecfdf5;
   --green-text: #0f766e;
-  --delta-bg: #e8e4d9;
+  --delta-bg: #eef1f4;
   --chip: #f1f5f9;
   --sidebar: #ffffff;
 }
@@ -26,7 +26,7 @@ html[data-theme="dark"] {
   --otm: #0b1526;
   --green-bar: #134e4a;
   --green-text: #5eead4;
-  --delta-bg: #2f3a4a;
+  --delta-bg: #243041;
   --chip: #334155;
   --sidebar: #1e293b;
 }
@@ -4312,4 +4312,72 @@ table.oi.x3-table td {
     gap: 12px !important;
   }
   .x3-timeline { display: none !important; }
+}
+
+
+/* =========================================================
+   توحيد Δ + الأعلى رقمًا: الرئيسية + اليوم بالسابق = نفس ×3
+   ========================================================= */
+
+/* عمود التزايد — الرئيسية */
+table.oi th.delta,
+table.oi td.delta:not(.max-oi) {
+  background: #243041 !important;
+  color: #c5cdd8 !important;
+  border-color: #2a3545 !important;
+}
+html[data-theme="light"] table.oi th.delta,
+html[data-theme="light"] table.oi td.delta:not(.max-oi) {
+  background: #eef1f4 !important;
+  color: #475569 !important;
+  border-color: #d8dde3 !important;
+}
+
+/* عمود التزايد — اليوم بالسابق */
+table.oi.series-oi th.delta,
+table.oi.series-oi td.delta:not(.max-oi) {
+  background: #243041 !important;
+  color: #c5cdd8 !important;
+  border-color: #2a3545 !important;
+}
+html[data-theme="light"] table.oi.series-oi th.delta,
+html[data-theme="light"] table.oi.series-oi td.delta:not(.max-oi) {
+  background: #eef1f4 !important;
+  color: #475569 !important;
+}
+
+/* الأعلى رقمًا — الرئيسية (كول/بوت/Δ) */
+table.oi td.max-oi,
+table.oi th.max-oi {
+  background: #3b4a8a !important;
+  color: #e4e8f8 !important;
+  font-weight: 700 !important;
+}
+html[data-theme="light"] table.oi td.max-oi,
+html[data-theme="light"] table.oi th.max-oi {
+  background: #c7d2fe !important;
+  color: #1e1b4b !important;
+  font-weight: 700 !important;
+}
+
+/* الأعلى رقمًا — اليوم بالسابق */
+table.oi.series-oi td.max-oi,
+table.oi.series-oi th.max-oi {
+  background: #3b4a8a !important;
+  color: #e4e8f8 !important;
+  font-weight: 700 !important;
+}
+html[data-theme="light"] table.oi.series-oi td.max-oi,
+html[data-theme="light"] table.oi.series-oi th.max-oi {
+  background: #c7d2fe !important;
+  color: #1e1b4b !important;
+  font-weight: 700 !important;
+}
+
+/* Δ + أعلى رقم معًا */
+table.oi td.delta.max-oi,
+table.oi.series-oi td.delta.max-oi {
+  background: #3b4a8a !important;
+  color: #e4e8f8 !important;
+  font-weight: 700 !important;
 }
