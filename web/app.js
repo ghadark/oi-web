@@ -971,7 +971,7 @@ function renderOneMiniTable(data, expiration, label, opts) {
   var html =
     '<div class="x3-col' + (opts.active ? " active" : "") + '">' +
     '<div class="x3-col-h">' + title + "</div>" +
-    '<div class="x3-table-wrap"><table class="oi x3-table" style="width:auto;max-width:none"><thead>';
+    '<div class="x3-table-wrap"><table class="oi x3-table"><thead>';
   var nColsX = pullDates.length;
   html += '<tr class="side-label-row">';
   if (canDelta) html += '<th class="delta side-pad"></th>';

@@ -3961,3 +3961,213 @@ table.oi.x3-table {
   text-align: center;
   display: block;
 }
+
+/* =========================================================
+   ×3 v3 — خيار 3: تقليص الجدول مع Δ · أرقام كاملة · حدود مربعة
+   بدون سكرول لكل جدول · محاذاة سترايك · ألوان الأساسي محفوظة
+   ========================================================= */
+
+/* لوحة وبطاقات: مربعة بدون استدارة */
+.x3-board {
+  border-radius: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 12px !important;
+}
+.x3-col {
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+}
+.x3-col-h {
+  border-radius: 0 !important;
+}
+
+/* ثلاثة أعمدة مرنة بدون min-width يفرض تمرير */
+.x3-cols {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  align-items: start !important;
+}
+.x3-timeline {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  flex-wrap: wrap !important;
+}
+
+/* الغلاف: بلا سكرول داخلي */
+.x3-table-wrap {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-align: center !important;
+  border-radius: 0 !important;
+}
+
+/* الجدول يملأ العرض ويتقلص مع Δ */
+table.oi.x3-table {
+  display: table !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+  margin: 0 !important;
+  font-size: 10px !important;
+  border-radius: 0 !important;
+  border-collapse: collapse !important;
+}
+
+table.oi.x3-table th,
+table.oi.x3-table td {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 2px 2px !important;
+  height: 26px !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  border-radius: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* عمود التزايد: يتسع لآلاف كاملة — ليس نحيفًا قسريًا */
+table.oi.x3-table th.delta,
+table.oi.x3-table td.delta {
+  width: 12% !important;
+  min-width: 44px !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  font-size: 10px !important;
+  padding: 2px 1px !important;
+  background: var(--delta-bg) !important;
+}
+
+table.oi.x3-table th.strike,
+table.oi.x3-table td.strike {
+  width: 11% !important;
+  min-width: 34px !important;
+  font-weight: 700 !important;
+}
+
+/* مع Δ: تقليص إضافي للخلايا العادية لاستيعاب العمودين */
+.x3-board.with-delta table.oi.x3-table {
+  font-size: 9.5px !important;
+}
+.x3-board.with-delta table.oi.x3-table th,
+.x3-board.with-delta table.oi.x3-table td {
+  padding: 2px 1px !important;
+  height: 24px !important;
+}
+.x3-board.with-delta table.oi.x3-table th.delta,
+.x3-board.with-delta table.oi.x3-table td.delta {
+  width: 13% !important;
+  min-width: 48px !important;
+  font-size: 9.5px !important;
+}
+
+/* الحفاظ على ألوان ITM/OTM + الشريط الشفاف بين السترايكات + شريط الإغلاق */
+table.oi.x3-table tbody tr.zebra td.itm,
+table.oi.x3-table tbody tr.zebra td.otm {
+  filter: none;
+}
+html[data-theme="dark"] table.oi.x3-table tbody tr.zebra td.itm {
+  background: #172a45 !important;
+}
+html[data-theme="dark"] table.oi.x3-table tbody tr.zebra td.otm {
+  background: #111c2e !important;
+}
+html[data-theme="light"] table.oi.x3-table tbody tr.zebra td.itm {
+  background: #cfe0f8 !important;
+}
+html[data-theme="light"] table.oi.x3-table tbody tr.zebra td.otm {
+  background: #eef2f7 !important;
+}
+table.oi.x3-table tr.close-bar td {
+  background: var(--green-bar, #134e4a) !important;
+  color: var(--green-text, #5eead4) !important;
+  font-weight: 700 !important;
+}
+
+/* إلغاء قاعدة 1400px التي كانت تفرض min-width وتمرير أفقي */
+@media (max-width: 1400px) {
+  .x3-board {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .x3-cols {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    min-width: 0 !important;
+    gap: 6px !important;
+  }
+  .x3-timeline {
+    min-width: 0 !important;
+  }
+  .x3-table-wrap {
+    overflow: hidden !important;
+  }
+  table.oi.x3-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  table.oi.x3-table th,
+  table.oi.x3-table td {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+  table.oi.x3-table th.delta,
+  table.oi.x3-table td.delta {
+    min-width: 42px !important;
+    width: 12% !important;
+    overflow: visible !important;
+  }
+}
+
+/* تابلت/جوال: تكديس عمودي = بلا تداخل وبلا سكرول أفقي */
+@media (max-width: 960px) {
+  .x3-cols {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+  }
+  .x3-timeline {
+    display: none !important;
+  }
+  .x3-col {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  table.oi.x3-table {
+    font-size: 11px !important;
+  }
+  table.oi.x3-table th,
+  table.oi.x3-table td {
+    height: 28px !important;
+    padding: 3px 2px !important;
+    font-size: 11px !important;
+  }
+  .x3-board.with-delta table.oi.x3-table th.delta,
+  .x3-board.with-delta table.oi.x3-table td.delta {
+    min-width: 52px !important;
+    width: 14% !important;
+    font-size: 11px !important;
+  }
+}
