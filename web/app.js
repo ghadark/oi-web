@@ -1000,7 +1000,14 @@ function renderOneMiniTable(data, expiration, label, opts) {
     var callCls = below || (close != null && r.strike === close) ? "itm" : "otm";
     var putCls = above || (close != null && r.strike === close) ? "itm" : "otm";
     var zebra = ri % 2 === 1 ? " zebra" : "";
-    html += '<tr class="' + (isCloseRow ? "close-bar" : "") + zebra + '">';
+    var band = "";
+    if (close != null && !isNaN(Number(close)) && !isCloseRow) {
+      var dist = Math.abs(Number(r.strike) - Number(close));
+      if (dist <= 3) band = " band-near";
+      else if (dist <= 8) band = " band-mid";
+      else band = " band-far";
+    }
+    html += '<tr class="' + (isCloseRow ? "close-bar" : "") + zebra + band + '">';
     if (canDelta) {
       var dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
       var maxD = dc != null && deltaCallMax > 0 && dc === deltaCallMax ? " max-oi" : "";

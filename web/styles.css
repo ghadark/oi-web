@@ -4096,10 +4096,15 @@ html[data-theme="light"] table.oi.x3-table tbody tr.zebra td.itm {
 html[data-theme="light"] table.oi.x3-table tbody tr.zebra td.otm {
   background: #eef2f7 !important;
 }
-table.oi.x3-table tr.close-bar td {
+table.oi.x3-table tr.close-bar td:not(.delta) {
   background: var(--green-bar, #134e4a) !important;
   color: var(--green-text, #5eead4) !important;
   font-weight: 700 !important;
+}
+table.oi.x3-table tr.close-bar td.delta {
+  background: var(--delta-bg) !important;
+  color: #e7e5c8 !important;
+  font-weight: 600 !important;
 }
 
 /* إلغاء قاعدة 1400px التي كانت تفرض min-width وتمرير أفقي */
@@ -4170,4 +4175,99 @@ table.oi.x3-table tr.close-bar td {
     width: 14% !important;
     font-size: 11px !important;
   }
+}
+
+
+/* =========================================================
+   ×3 خيار 4: نطاقات حول الإغلاق (band-near / mid / far)
+   Δ رمادي · الأخضر لا يمتد لـ Δ · مريح لابتوب + تكديس موبايل
+   ========================================================= */
+
+/* نطاقات — لا تمس Δ ولا STRIKE ولا صف الإغلاق */
+table.oi.x3-table tbody tr.band-near td:not(.delta):not(.strike) {
+  background: rgba(59, 130, 246, 0.14) !important;
+  color: var(--text) !important;
+}
+table.oi.x3-table tbody tr.band-mid td:not(.delta):not(.strike) {
+  background: rgba(30, 41, 59, 0.55) !important;
+  color: var(--text) !important;
+}
+table.oi.x3-table tbody tr.band-far td:not(.delta):not(.strike) {
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: #94a3b8 !important;
+}
+
+html[data-theme="light"] table.oi.x3-table tbody tr.band-near td:not(.delta):not(.strike) {
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #0f172a !important;
+}
+html[data-theme="light"] table.oi.x3-table tbody tr.band-mid td:not(.delta):not(.strike) {
+  background: rgba(226, 232, 240, 0.85) !important;
+  color: #334155 !important;
+}
+html[data-theme="light"] table.oi.x3-table tbody tr.band-far td:not(.delta):not(.strike) {
+  background: #f8fafc !important;
+  color: #94a3b8 !important;
+}
+
+/* أعلى رقم يبقى ظاهرًا فوق النطاق */
+table.oi.x3-table tbody tr td.max-oi {
+  background: rgba(99, 102, 241, 0.32) !important;
+  color: #e0e7ff !important;
+  font-weight: 700 !important;
+}
+html[data-theme="light"] table.oi.x3-table tbody tr td.max-oi {
+  background: rgba(99, 102, 241, 0.18) !important;
+  color: #312e81 !important;
+}
+
+/* Δ رمادي دائمًا (حتى داخل النطاقات / الإغلاق) */
+table.oi.x3-table th.delta,
+table.oi.x3-table td.delta {
+  background: var(--delta-bg) !important;
+  color: #e7e5c8 !important;
+}
+html[data-theme="light"] table.oi.x3-table th.delta,
+html[data-theme="light"] table.oi.x3-table td.delta {
+  background: #e4e4d2 !important;
+  color: #3f3f2e !important;
+}
+table.oi.x3-table td.delta.max-oi {
+  background: rgba(99, 102, 241, 0.32) !important;
+  color: #e0e7ff !important;
+}
+
+/* صف الإغلاق: أخضر على البيانات فقط وليس Δ */
+table.oi.x3-table tr.close-bar td:not(.delta) {
+  background: var(--green-bar, #134e4a) !important;
+  color: var(--green-text, #5eead4) !important;
+  font-weight: 700 !important;
+}
+table.oi.x3-table tr.close-bar td.delta {
+  background: var(--delta-bg) !important;
+  color: #e7e5c8 !important;
+  font-weight: 600 !important;
+}
+html[data-theme="light"] table.oi.x3-table tr.close-bar td:not(.delta) {
+  background: #ecfdf5 !important;
+  color: #0f766e !important;
+}
+html[data-theme="light"] table.oi.x3-table tr.close-bar td.delta {
+  background: #e4e4d2 !important;
+  color: #3f3f2e !important;
+}
+
+/* راحة العرض: لابتوب 3 أعمدة · تابلت/جوال تكديس */
+.x3-cols {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+@media (max-width: 960px) {
+  .x3-cols {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .x3-timeline { display: none !important; }
 }
