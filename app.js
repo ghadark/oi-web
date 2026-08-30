@@ -829,8 +829,9 @@ async function refresh() {
     }
     var up = $("#updatedAt");
     if (up) {
-      up.textContent = data.updated_at
-        ? "آخر تحديث: " + formatUpdatedAt(data.updated_at)
+      var ts = data.data_captured_at || data.updated_at;
+      up.textContent = ts
+        ? "آخر تحديث للبيانات: " + formatUpdatedAt(ts)
         : "لا يوجد تحديث بعد — شغّل Actions أولاً";
     }
     renderTable();
@@ -1233,13 +1234,6 @@ function getSeriesPrevDayView(data) {
 }
 
 /** جدول «اليوم بالسابق»: أعمدة = تواريخ انتهاء يومية متتالية (25 ثم 26 ثم…) وليس أيام سحب لنفس الانتهاء */
-function seriesColClass(pos, totalCols) {
-  var tones = ["sc-a", "sc-b", "sc-c", "sc-d", "sc-e", "sc-f", "sc-g"];
-  if (!totalCols || totalCols < 1) return tones[0];
-  var p = Math.max(0, Math.min(totalCols - 1, pos | 0));
-  return tones[p % tones.length];
-}
-
 function renderSeriesTable() {
   const data = state.cache[state.ticker];
   const host = $("#tableHost");
@@ -1273,22 +1267,17 @@ function renderSeriesTable() {
       liveTag +
       "</div>";
   }
-  html += '</div><div class="table-scroll series-wrap"><table class="oi series-oi" style="width:auto;max-width:none"><thead><tr>';
+  html += '</div><div class="table-scroll"><table class="oi series-oi"><thead><tr>';
 
   if (canDelta) html += '<th class="delta">Δ</th>';
-  var nCols = pullDates.length;
-  var totalSideCols = nCols * 2;
-  var colPos = 0;
-  for (let i = nCols - 1; i >= 0; i--) {
+  for (let i = pullDates.length - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
-    const sc = seriesColClass(colPos++, totalSideCols);
-    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   html += '<th class="strike">STRIKE</th>';
-  for (let j = 0; j < nCols; j++) {
+  for (let j = 0; j < pullDates.length; j++) {
     const f = formatPullDate(pullDates[j]);
-    const sc = seriesColClass(colPos++, totalSideCols);
-    html += '<th class="' + sc + '">' + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
+    html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
   html += "</tr></thead><tbody>";
@@ -1349,13 +1338,12 @@ function renderSeriesTable() {
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
-    var bodyPos = 0;
     for (let i = pullDates.length - 1; i >= 0; i--) {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
       html +=
         '<td class="' +
-        seriesColClass(bodyPos++, pullDates.length * 2) +
+        callCls +
         maxCls +
         '">' +
         cv.toLocaleString() +
@@ -1367,7 +1355,7 @@ function renderSeriesTable() {
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
       html +=
         '<td class="' +
-        seriesColClass(bodyPos++, pullDates.length * 2) +
+        putCls +
         maxCls +
         '">' +
         pv.toLocaleString() +
@@ -1392,7 +1380,6 @@ function renderSeriesTable() {
   html += "</tbody></table></div>";
   host.innerHTML = html;
 }
-
 
 
 function renderTable() {
