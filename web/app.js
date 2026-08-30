@@ -2970,6 +2970,75 @@ async function exportArchiveExcel() {
 // ========== Levels Map (3 phases) ==========
 let levelsCache = null;
 
+/** عطل السوق الأمريكي (تواريخ ثابتة 2025–2027 + توسعة بسيطة) */
+var US_MARKET_HOLIDAYS = {
+  "2025-01-01": 1, "2025-01-20": 1, "2025-02-17": 1, "2025-04-18": 1,
+  "2025-05-26": 1, "2025-06-19": 1, "2025-07-04": 1, "2025-09-01": 1,
+  "2025-11-27": 1, "2025-12-25": 1,
+  "2026-01-01": 1, "2026-01-19": 1, "2026-02-16": 1, "2026-04-03": 1,
+  "2026-05-25": 1, "2026-06-19": 1, "2026-07-03": 1, "2026-09-07": 1,
+  "2026-11-26": 1, "2026-12-25": 1,
+  "2027-01-01": 1, "2027-01-18": 1, "2027-02-15": 1, "2027-03-26": 1,
+  "2027-05-31": 1, "2027-06-18": 1, "2027-07-05": 1, "2027-09-06": 1,
+  "2027-11-25": 1, "2027-12-24": 1
+};
+
+function toIsoDate(d) {
+  var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+  return y + "-" + String(m).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+}
+function isUsHoliday(d) {
+  return !!US_MARKET_HOLIDAYS[toIsoDate(d)];
+}
+/** يوم تداول رسمي = اثنين–جمعة وليس عطلة */
+function isTradingDay(d) {
+  var wd = d.getDay();
+  if (wd === 0 || wd === 6) return false;
+  return !isUsHoliday(d);
+}
+/** اليوم/جلسة «اليوم» في الماب: ويكند أو عطلة → أول يوم تداول تالٍ */
+function sessionTradingDay(now) {
+  var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
+  return d;
+}
+/** يوم التداول التالي بعد from (يتخطى ويكند + عطل) */
+function nextTradingDayAfter(from) {
+  var d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  d.setDate(d.getDate() + 1);
+  while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
+  return d;
+}
+/** جمعة هذا الأسبوع من from؛ إن كانت عطلة → الجمعة التالية + علامة week_is_next */
+function fridayForWeek(session) {
+  var d = new Date(session.getFullYear(), session.getMonth(), session.getDate());
+  var add = (5 - d.getDay() + 7) % 7;
+  if (d.getDay() !== 5) d.setDate(d.getDate() + add);
+  var isNext = false;
+  // إن الجمعة عطلة أو ليست يوم تداول → الجمعة التالية
+  while (!isTradingDay(d)) {
+    d.setDate(d.getDate() + 7);
+    isNext = true;
+  }
+  return { date: d, isNextWeek: isNext };
+}
+function thirdFridayOfMonth(year, monthIndex) {
+  var d = new Date(year, monthIndex, 1);
+  var count = 0;
+  while (d.getMonth() === monthIndex) {
+    if (d.getDay() === 5) {
+      count++;
+      if (count === 3) return d;
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return new Date(year, monthIndex, 15);
+}
+
+/**
+ * بناء مواعيد بطاقات الماب من تقويم التداول + قائمة الانتهاء الفعلية.
+ * المصدر الوحيد الموثوق لـ daily/tomorrow (لا نعتمد levels.json عليها).
+ */
 async function buildLevelsFromTicker(ticker) {
   var data = await loadTicker(ticker);
   if (!data) return null;
@@ -2977,66 +3046,64 @@ async function buildLevelsFromTicker(ticker) {
   var pullDates = data.pull_dates || [];
   var asOf = pullDates.length ? pullDates[pullDates.length - 1] : null;
   var exps = (data.expirations || []).slice().sort();
+
   function pickExp(isoTarget) {
-    if (!isoTarget || !exps.length) return exps[0] || null;
-    // أقرب انتهاء >= الهدف
+    if (!isoTarget || !exps.length) return null;
+    // تطابق تام أولًا
     for (var i = 0; i < exps.length; i++) {
-      if (exps[i] >= isoTarget) return exps[i];
+      if (exps[i] === isoTarget) return exps[i];
+    }
+    // أقرب انتهاء >= الهدف
+    for (var j = 0; j < exps.length; j++) {
+      if (exps[j] >= isoTarget) return exps[j];
     }
     return exps[exps.length - 1];
   }
-  function toIso(d) {
-    var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
-    return y + "-" + String(m).padStart(2, "0") + "-" + String(day).padStart(2, "0");
-  }
-  function nextFri(from) {
-    var d = new Date(from.getTime());
-    var add = (5 - d.getDay() + 7) % 7;
-    if (add === 0 && d.getDay() !== 5) add = 7;
-    if (d.getDay() === 5) return d;
-    d.setDate(d.getDate() + add);
-    return d;
-  }
-  function thirdFriday(year, monthIndex) {
-    var d = new Date(year, monthIndex, 1);
-    var count = 0;
-    while (d.getMonth() === monthIndex) {
-      if (d.getDay() === 5) {
-        count++;
-        if (count === 3) return d;
-      }
-      d.setDate(d.getDate() + 1);
-    }
-    return new Date(year, monthIndex, 15);
-  }
-  var today = new Date();
-  // جلسة التداول: سبت/أحد → الاثنين
-  var session = new Date(today.getTime());
-  if (session.getDay() === 6) session.setDate(session.getDate() + 2);
-  else if (session.getDay() === 0) session.setDate(session.getDate() + 1);
-  var tom = new Date(session.getTime());
-  tom.setDate(tom.getDate() + 1);
-  while (tom.getDay() === 0 || tom.getDay() === 6) tom.setDate(tom.getDate() + 1);
-  var week = nextFri(session);
-  var opx = thirdFriday(session.getFullYear(), session.getMonth());
-  if (opx < session) {
+
+  var now = new Date();
+  var session = sessionTradingDay(now);          // الأحد → الإثنين 31-8
+  var tom = nextTradingDayAfter(session);        // → الثلاثاء 1-9 (يتخطى العطل)
+  var friInfo = fridayForWeek(session);
+  var week = friInfo.date;
+
+  var opx = thirdFridayOfMonth(session.getFullYear(), session.getMonth());
+  // إن ثالث جمعة مضت أو قبل الجلسة → شهر لاحق
+  if (toIsoDate(opx) < toIsoDate(session)) {
     var nm = session.getMonth() + 1, ny = session.getFullYear();
     if (nm > 11) { nm = 0; ny++; }
-    opx = thirdFriday(ny, nm);
+    opx = thirdFridayOfMonth(ny, nm);
   }
-  var nextOpx = thirdFriday(opx.getFullYear(), opx.getMonth() + 1 > 11 ? 0 : opx.getMonth() + 1);
-  if (opx.getMonth() === 11) nextOpx = thirdFriday(opx.getFullYear() + 1, 0);
-  else nextOpx = thirdFriday(opx.getFullYear(), opx.getMonth() + 1);
+  var nextOpx;
+  if (opx.getMonth() === 11) nextOpx = thirdFridayOfMonth(opx.getFullYear() + 1, 0);
+  else nextOpx = thirdFridayOfMonth(opx.getFullYear(), opx.getMonth() + 1);
+
+  var expDaily = pickExp(toIsoDate(session));
+  var expTom = pickExp(toIsoDate(tom));
+  var expWeek = pickExp(toIsoDate(week));
+  var expOpx = pickExp(toIsoDate(opx));
+  var expNextOpx = pickExp(toIsoDate(nextOpx));
+
+  var todayIsWeekly = !!(expDaily && expWeek && expDaily === expWeek);
+  var tomorrowMergedWeekly = !!(expTom && expWeek && expTom === expWeek);
+
   return {
     ticker: ticker,
     close: close,
     as_of: asOf,
     updated_at: data.updated_at || null,
-    daily: { exp: pickExp(toIso(session)) },
-    tomorrow: { exp: pickExp(toIso(tom)) },
-    weekly: { exp: pickExp(toIso(week)) },
-    opx: { exp: pickExp(toIso(opx)) },
-    next_opx: { exp: pickExp(toIso(nextOpx)) },
+    daily: { exp: expDaily, target: toIsoDate(session) },
+    tomorrow: { exp: expTom, target: toIsoDate(tom) },
+    weekly: { exp: expWeek, target: toIsoDate(week) },
+    opx: { exp: expOpx, target: toIsoDate(opx) },
+    next_opx: { exp: expNextOpx, target: toIsoDate(nextOpx) },
+    meta: {
+      session_iso: toIsoDate(session),
+      tomorrow_iso: toIsoDate(tom),
+      week_iso: toIsoDate(week),
+      weekly_is_next_week: !!friInfo.isNextWeek,
+      today_is_weekly: todayIsWeekly,
+      tomorrow_merged_weekly: tomorrowMergedWeekly,
+    },
   };
 }
 
@@ -3085,14 +3152,27 @@ async function openMap() {
     } catch (eLoad) {
       console.warn("levels.json:", eLoad);
     }
-    // احتياطي جذري: ابنِ المستويات من ملف الرمز نفسه (مثل منطق الخاص)
-    if (!raw || raw.close == null) {
-      try {
-        var built = await buildLevelsFromTicker(state.ticker);
-        if (built) raw = Object.assign(built, raw || {});
-      } catch (eBuild) {
-        console.warn("buildLevelsFromTicker:", eBuild);
+    // دائمًا: حساب اليوم / يوم بعد / الأسبوع من تقويم التداول (يتخطى ويكند+عطل)
+    // لا نثق بـ levels.json في مواعيد البطاقات — كانت السبب الجذري للخطأ
+    try {
+      var built = await buildLevelsFromTicker(state.ticker);
+      if (built) {
+        if (!raw) raw = built;
+        else {
+          // احتفظ بإغلاق/مسار levels إن وُجد، وافرض مواعيد البطاقات من built
+          raw.close = built.close != null ? built.close : raw.close;
+          raw.as_of = built.as_of || raw.as_of;
+          raw.updated_at = built.updated_at || raw.updated_at;
+          raw.daily = built.daily;
+          raw.tomorrow = built.tomorrow;
+          raw.weekly = built.weekly;
+          raw.opx = built.opx;
+          raw.next_opx = built.next_opx;
+          raw.meta = Object.assign({}, raw.meta || {}, built.meta || {});
+        }
       }
+    } catch (eBuild) {
+      console.warn("buildLevelsFromTicker:", eBuild);
     }
     if (!raw) throw new Error("لا مستويات لـ " + state.ticker);
     mapZoom = 1;
