@@ -4019,42 +4019,14 @@ table.oi.x3-table {
   width: auto !important;
 }
 
-/* —— تلوين أعمدة «اليوم بالسابق» هادئ وغير متناظر —— */
-table.oi.series-oi th.sc-a,
-table.oi.series-oi td.sc-a { background: rgba(59, 130, 246, 0.13) !important; color: inherit !important; }
-table.oi.series-oi th.sc-b,
-table.oi.series-oi td.sc-b { background: rgba(45, 212, 191, 0.11) !important; color: inherit !important; }
-table.oi.series-oi th.sc-c,
-table.oi.series-oi td.sc-c { background: rgba(167, 139, 250, 0.12) !important; color: inherit !important; }
-table.oi.series-oi th.sc-d,
-table.oi.series-oi td.sc-d { background: rgba(251, 191, 36, 0.11) !important; color: inherit !important; }
-table.oi.series-oi th.sc-e,
-table.oi.series-oi td.sc-e { background: rgba(251, 113, 133, 0.10) !important; color: inherit !important; }
-table.oi.series-oi th.sc-f,
-table.oi.series-oi td.sc-f { background: rgba(56, 189, 248, 0.11) !important; color: inherit !important; }
-table.oi.series-oi th.sc-g,
-table.oi.series-oi td.sc-g { background: rgba(163, 230, 53, 0.10) !important; color: inherit !important; }
-html[data-theme="light"] table.oi.series-oi th.sc-a,
-html[data-theme="light"] table.oi.series-oi td.sc-a { background: rgba(59, 130, 246, 0.10) !important; }
-html[data-theme="light"] table.oi.series-oi th.sc-b,
-html[data-theme="light"] table.oi.series-oi td.sc-b { background: rgba(20, 184, 166, 0.10) !important; }
-html[data-theme="light"] table.oi.series-oi th.sc-c,
-html[data-theme="light"] table.oi.series-oi td.sc-c { background: rgba(139, 92, 246, 0.10) !important; }
-html[data-theme="light"] table.oi.series-oi th.sc-d,
-html[data-theme="light"] table.oi.series-oi td.sc-d { background: rgba(245, 158, 11, 0.10) !important; }
-html[data-theme="light"] table.oi.series-oi th.sc-e,
-html[data-theme="light"] table.oi.series-oi td.sc-e { background: rgba(244, 63, 94, 0.09) !important; }
-html[data-theme="light"] table.oi.series-oi th.sc-f,
-html[data-theme="light"] table.oi.series-oi td.sc-f { background: rgba(14, 165, 233, 0.10) !important; }
-html[data-theme="light"] table.oi.series-oi th.sc-g,
-html[data-theme="light"] table.oi.series-oi td.sc-g { background: rgba(132, 204, 22, 0.10) !important; }
-table.oi.series-oi td.max-oi {
-  font-weight: 700 !important;
-  background: rgba(99, 102, 241, 0.28) !important;
-  color: #e0e7ff !important;
+#updatedAt {
+  white-space: nowrap !important;
+  font-size: 11px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: center;
+  display: block;
 }
-html[data-theme="light"] table.oi.series-oi td.max-oi {
-  background: rgba(99, 102, 241, 0.16) !important;
-  color: #312e81 !important;
-}
-
