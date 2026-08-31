@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-30T11:34:17.083080Z",
+  "updated_at": "2026-08-31T06:38:40.828798Z",
   "tickers": {
     "SPY": {
       "ticker": "SPY",
@@ -52,9 +52,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -179,9 +179,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -306,9 +306,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -433,9 +433,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -560,9 +560,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -687,9 +687,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -774,9 +774,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -893,9 +893,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -1012,9 +1012,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -1131,9 +1131,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -1250,9 +1250,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -1369,9 +1369,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -1488,9 +1488,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -1607,9 +1607,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -1726,9 +1726,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -1845,9 +1845,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -1964,9 +1964,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -2083,9 +2083,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
@@ -2202,9 +2202,9 @@
         "prev_as_of": "28-8"
       },
       "meta": {
-        "today": "2026-08-30",
+        "today": "2026-08-31",
         "daily_ref": "2026-08-31",
-        "tomorrow_cal": "2026-08-31",
+        "tomorrow_cal": "2026-09-01",
         "tomorrow_session": "2026-09-01",
         "weekly_friday": "2026-09-04",
         "today_is_weekly": false,
