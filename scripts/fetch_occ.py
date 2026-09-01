@@ -87,6 +87,7 @@ TICKER_URLS = {
     "MU": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=mu",
     "COHR": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=cohr",
     "SNDK": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=sndk",
+    "VOO": "https://marketdata.theocc.com/series-search?symbolType=O&symbol=voo",
 }
 
 HEADERS = {
@@ -159,6 +160,7 @@ def get_close_bars(ticker: str) -> list[tuple[date, float]]:
         "AMZN": "AMZN", "META": "META", "GOOGL": "GOOGL", "AVGO": "AVGO",
         "MSTR": "MSTR", "AMD": "AMD", "MU": "MU", "COHR": "COHR",
         "SNDK": "SNDK",
+        "VOO": "VOO",
         "NDX": "^NDX",
     }
     symbol = symbol_map.get(ticker, ticker)
