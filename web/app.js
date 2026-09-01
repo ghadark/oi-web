@@ -1873,11 +1873,10 @@ function formatExpExportChip(exp) {
 }
 
 
-/** أول اثنين من الشهر الميلادي (بتاريخ الجهاز) */
-function isFirstMondayOfMonth(d) {
+/** أول يوم من الشهر الميلادي (1 من كل شهر — بتاريخ الجهاز) */
+function isFirstDayOfMonth(d) {
   d = d || new Date();
-  if (d.getDay() !== 1) return false;
-  return d.getDate() <= 7;
+  return d.getDate() === 1;
 }
 
 function openExportDialog() {
@@ -1920,7 +1919,7 @@ function openExportDialog() {
   html += '<div class="exp-export-top">';
   html += '<div class="exp-export-heading">';
   html += '<div class="exp-export-title">' + (state.ticker || "") + "</div>";
-  if (isFirstMondayOfMonth(new Date())) {
+  if (isFirstDayOfMonth(new Date())) {
     html += '<div class="exp-month-tip">بداية شهر جديد — مناسبة لتصدير ما يهمّك</div>';
   }
   html += "</div>";
