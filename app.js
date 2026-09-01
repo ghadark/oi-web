@@ -1873,11 +1873,10 @@ function formatExpExportChip(exp) {
 }
 
 
-/** أول اثنين من الشهر الميلادي (بتاريخ الجهاز) */
-function isFirstMondayOfMonth(d) {
+/** أول يوم من الشهر الميلادي (1 من كل شهر — بتاريخ الجهاز) */
+function isFirstDayOfMonth(d) {
   d = d || new Date();
-  if (d.getDay() !== 1) return false;
-  return d.getDate() <= 7;
+  return d.getDate() === 1;
 }
 
 function openExportDialog() {
@@ -1920,7 +1919,7 @@ function openExportDialog() {
   html += '<div class="exp-export-top">';
   html += '<div class="exp-export-heading">';
   html += '<div class="exp-export-title">' + (state.ticker || "") + "</div>";
-  if (isFirstMondayOfMonth(new Date())) {
+  if (isFirstDayOfMonth(new Date())) {
     html += '<div class="exp-month-tip">بداية شهر جديد — مناسبة لتصدير ما يهمّك</div>';
   }
   html += "</div>";
@@ -2970,139 +2969,102 @@ async function exportArchiveExcel() {
 // ========== Levels Map (3 phases) ==========
 let levelsCache = null;
 
-/** عطل السوق الأمريكي (تواريخ ثابتة 2025–2027 + توسعة بسيطة) */
-var US_MARKET_HOLIDAYS = {
-  "2025-01-01": 1, "2025-01-20": 1, "2025-02-17": 1, "2025-04-18": 1,
-  "2025-05-26": 1, "2025-06-19": 1, "2025-07-04": 1, "2025-09-01": 1,
-  "2025-11-27": 1, "2025-12-25": 1,
-  "2026-01-01": 1, "2026-01-19": 1, "2026-02-16": 1, "2026-04-03": 1,
-  "2026-05-25": 1, "2026-06-19": 1, "2026-07-03": 1, "2026-09-07": 1,
-  "2026-11-26": 1, "2026-12-25": 1,
-  "2027-01-01": 1, "2027-01-18": 1, "2027-02-15": 1, "2027-03-26": 1,
-  "2027-05-31": 1, "2027-06-18": 1, "2027-07-05": 1, "2027-09-06": 1,
-  "2027-11-25": 1, "2027-12-24": 1
-};
-
-function toIsoDate(d) {
-  var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
-  return y + "-" + String(m).padStart(2, "0") + "-" + String(day).padStart(2, "0");
-}
-function isUsHoliday(d) {
-  return !!US_MARKET_HOLIDAYS[toIsoDate(d)];
-}
-/** يوم تداول رسمي = اثنين–جمعة وليس عطلة */
-function isTradingDay(d) {
-  var wd = d.getDay();
-  if (wd === 0 || wd === 6) return false;
-  return !isUsHoliday(d);
-}
-/** اليوم/جلسة «اليوم» في الماب: ويكند أو عطلة → أول يوم تداول تالٍ */
-function sessionTradingDay(now) {
-  var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
-  return d;
-}
-/** يوم التداول التالي بعد from (يتخطى ويكند + عطل) */
-function nextTradingDayAfter(from) {
-  var d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-  d.setDate(d.getDate() + 1);
-  while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
-  return d;
-}
-/** جمعة هذا الأسبوع من from؛ إن كانت عطلة → الجمعة التالية + علامة week_is_next */
-function fridayForWeek(session) {
-  var d = new Date(session.getFullYear(), session.getMonth(), session.getDate());
-  var add = (5 - d.getDay() + 7) % 7;
-  if (d.getDay() !== 5) d.setDate(d.getDate() + add);
-  var isNext = false;
-  // إن الجمعة عطلة أو ليست يوم تداول → الجمعة التالية
-  while (!isTradingDay(d)) {
-    d.setDate(d.getDate() + 7);
-    isNext = true;
-  }
-  return { date: d, isNextWeek: isNext };
-}
-function thirdFridayOfMonth(year, monthIndex) {
-  var d = new Date(year, monthIndex, 1);
-  var count = 0;
-  while (d.getMonth() === monthIndex) {
-    if (d.getDay() === 5) {
-      count++;
-      if (count === 3) return d;
-    }
-    d.setDate(d.getDate() + 1);
-  }
-  return new Date(year, monthIndex, 15);
-}
-
-/**
- * بناء مواعيد بطاقات الماب من تقويم التداول + قائمة الانتهاء الفعلية.
- * المصدر الوحيد الموثوق لـ daily/tomorrow (لا نعتمد levels.json عليها).
- */
 async function buildLevelsFromTicker(ticker) {
   var data = await loadTicker(ticker);
   if (!data) return null;
   var close = data.close != null ? data.close : null;
   var pullDates = data.pull_dates || [];
   var asOf = pullDates.length ? pullDates[pullDates.length - 1] : null;
-  var exps = (data.expirations || []).slice().sort();
+  var exps = (data.expirations || Object.keys(data.by_expiration || {})).slice().sort();
 
+  var HOLIDAYS = {
+    "2025-01-01":1,"2025-01-20":1,"2025-02-17":1,"2025-04-18":1,"2025-05-26":1,
+    "2025-06-19":1,"2025-07-04":1,"2025-09-01":1,"2025-11-27":1,"2025-12-25":1,
+    "2026-01-01":1,"2026-01-19":1,"2026-02-16":1,"2026-04-03":1,"2026-05-25":1,
+    "2026-06-19":1,"2026-07-03":1,"2026-09-07":1,"2026-11-26":1,"2026-12-25":1,
+    "2027-01-01":1,"2027-01-18":1,"2027-02-15":1,"2027-03-26":1,"2027-05-31":1,
+    "2027-06-18":1,"2027-07-05":1,"2027-09-06":1,"2027-11-25":1,"2027-12-24":1
+  };
+  function toIso(d) {
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  function isTradingDay(d) {
+    var w = d.getDay();
+    if (w === 0 || w === 6) return false;
+    return !HOLIDAYS[toIso(d)];
+  }
+  function sessionDay(now) {
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  function nextTrading(from) {
+    var d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    d.setDate(d.getDate() + 1);
+    while (!isTradingDay(d)) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  function fridayForWeek(session) {
+    var d = new Date(session.getFullYear(), session.getMonth(), session.getDate());
+    var add = (5 - d.getDay() + 7) % 7;
+    if (d.getDay() !== 5) d.setDate(d.getDate() + add);
+    var isNext = false;
+    while (!isTradingDay(d)) { d.setDate(d.getDate() + 7); isNext = true; }
+    return { date: d, isNextWeek: isNext };
+  }
+  function thirdFriday(year, monthIndex) {
+    var d = new Date(year, monthIndex, 1), count = 0;
+    while (d.getMonth() === monthIndex) {
+      if (d.getDay() === 5) { count++; if (count === 3) return d; }
+      d.setDate(d.getDate() + 1);
+    }
+    return new Date(year, monthIndex, 15);
+  }
   function pickExp(isoTarget) {
     if (!isoTarget || !exps.length) return null;
-    // تطابق تام أولًا
-    for (var i = 0; i < exps.length; i++) {
-      if (exps[i] === isoTarget) return exps[i];
-    }
-    // أقرب انتهاء >= الهدف
-    for (var j = 0; j < exps.length; j++) {
-      if (exps[j] >= isoTarget) return exps[j];
-    }
+    for (var i = 0; i < exps.length; i++) if (exps[i] === isoTarget) return exps[i];
+    for (var j = 0; j < exps.length; j++) if (exps[j] >= isoTarget) return exps[j];
     return exps[exps.length - 1];
   }
 
   var now = new Date();
-  var session = sessionTradingDay(now);          // الأحد → الإثنين 31-8
-  var tom = nextTradingDayAfter(session);        // → الثلاثاء 1-9 (يتخطى العطل)
-  var friInfo = fridayForWeek(session);
-  var week = friInfo.date;
-
-  var opx = thirdFridayOfMonth(session.getFullYear(), session.getMonth());
-  // إن ثالث جمعة مضت أو قبل الجلسة → شهر لاحق
-  if (toIsoDate(opx) < toIsoDate(session)) {
+  var session = sessionDay(now);
+  var tom = nextTrading(session);
+  var fri = fridayForWeek(session);
+  var week = fri.date;
+  var opx = thirdFriday(session.getFullYear(), session.getMonth());
+  if (toIso(opx) < toIso(session)) {
     var nm = session.getMonth() + 1, ny = session.getFullYear();
     if (nm > 11) { nm = 0; ny++; }
-    opx = thirdFridayOfMonth(ny, nm);
+    opx = thirdFriday(ny, nm);
   }
-  var nextOpx;
-  if (opx.getMonth() === 11) nextOpx = thirdFridayOfMonth(opx.getFullYear() + 1, 0);
-  else nextOpx = thirdFridayOfMonth(opx.getFullYear(), opx.getMonth() + 1);
+  var nextOpx = opx.getMonth() === 11
+    ? thirdFriday(opx.getFullYear() + 1, 0)
+    : thirdFriday(opx.getFullYear(), opx.getMonth() + 1);
 
-  var expDaily = pickExp(toIsoDate(session));
-  var expTom = pickExp(toIsoDate(tom));
-  var expWeek = pickExp(toIsoDate(week));
-  var expOpx = pickExp(toIsoDate(opx));
-  var expNextOpx = pickExp(toIsoDate(nextOpx));
-
-  var todayIsWeekly = !!(expDaily && expWeek && expDaily === expWeek);
-  var tomorrowMergedWeekly = !!(expTom && expWeek && expTom === expWeek);
+  var expDaily = pickExp(toIso(session));
+  var expTom = pickExp(toIso(tom));
+  var expWeek = pickExp(toIso(week));
+  var expOpx = pickExp(toIso(opx));
+  var expNext = pickExp(toIso(nextOpx));
 
   return {
     ticker: ticker,
     close: close,
     as_of: asOf,
     updated_at: data.updated_at || null,
-    daily: { exp: expDaily, target: toIsoDate(session) },
-    tomorrow: { exp: expTom, target: toIsoDate(tom) },
-    weekly: { exp: expWeek, target: toIsoDate(week) },
-    opx: { exp: expOpx, target: toIsoDate(opx) },
-    next_opx: { exp: expNextOpx, target: toIsoDate(nextOpx) },
+    daily: { exp: expDaily, target: toIso(session) },
+    tomorrow: { exp: expTom, target: toIso(tom) },
+    weekly: { exp: expWeek, target: toIso(week) },
+    opx: { exp: expOpx, target: toIso(opx) },
+    next_opx: { exp: expNext, target: toIso(nextOpx) },
     meta: {
-      session_iso: toIsoDate(session),
-      tomorrow_iso: toIsoDate(tom),
-      week_iso: toIsoDate(week),
-      weekly_is_next_week: !!friInfo.isNextWeek,
-      today_is_weekly: todayIsWeekly,
-      tomorrow_merged_weekly: tomorrowMergedWeekly,
+      session_iso: toIso(session),
+      tomorrow_iso: toIso(tom),
+      week_iso: toIso(week),
+      weekly_is_next_week: !!fri.isNextWeek,
+      today_is_weekly: !!(expDaily && expWeek && expDaily === expWeek),
+      tomorrow_merged_weekly: !!(expTom && expWeek && expTom === expWeek),
     },
   };
 }
@@ -3152,17 +3114,15 @@ async function openMap() {
     } catch (eLoad) {
       console.warn("levels.json:", eLoad);
     }
-    // دائمًا: حساب اليوم / يوم بعد / الأسبوع من تقويم التداول (يتخطى ويكند+عطل)
-    // لا نثق بـ levels.json في مواعيد البطاقات — كانت السبب الجذري للخطأ
+    // احتياطي جذري: ابنِ المستويات من ملف الرمز نفسه (مثل منطق الخاص)
+    // دائمًا: فرض مواعيد البطاقات من تقويم التداول (لا نثق بـ levels.json فيها)
     try {
       var built = await buildLevelsFromTicker(state.ticker);
       if (built) {
         if (!raw) raw = built;
         else {
-          // احتفظ بإغلاق/مسار levels إن وُجد، وافرض مواعيد البطاقات من built
           raw.close = built.close != null ? built.close : raw.close;
           raw.as_of = built.as_of || raw.as_of;
-          raw.updated_at = built.updated_at || raw.updated_at;
           raw.daily = built.daily;
           raw.tomorrow = built.tomorrow;
           raw.weekly = built.weekly;
@@ -3858,23 +3818,66 @@ function mapRangeN(range) {
   return null;
 }
 
+/** فهرس آخر سحب حقيقي لانتهاء معيّن (مصفوفة pull_dates الخاصة به) */
+function expPullIndices(data, exp) {
+  var block = data && data.by_expiration && data.by_expiration[exp];
+  if (!block) return { last: -1, prev: -1, pulls: [] };
+  var pulls = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates.slice()
+    : (data.pull_dates || []).slice();
+  var last = pulls.length - 1;
+  while (last >= 0) {
+    var sum = 0;
+    for (var i = 0; i < (block.rows || []).length; i++) {
+      var r = block.rows[i];
+      sum += Number((r.calls && r.calls[last]) || 0) + Number((r.puts && r.puts[last]) || 0);
+    }
+    if (sum > 0) break;
+    last--;
+  }
+  return { last: last, prev: last > 0 ? last - 1 : -1, pulls: pulls };
+}
+
+/**
+ * أعلى Put = قاع، أعلى Call = قمة — بنفس منطق الجدول.
+ * يستخدم فهرس pull_dates الخاص بالانتهاء (لا العام).
+ */
 function maxOiNearClose(data, exp, close, nEach, dateIdx) {
   var block = data && data.by_expiration && data.by_expiration[exp];
-  if (!block || !block.rows || !block.rows.length || dateIdx < 0) {
+  if (!block || !block.rows || !block.rows.length) {
     return { support: null, resistance: null };
   }
+  var pulls = (block.pull_dates && block.pull_dates.length)
+    ? block.pull_dates
+    : (data.pull_dates || []);
+  var idx = dateIdx;
+  if (idx == null || idx < 0) {
+    idx = pulls.length - 1;
+    while (idx >= 0) {
+      var sum = 0;
+      for (var ri = 0; ri < block.rows.length; ri++) {
+        var rr = block.rows[ri];
+        sum += Number((rr.calls && rr.calls[idx]) || 0) + Number((rr.puts && rr.puts[idx]) || 0);
+      }
+      if (sum > 0) break;
+      idx--;
+    }
+  }
+  if (idx < 0) return { support: null, resistance: null };
+
   var rows = block.rows.map(function (r) {
+    var callArr = r.calls || [];
+    var putArr = r.puts || [];
     return {
       strike: Number(r.strike),
-      call: Number((r.calls && r.calls[dateIdx]) || 0),
-      put: Number((r.puts && r.puts[dateIdx]) || 0),
+      call: Number(idx < callArr.length ? callArr[idx] : 0) || 0,
+      put: Number(idx < putArr.length ? putArr[idx] : 0) || 0,
     };
   });
-  // نفس منطق filterStrikes في الجدول: أقرب n*2 سترايك من الإغلاق
   if (close != null && !isNaN(Number(close)) && nEach != null) {
-    var c = Number(close);
+    var cnum = Number(close);
     rows = rows
-      .map(function (r) { return { r: r, dist: Math.abs(r.strike - c) }; })
+      .map(function (r) { return { r: r, dist: Math.abs(r.strike - cnum) }; })
       .sort(function (a, b) { return a.dist - b.dist; })
       .slice(0, nEach * 2)
       .map(function (x) { return x.r; })
@@ -3887,7 +3890,8 @@ function maxOiNearClose(data, exp, close, nEach, dateIdx) {
     if (r.put > maxPut) { maxPut = r.put; sup = r.strike; }
     if (r.call > maxCall) { maxCall = r.call; res = r.strike; }
   });
-  return { support: sup, resistance: res };
+  if (maxPut <= 0 && maxCall <= 0) return { support: null, resistance: null };
+  return { support: sup, resistance: res, _idx: idx, _pull: pulls[idx] || null };
 }
 
 async function levelsForMapRange(baseL, range) {
@@ -3896,9 +3900,6 @@ async function levelsForMapRange(baseL, range) {
   try { data = await loadTicker(state.ticker); } catch (e) { return baseL; }
   var nEach = mapRangeN(range);
   var close = baseL.close != null ? baseL.close : data.close;
-  var pullDates = data.pull_dates || [];
-  var lastIdx = pullDates.length - 1;
-  var prevIdx = pullDates.length > 1 ? pullDates.length - 2 : -1;
   var L2 = JSON.parse(JSON.stringify(baseL));
   L2.mapRange = range || "ALL";
   L2.close = close;
@@ -3906,18 +3907,20 @@ async function levelsForMapRange(baseL, range) {
     var band = L2[key] || {};
     var exp = band.exp;
     if (!exp) return;
+    var ix = expPullIndices(data, exp);
     var useLastOnly =
       String(state.ticker).toUpperCase() === "SPX" && isThirdFridayExp(exp);
-    var idx = lastIdx;
-    var pidx = useLastOnly ? -1 : prevIdx;
-    var cur = maxOiNearClose(data, exp, close, nEach, idx);
-    var old = pidx >= 0 ? maxOiNearClose(data, exp, close, nEach, pidx) : {};
+    var cur = maxOiNearClose(data, exp, close, nEach, ix.last);
+    var old = (!useLastOnly && ix.prev >= 0)
+      ? maxOiNearClose(data, exp, close, nEach, ix.prev)
+      : {};
     L2[key] = Object.assign({}, band, {
       support: cur.support,
       resistance: cur.resistance,
       prev_support: old.support != null ? old.support : null,
       prev_resistance: old.resistance != null ? old.resistance : null,
       range: range || "ALL",
+      pull_date: cur._pull || (ix.pulls[ix.last] || null),
     });
   });
   return L2;
