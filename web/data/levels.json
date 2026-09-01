@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-01T11:59:19.962782Z",
+  "updated_at": "2026-09-01T19:19:49.242462Z",
   "tickers": {
     "SPY": {
       "ticker": "SPY",
@@ -739,11 +739,11 @@
         },
         {
           "date": "31-8",
-          "close": 29456.97265625
+          "close": 29456.970703125
         },
         {
           "date": "1-9",
-          "close": 29456.97265625
+          "close": 29456.970703125
         }
       ]
     },
@@ -2311,6 +2311,81 @@
         {
           "date": "1-9",
           "close": 1566.699951171875
+        }
+      ]
+    },
+    "VOO": {
+      "ticker": "VOO",
+      "close": 704.8900146484375,
+      "as_of": "1-9",
+      "updated_at": "2026-09-01T19:19:24Z",
+      "daily": {
+        "exp": "2026-09-04",
+        "pull_date": "1-9",
+        "support": 655.0,
+        "resistance": 692.5,
+        "prev_support": 655.0,
+        "prev_resistance": 692.5,
+        "prev_as_of": "31-8"
+      },
+      "tomorrow": {
+        "exp": "2026-09-04",
+        "pull_date": "1-9",
+        "support": 655.0,
+        "resistance": 692.5,
+        "prev_support": 655.0,
+        "prev_resistance": 692.5,
+        "prev_as_of": "31-8"
+      },
+      "weekly": {
+        "exp": "2026-09-04",
+        "pull_date": "1-9",
+        "support": 655.0,
+        "resistance": 692.5,
+        "prev_support": 655.0,
+        "prev_resistance": 692.5,
+        "prev_as_of": "31-8"
+      },
+      "opx": {
+        "exp": "2026-09-18",
+        "pull_date": "1-9",
+        "support": 670.0,
+        "resistance": 715.0,
+        "prev_support": 670.0,
+        "prev_resistance": 715.0,
+        "prev_as_of": "31-8"
+      },
+      "next_opx": {
+        "exp": "2026-10-16",
+        "pull_date": "1-9",
+        "support": 680.0,
+        "resistance": 635.0,
+        "prev_support": 680.0,
+        "prev_resistance": 635.0,
+        "prev_as_of": "31-8"
+      },
+      "meta": {
+        "today": "2026-09-01",
+        "daily_ref": "2026-09-01",
+        "tomorrow_cal": "2026-09-02",
+        "tomorrow_session": "2026-09-02",
+        "weekly_friday": "2026-09-04",
+        "today_is_weekly": false,
+        "tomorrow_merged_weekly": false,
+        "weekly_is_next_week": false
+      },
+      "path": [
+        {
+          "date": "28-8",
+          "close": 707.24
+        },
+        {
+          "date": "31-8",
+          "close": 704.8900146484375
+        },
+        {
+          "date": "1-9",
+          "close": 704.8900146484375
         }
       ]
     }
