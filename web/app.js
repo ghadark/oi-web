@@ -1934,15 +1934,15 @@ function openExportDialog() {
   html += '<button type="button" class="btn-sm exp-select-all" id="expSelectAll">تحديد الكل</button>';
   html += "</div>";
 
-  // خيار خاص: جدول اليوم بالسابق (بدون عنوان قسم)
-  html += '<div class="exp-month-dates" style="margin-bottom:10px;justify-content:flex-start">';
+  html += '<div class="exp-month-list">';
+  // اليوم بالسابق داخل شريط بنفس تنسيق الأشهر
+  html += '<div class="exp-month">';
+  html += '<div class="exp-month-dates">';
   html +=
     '<button type="button" class="exp-date-chip exp-series-chip" data-exp="__SERIES_PREV__">' +
     '<span class="d">اليوم بالسابق</span>' +
     '<span class="s">مقارنة يومية</span></button>';
-  html += "</div>";
-
-  html += '<div class="exp-month-list">';
+  html += "</div></div>";
   order.forEach(function (key) {
     const g = groups[key];
     html += '<div class="exp-month">';
