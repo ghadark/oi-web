@@ -1,19 +1,13 @@
 name: Update OCC Data
 
-# مخفّف: 6 فجر (4:45→7:15) + تشييك 9:00 | سعودي = UTC+3
 on:
   schedule:
-    - cron: "45 1 * * *"   # 4:45
-    - cron: "15 2 * * *"   # 5:15
-    - cron: "45 2 * * *"   # 5:45
-    - cron: "15 3 * * *"   # 6:15
-    - cron: "45 3 * * *"   # 6:45
-    - cron: "15 4 * * *"   # 7:15
-    - cron: "0 6 * * *"    # 9:00
+    # احتياطي واحد فقط: 9:00 صباحًا بتوقيت السعودية = 06:00 UTC
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 concurrency:
-  group: update-occ-shared
+  group: update-occ-data
   cancel-in-progress: false
 
 permissions:
