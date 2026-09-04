@@ -584,6 +584,16 @@ function filterStrikes(rows, close, strikesLimit) {
     .sort(function (a, b) { return a.strike - b.strike; });
 }
 
+
+function spxHi5kClass(ticker, colIndex, lastIndex, value) {
+  if (String(ticker || "").toUpperCase() !== "SPX") return "";
+  if (colIndex !== lastIndex) return "";
+  var v = Number(value);
+  if (!isFinite(v) || v < 5000) return "";
+  return " hi5k";
+}
+
+
 function positiveDelta(last, prev) {
   const d = (last || 0) - (prev || 0);
   return d > 0 ? d : null;
@@ -1014,7 +1024,8 @@ function renderOneMiniTable(data, expiration, label, opts) {
     for (var ci = pullDates.length - 1; ci >= 0; ci--) {
       var cv = r.calls[ci] || 0;
       var maxC = callMax[ci] > 0 && cv === callMax[ci] ? " max-oi" : "";
-      html += '<td class="' + callCls + maxC + '">' + cv.toLocaleString() + "</td>";
+      var hi5c = spxHi5kClass(state.ticker, ci, lastI, cv);
+      html += '<td class="' + callCls + maxC + hi5c + '">' + cv.toLocaleString() + "</td>";
     }
     if (isCloseRow && close != null) {
       html +=
@@ -1027,7 +1038,8 @@ function renderOneMiniTable(data, expiration, label, opts) {
     for (var pi = 0; pi < pullDates.length; pi++) {
       var pv = r.puts[pi] || 0;
       var maxP = putMax[pi] > 0 && pv === putMax[pi] ? " max-oi" : "";
-      html += '<td class="' + putCls + maxP + '">' + pv.toLocaleString() + "</td>";
+      var hi5p = spxHi5kClass(state.ticker, pi, lastI, pv);
+      html += '<td class="' + putCls + maxP + hi5p + '">' + pv.toLocaleString() + "</td>";
     }
     if (canDelta) {
       var dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
@@ -1383,10 +1395,12 @@ function renderSeriesTable() {
     for (let i = pullDates.length - 1; i >= 0; i--) {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
+      const hi5 = spxHi5kClass(state.ticker, i, lastI, cv);
       html +=
         '<td class="' +
         seriesColClass(bodyPos++, pullDates.length * 2) +
         maxCls +
+        hi5 +
         '">' +
         cv.toLocaleString() +
         "</td>";
@@ -1395,10 +1409,12 @@ function renderSeriesTable() {
     for (let i = 0; i < pullDates.length; i++) {
       const pv = r.puts[i] || 0;
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
+      const hi5 = spxHi5kClass(state.ticker, i, lastI, pv);
       html +=
         '<td class="' +
         seriesColClass(bodyPos++, pullDates.length * 2) +
         maxCls +
+        hi5 +
         '">' +
         pv.toLocaleString() +
         "</td>";
@@ -1540,10 +1556,12 @@ function renderTable() {
     for (let i = pullDates.length - 1; i >= 0; i--) {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
+      const hi5 = spxHi5kClass(state.ticker, i, lastI, cv);
       html +=
         '<td class="' +
         callCls +
         maxCls +
+        hi5 +
         '">' +
         cv.toLocaleString() +
         "</td>";
@@ -1552,10 +1570,12 @@ function renderTable() {
     for (let i = 0; i < pullDates.length; i++) {
       const pv = r.puts[i] || 0;
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
+      const hi5 = spxHi5kClass(state.ticker, i, lastI, pv);
       html +=
         '<td class="' +
         putCls +
         maxCls +
+        hi5 +
         '">' +
         pv.toLocaleString() +
         "</td>";
@@ -1983,9 +2003,9 @@ function openExportDialog() {
       "</button>";
   });
   html += '<span class="lab">Strikes</span>';
-  ["50", "100", "ALL"].forEach(function (s) {
+  ["30", "50", "100", "ALL"].forEach(function (s) {
     const curS =
-      ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
+      ["30", "50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
         ? String(state.strikes)
         : "50";
     const on = curS === s ? " on" : "";
@@ -2013,7 +2033,7 @@ function openExportDialog() {
   let emode = "single";
   let edays = String(state.days || "2");
   let estrikes =
-    ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
+    ["30", "50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
       ? String(state.strikes)
       : "50";
 
