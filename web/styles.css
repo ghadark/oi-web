@@ -4434,3 +4434,42 @@ html[data-theme="light"] table.oi td.hi5k.max-oi::before,
 html[data-theme="light"] table.oi td.hi5k.max-oi::after {
   border-color: #6366f1;
 }
+
+
+/* زر تمييز SPX ≥5K — يظهر فقط على SPX */
+.spx5k-btn {
+  min-width: 42px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--gray);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.spx5k-btn:hover {
+  border-color: #38bdf8;
+  color: #7dd3fc;
+}
+.spx5k-btn.active {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: #38bdf8;
+  color: #7dd3fc;
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.25);
+}
+html[data-theme="light"] .spx5k-btn {
+  color: #64748b;
+}
+html[data-theme="light"] .spx5k-btn:hover,
+html[data-theme="light"] .spx5k-btn.active {
+  color: #0284c7;
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.1);
+}
+.controls .spx5k-btn {
+  flex-shrink: 0;
+}

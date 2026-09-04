@@ -29,7 +29,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
-  expiration: null, showDelta: false, seriesMode: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
+  expiration: null, showDelta: false, seriesMode: false, spx5k: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
   archDays: "2", archStrikes: "30", archShowDelta: false, archExportMode: "multi", archSelected: [],
 };
 
@@ -586,11 +586,21 @@ function filterStrikes(rows, close, strikesLimit) {
 
 
 function spxHi5kClass(ticker, colIndex, lastIndex, value) {
+  if (!state.spx5k) return "";
   if (String(ticker || "").toUpperCase() !== "SPX") return "";
   if (colIndex !== lastIndex) return "";
   var v = Number(value);
   if (!isFinite(v) || v < 5000) return "";
   return " hi5k";
+}
+
+function syncSpx5kBtn() {
+  var btn = $("#spx5kBtn");
+  if (!btn) return;
+  var isSpx = String(state.ticker || "").toUpperCase() === "SPX";
+  btn.style.display = isSpx ? "" : "none";
+  btn.classList.toggle("active", !!state.spx5k);
+  btn.setAttribute("aria-pressed", state.spx5k ? "true" : "false");
 }
 
 
@@ -635,6 +645,7 @@ function renderTickers() {
       state.sessionClose = null;
       if (typeof renderStocksDropdown === "function") renderStocksDropdown();
       renderTickers();
+      if (typeof syncSpx5kBtn === "function") syncSpx5kBtn();
       refresh();
       refreshLivePrice();
     };
@@ -642,6 +653,7 @@ function renderTickers() {
   });
 
   renderStocksDropdown();
+  if (typeof syncSpx5kBtn === "function") syncSpx5kBtn();
 }
 
 function renderStocksDropdown() {
@@ -712,6 +724,7 @@ function renderStocksDropdown() {
       var lab = $("#stocksDdLabel");
       if (lab) lab.textContent = v;
       renderTickers();
+      if (typeof syncSpx5kBtn === "function") syncSpx5kBtn();
       refresh();
       if (typeof refreshLivePrice === "function") refreshLivePrice();
     };
@@ -2411,11 +2424,23 @@ function toggleTheme() {
 function init() {
   state.dark = true;
   try { localStorage.setItem("oi-theme", "dark"); } catch (e) {}
+  try {
+    if (localStorage.getItem("oi-spx5k") === "1") state.spx5k = true;
+  } catch (e) {}
   applyTheme();
   renderTickers();
   renderChips("#daysRow", ["2", "3", "5", "10", "ALL"], "days");
   renderChips("#strikesRow", ["30", "50", "ALL"], "strikes");
-  
+  syncSpx5kBtn();
+  if ($("#spx5kBtn")) {
+    $("#spx5kBtn").onclick = function () {
+      state.spx5k = !state.spx5k;
+      try { localStorage.setItem("oi-spx5k", state.spx5k ? "1" : "0"); } catch (e) {}
+      syncSpx5kBtn();
+      renderTable();
+    };
+  }
+
   if ($("#seriesBtn")) {
     $("#seriesBtn").onclick = function () {
       state.seriesMode = !state.seriesMode;
