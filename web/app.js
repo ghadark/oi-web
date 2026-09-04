@@ -1149,8 +1149,10 @@ function findExpBlockForPullDay(data, pullLabel, yearHint) {
  * مثال: عمود 25-8 ← انتهاء 2026-08-25 | عمود 26-8 ← انتهاء 2026-08-26
  * لا يُدرج يناير/يونيو البعيدة لأنها ليست أيام سحب في السلسلة.
  */
-function getSeriesPrevDayView(data) {
+function getSeriesPrevDayView(data, daysLimit, strikesLimit) {
   if (!data || !data.by_expiration) return null;
+  if (daysLimit == null) daysLimit = state.days;
+  if (strikesLimit == null) strikesLimit = state.strikes;
 
   var pulls = (data.pull_dates || []).slice();
   if (!pulls.length) {
@@ -1202,7 +1204,7 @@ function getSeriesPrevDayView(data) {
   if (!columns.length) return null;
 
   // Days: آخر N أيام سحب (آخرها = اليوم الحالي في البيانات، مثل 25-8)
-  columns = lastN(columns, state.days);
+  columns = lastN(columns, daysLimit);
   var pullDates = columns.map(function (c) {
     return c.label;
   });
@@ -1240,11 +1242,12 @@ function getSeriesPrevDayView(data) {
       : typeof effectiveClose === "function"
         ? effectiveClose(data)
         : null;
-  rows = filterStrikes(rows, closePx, state.strikes);
+  rows = filterStrikes(rows, closePx, strikesLimit);
   return {
     pullDates: pullDates,
     rows: rows,
     close: closePx,
+    expiration: "اليوم بالسابق",
     seriesExps: columns.map(function (c) {
       return c.exp;
     }),
@@ -1668,8 +1671,13 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
 
   let headerDate = view.expiration || "";
   try {
-    const p = String(view.expiration).split("-").map(Number);
-    if (p.length >= 3) headerDate = p[2] + "-" + (arabicMonths[p[1]] || "");
+    const rawExp = String(view.expiration || "");
+    if (rawExp === "اليوم بالسابق" || rawExp.indexOf("-") < 0) {
+      headerDate = rawExp;
+    } else {
+      const p = rawExp.split("-").map(Number);
+      if (p.length >= 3 && !isNaN(p[1])) headerDate = p[2] + "-" + (arabicMonths[p[1]] || "");
+    }
   } catch (e) {}
 
   const rTitle = startRow;
@@ -1926,6 +1934,16 @@ function openExportDialog() {
   html += '<button type="button" class="btn-sm exp-select-all" id="expSelectAll">تحديد الكل</button>';
   html += "</div>";
 
+  // خيار خاص: جدول اليوم بالسابق
+  html += '<div class="exp-month" style="margin-bottom:10px">';
+  html += '<div class="exp-month-title">جداول خاصة</div>';
+  html += '<div class="exp-month-dates">';
+  html +=
+    '<button type="button" class="exp-date-chip exp-series-chip" data-exp="__SERIES_PREV__">' +
+    '<span class="d">اليوم بالسابق</span>' +
+    '<span class="s">مقارنة يومية</span></button>';
+  html += "</div></div>";
+
   html += '<div class="exp-month-list">';
   order.forEach(function (key) {
     const g = groups[key];
@@ -2085,11 +2103,22 @@ function runExportFromDialog(emode, edays, estrikes) {
     const GAP = 4;
     const showDelta = !!state.showDelta;
 
+    function viewForChoice(exp) {
+      if (exp === "__SERIES_PREV__") {
+        return getSeriesPrevDayView(data, edays, estrikes);
+      }
+      return getViewRowsFor(data, exp, edays, estrikes);
+    }
+    function sheetNameFor(exp) {
+      if (exp === "__SERIES_PREV__") return "اليوم بالسابق";
+      return String(exp).slice(0, 31);
+    }
+
     if (emode === "multi") {
       chosen.forEach(function (exp, i) {
-        const view = getViewRowsFor(data, exp, edays, estrikes);
+        const view = viewForChoice(exp);
         if (!view) return;
-        const ws = wb.addWorksheet(String(exp).slice(0, 31), {
+        const ws = wb.addWorksheet(sheetNameFor(exp), {
           views: [{ rightToLeft: true, state: "frozen", ySplit: 5 }],
         });
         writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta);
@@ -2100,7 +2129,7 @@ function runExportFromDialog(emode, edays, estrikes) {
       });
       let col = 2;
       chosen.forEach(function (exp) {
-        const view = getViewRowsFor(data, exp, edays, estrikes);
+        const view = viewForChoice(exp);
         if (!view) return;
         const last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta);
         col = last + 1 + GAP;

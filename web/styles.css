@@ -3799,6 +3799,17 @@ html[data-theme="light"] table.oi.series-oi td.max-oi {
 
 /* OPX موف هادئ بدون إطار */
 .exp-date-chip.opx-chip { box-shadow: none !important; border-color: var(--border) !important; }
+
+/* شريحة اليوم بالسابق في نافذة التصدير */
+.exp-date-chip.exp-series-chip {
+  border-color: #c4b5a0 !important;
+  background: rgba(196, 181, 160, 0.12);
+}
+.exp-date-chip.exp-series-chip.on {
+  background: rgba(196, 181, 160, 0.28) !important;
+  border-color: #a89070 !important;
+}
+
 .exp-date-chip .s.opx-sub {
   color: #c4b5fd !important;
   font-weight: 600;
