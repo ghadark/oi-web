@@ -495,18 +495,35 @@ html[data-theme="dark"] .brand-sign-wrap {
   gap: 10px !important;
 }
 .logo {
-  width: 28px !important;
-  height: 28px !important;
-  border-radius: 50% !important;
-  background: linear-gradient(90deg, #1e3a5f 0 50%, #2dd4bf 50% 100%) !important;
-  color: transparent !important;
-  font-size: 0 !important;
-  display: block !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 5px !important;
   flex: 0 0 auto !important;
-  line-height: 1 !important;
+  display: block !important;
+  font-size: 0 !important;
+  color: transparent !important;
+  line-height: 0 !important;
   border: none !important;
   box-shadow: none !important;
   overflow: hidden !important;
+  /* شبكة 3×3 زرقاء — إشارة مباشرة لجدول Strikes */
+  background-color: transparent !important;
+  background-image:
+    linear-gradient(#3b82f6, #3b82f6),
+    linear-gradient(#2563eb, #2563eb),
+    linear-gradient(#1d4ed8, #1d4ed8),
+    linear-gradient(#2563eb, #2563eb),
+    linear-gradient(#3b82f6, #3b82f6),
+    linear-gradient(#2563eb, #2563eb),
+    linear-gradient(#1d4ed8, #1d4ed8),
+    linear-gradient(#2563eb, #2563eb),
+    linear-gradient(#3b82f6, #3b82f6);
+  background-size: 8px 8px !important;
+  background-position:
+    0 0, 11px 0, 22px 0,
+    0 11px, 11px 11px, 22px 11px,
+    0 22px, 11px 22px, 22px 22px !important;
+  background-repeat: no-repeat !important;
 }
 .brand-divider {
   width: 1px !important;
@@ -4449,18 +4466,19 @@ html[data-theme="light"] table.oi td.hi5k {
 }
 .controls .spx5k-btn { flex-shrink: 0; }
 
-/* ===== اليوم بالسابق في نافذة Excel — مطابق للصورة ===== */
+
+/* ===== اليوم بالسابق — مستطيل أنيق بعرض شرائح التواريخ ===== */
 #exportModal .exp-series-row-block,
 .exp-series-row-block {
   width: 100% !important;
   box-sizing: border-box !important;
-  margin: 0 0 12px 0 !important;
-  padding: 10px 12px !important;
-  border-radius: 14px !important;
-  border: 1px solid rgba(51, 65, 85, 0.9) !important;
-  background: rgba(15, 23, 42, 0.65) !important;
+  margin: 0 0 10px 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
   display: flex !important;
-  justify-content: flex-end !important; /* يمين الشاشة مثل الصورة */
+  justify-content: flex-end !important;
   align-items: center !important;
   direction: ltr !important;
 }
@@ -4469,27 +4487,27 @@ html[data-theme="light"] table.oi td.hi5k {
 .exp-series-row-block .exp-month-dates {
   display: flex !important;
   justify-content: flex-end !important;
-  width: auto !important;
+  width: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
 }
 
 #exportModal .exp-date-chip.exp-series-chip,
 .exp-date-chip.exp-series-chip {
-  min-width: 0 !important;
+  min-width: 118px !important;
   width: auto !important;
-  padding: 8px 16px !important;
+  height: auto !important;
+  padding: 10px 22px !important;
   border-radius: 12px !important;
   border: 1.5px solid #c4a574 !important;
-  background: #0b1220 !important;
+  background: #0f172a !important;
   color: #f8fafc !important;
   box-shadow: none !important;
   display: inline-flex !important;
-  flex-direction: column !important;
+  flex-direction: row !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 2px !important;
-  line-height: 1.15 !important;
+  line-height: 1.2 !important;
 }
 
 #exportModal .exp-date-chip.exp-series-chip .d,
@@ -4498,19 +4516,17 @@ html[data-theme="light"] table.oi td.hi5k {
   font-weight: 700 !important;
   color: #f8fafc !important;
   margin: 0 !important;
+  white-space: nowrap !important;
 }
 
 #exportModal .exp-date-chip.exp-series-chip .s,
 .exp-date-chip.exp-series-chip .s {
-  font-size: 10px !important;
-  font-weight: 500 !important;
-  color: #2dd4bf !important;
-  margin: 0 !important;
+  display: none !important;
 }
 
 #exportModal .exp-date-chip.exp-series-chip.on,
 .exp-date-chip.exp-series-chip.on {
   border-color: #e8c99b !important;
-  background: #0b1220 !important;
-  box-shadow: 0 0 0 1px rgba(232, 201, 155, 0.25) !important;
+  background: #111827 !important;
+  box-shadow: 0 0 0 1px rgba(232, 201, 155, 0.28) !important;
 }
