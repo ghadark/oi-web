@@ -4448,71 +4448,69 @@ html[data-theme="light"] table.oi td.hi5k {
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35) !important;
 }
 .controls .spx5k-btn { flex-shrink: 0; }
-.exp-series-chip {
-  border-style: dashed !important;
-  min-width: 88px !important;
-}
-.exp-series-chip.on {
-  border-style: solid !important;
-}
 
+/* ===== اليوم بالسابق في نافذة Excel — مطابق للصورة ===== */
+#exportModal .exp-series-row-block,
 .exp-series-row-block {
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #1e293b;
-}
-.exp-series-chip {
-  min-width: 110px !important;
-  border-style: dashed !important;
-}
-.exp-series-chip.on {
-  border-style: solid !important;
-  background: linear-gradient(160deg, #134e4a, #0f766e) !important;
-  border-color: #2dd4bf !important;
-}
-
-
-/* شريحة اليوم بالسابق — أصغر ومحاذاة يمين */
-.exp-series-row-block {
-  margin-bottom: 8px !important;
-  padding: 6px 8px !important;
-  border-radius: 10px !important;
-  border: 1px solid #1e293b !important;
-  background: rgba(15, 23, 42, 0.45) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 0 0 12px 0 !important;
+  padding: 10px 12px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(51, 65, 85, 0.9) !important;
+  background: rgba(15, 23, 42, 0.65) !important;
   display: flex !important;
-  justify-content: flex-end !important;
-  direction: rtl !important;
+  justify-content: flex-end !important; /* يمين الشاشة مثل الصورة */
+  align-items: center !important;
+  direction: ltr !important;
 }
+
+#exportModal .exp-series-row-block .exp-month-dates,
 .exp-series-row-block .exp-month-dates {
   display: flex !important;
   justify-content: flex-end !important;
-  width: 100% !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
+
 #exportModal .exp-date-chip.exp-series-chip,
 .exp-date-chip.exp-series-chip {
-  min-width: 88px !important;
-  padding: 6px 12px !important;
-  border-radius: 10px !important;
+  min-width: 0 !important;
+  width: auto !important;
+  padding: 8px 16px !important;
+  border-radius: 12px !important;
   border: 1.5px solid #c4a574 !important;
-  background: #0f172a !important;
-  color: #f1f5f9 !important;
+  background: #0b1220 !important;
+  color: #f8fafc !important;
   box-shadow: none !important;
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  line-height: 1.15 !important;
 }
+
 #exportModal .exp-date-chip.exp-series-chip .d,
 .exp-date-chip.exp-series-chip .d {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   color: #f8fafc !important;
+  margin: 0 !important;
 }
+
 #exportModal .exp-date-chip.exp-series-chip .s,
 .exp-date-chip.exp-series-chip .s {
-  font-size: 9px !important;
-  color: #5eead4 !important;
-  margin-top: 1px !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  color: #2dd4bf !important;
+  margin: 0 !important;
 }
+
 #exportModal .exp-date-chip.exp-series-chip.on,
 .exp-date-chip.exp-series-chip.on {
   border-color: #e8c99b !important;
-  background: linear-gradient(160deg, #1a2332, #0f172a) !important;
-  box-shadow: 0 0 0 1px rgba(232, 201, 155, 0.3) !important;
+  background: #0b1220 !important;
+  box-shadow: 0 0 0 1px rgba(232, 201, 155, 0.25) !important;
 }
