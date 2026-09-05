@@ -2128,6 +2128,25 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
     callMax[x.c] = m;
   });
 
+  // أعلى رقم في Δ و ΣΔ (نفس لون أعلى كول/بوت)
+  let putDeltaMax = 0, callDeltaMax = 0, putSigmaMax = 0, callSigmaMax = 0;
+  if (hasDelta) {
+    rows.forEach(function (r) {
+      const dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
+      const dc = positiveDelta(r.calls[lastI], r.calls[prevI]);
+      if (dp != null && dp > putDeltaMax) putDeltaMax = dp;
+      if (dc != null && dc > callDeltaMax) callDeltaMax = dc;
+    });
+  }
+  if (hasSigma && typeof sumSigmaAcrossExps === "function") {
+    rows.forEach(function (r) {
+      const sp = sumSigmaAcrossExps(state.cache[state.ticker], r.strike, "put", state.sigmaExps);
+      const sc = sumSigmaAcrossExps(state.cache[state.ticker], r.strike, "call", state.sigmaExps);
+      if (sp != null && sp > putSigmaMax) putSigmaMax = sp;
+      if (sc != null && sc > callSigmaMax) callSigmaMax = sc;
+    });
+  }
+
   rows.forEach(function (r, ri) {
     const rowIdx = dataStart + ri;
     if (hasSigma && putSigmaCol) {
@@ -2141,7 +2160,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
       cell.font = fontN;
       cell.alignment = alignC;
       cell.border = border;
-      cell.fill = fillSigma;
+      if (sv != null && putSigmaMax > 0 && sv === putSigmaMax) cell.fill = fillMax;
+      else cell.fill = fillSigma;
     }
     if (hasDelta && putDeltaCol) {
       const dlt = positiveDelta(r.puts[lastI], r.puts[prevI]);
@@ -2151,7 +2171,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
       cell.font = fontN;
       cell.alignment = alignC;
       cell.border = border;
-      cell.fill = fillDelta;
+      if (dlt != null && putDeltaMax > 0 && dlt === putDeltaMax) cell.fill = fillMax;
+      else cell.fill = fillDelta;
     }
     putDateCols.forEach(function (x) {
       const val = r.puts[x.idx] || 0;
@@ -2193,7 +2214,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
       cell.font = fontN;
       cell.alignment = alignC;
       cell.border = border;
-      cell.fill = fillDelta;
+      if (dlt != null && callDeltaMax > 0 && dlt === callDeltaMax) cell.fill = fillMax;
+      else cell.fill = fillDelta;
     }
     if (hasSigma && callSigmaCol) {
       const sv =
@@ -2206,7 +2228,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
       cell.font = fontN;
       cell.alignment = alignC;
       cell.border = border;
-      cell.fill = fillSigma;
+      if (sv != null && callSigmaMax > 0 && sv === callSigmaMax) cell.fill = fillMax;
+      else cell.fill = fillSigma;
     }
   });
 
