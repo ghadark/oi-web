@@ -495,9 +495,9 @@ html[data-theme="dark"] .brand-sign-wrap {
   gap: 10px !important;
 }
 .logo {
-  width: 30px !important;
-  height: 30px !important;
-  border-radius: 5px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 0 !important;
   flex: 0 0 auto !important;
   display: block !important;
   font-size: 0 !important;
@@ -506,7 +506,6 @@ html[data-theme="dark"] .brand-sign-wrap {
   border: none !important;
   box-shadow: none !important;
   overflow: hidden !important;
-  /* شبكة 3×3 زرقاء — إشارة مباشرة لجدول Strikes */
   background-color: transparent !important;
   background-image:
     linear-gradient(#3b82f6, #3b82f6),
@@ -518,11 +517,11 @@ html[data-theme="dark"] .brand-sign-wrap {
     linear-gradient(#1d4ed8, #1d4ed8),
     linear-gradient(#2563eb, #2563eb),
     linear-gradient(#3b82f6, #3b82f6);
-  background-size: 8px 8px !important;
+  background-size: 6px 6px !important;
   background-position:
-    0 0, 11px 0, 22px 0,
-    0 11px, 11px 11px, 22px 11px,
-    0 22px, 11px 22px, 22px 22px !important;
+    0 0, 8px 0, 16px 0,
+    0 8px, 8px 8px, 16px 8px,
+    0 16px, 8px 16px, 16px 16px !important;
   background-repeat: no-repeat !important;
 }
 .brand-divider {
@@ -4467,41 +4466,42 @@ html[data-theme="light"] table.oi td.hi5k {
 .controls .spx5k-btn { flex-shrink: 0; }
 
 
-/* ===== اليوم بالسابق — مستطيل أنيق بعرض شرائح التواريخ ===== */
+
+/* ===== اليوم بالسابق — داخل شريط مثل الأشهر، محاذاة يسار ===== */
 #exportModal .exp-series-row-block,
 .exp-series-row-block {
+  /* يرث شكل .exp-month (خلفية + حدود + زوايا) */
   width: 100% !important;
   box-sizing: border-box !important;
-  margin: 0 0 10px 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  border-radius: 0 !important;
-  display: flex !important;
-  justify-content: flex-end !important;
-  align-items: center !important;
-  direction: ltr !important;
+  margin: 0 0 8px 0 !important;
+  /* لا نلغي خلفية/حدود الشريط */
+  display: block !important;
+  direction: rtl !important;
+  text-align: right !important;
 }
 
 #exportModal .exp-series-row-block .exp-month-dates,
 .exp-series-row-block .exp-month-dates {
   display: flex !important;
-  justify-content: flex-end !important;
+  direction: ltr !important;           /* يسار الشاشة */
+  justify-content: flex-start !important;
+  align-items: center !important;
+  grid-template-columns: none !important;
   width: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
+  gap: 6px !important;
 }
 
 #exportModal .exp-date-chip.exp-series-chip,
 .exp-date-chip.exp-series-chip {
-  min-width: 118px !important;
+  min-width: 110px !important;
   width: auto !important;
-  height: auto !important;
-  padding: 10px 22px !important;
-  border-radius: 12px !important;
+  padding: 8px 18px !important;
+  border-radius: 10px !important;
   border: 1.5px solid #c4a574 !important;
-  background: #0f172a !important;
-  color: #f8fafc !important;
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
   box-shadow: none !important;
   display: inline-flex !important;
   flex-direction: row !important;
@@ -4527,6 +4527,6 @@ html[data-theme="light"] table.oi td.hi5k {
 #exportModal .exp-date-chip.exp-series-chip.on,
 .exp-date-chip.exp-series-chip.on {
   border-color: #e8c99b !important;
-  background: #111827 !important;
-  box-shadow: 0 0 0 1px rgba(232, 201, 155, 0.28) !important;
+  background: #0f172a !important;
+  box-shadow: 0 0 0 1px rgba(232, 201, 155, 0.25) !important;
 }
