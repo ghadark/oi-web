@@ -509,18 +509,17 @@ html[data-theme="dark"] .brand-sign-wrap {
   flex: 0 0 auto !important;
   line-height: 1 !important;
 }
-.logo-dot {
-  width: 10px !important;
-  height: 10px !important;
-  border-radius: 50% !important;
-  background: #22D3A8 !important;
-  display: block !important;
-  animation: logoDotPulse 2s infinite !important;
+.logo-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  grid-template-rows: repeat(3, 1fr) !important;
+  gap: 2px !important;
+  width: 20px !important;
+  height: 20px !important;
 }
-@keyframes logoDotPulse {
-  0%   { box-shadow: 0 0 0 0 rgba(34, 211, 168, 0.55); }
-  70%  { box-shadow: 0 0 0 9px rgba(34, 211, 168, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(34, 211, 168, 0); }
+.logo-cell {
+  display: block !important;
+  border-radius: 1px !important;
 }
 .brand-divider {
   width: 1px !important;
