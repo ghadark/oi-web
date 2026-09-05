@@ -29,7 +29,7 @@ const TICKERS = INDEX_TICKERS.concat(STOCKS_TICKERS);
 
 const state = {
   ticker: "SPY", days: "2", strikes: "30",
-  expiration: null, showDelta: false, seriesMode: false, spx5k: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
+  expiration: null, showDelta: false, showSigma: false, sigmaExps: [], seriesMode: false, dark: false, cache: {}, livePrice: null, sessionClose: null, mapRange: "ALL",
   archDays: "2", archStrikes: "30", archShowDelta: false, archExportMode: "multi", archSelected: [],
 };
 
@@ -584,30 +584,213 @@ function filterStrikes(rows, close, strikesLimit) {
     .sort(function (a, b) { return a.strike - b.strike; });
 }
 
-
-function spxHi5kClass(ticker, colIndex, lastIndex, value) {
-  if (!state.spx5k) return "";
-  if (String(ticker || "").toUpperCase() !== "SPX") return "";
-  if (colIndex !== lastIndex) return "";
-  var v = Number(value);
-  if (!isFinite(v) || v < 5000) return "";
-  return " hi5k";
-}
-
-function syncSpx5kBtn() {
-  var btn = $("#spx5kBtn");
-  if (!btn) return;
-  var isSpx = String(state.ticker || "").toUpperCase() === "SPX";
-  btn.style.display = isSpx ? "" : "none";
-  btn.classList.toggle("active", !!state.spx5k);
-  btn.setAttribute("aria-pressed", state.spx5k ? "true" : "false");
-}
-
-
 function positiveDelta(last, prev) {
   const d = (last || 0) - (prev || 0);
   return d > 0 ? d : null;
 }
+
+
+/* ===== ΣΔ عام — رابط unlock لمرة واحدة + حفظ على الجهاز ===== */
+var SIGMA_UNLOCK_CODE = "oi-sigma-2026";
+var SIGMA_LS_KEY = "oi_sigma_unlock_v1";
+
+function isSigmaUnlocked() {
+  try { return localStorage.getItem(SIGMA_LS_KEY) === "1"; } catch (e) { return false; }
+}
+
+function tryConsumeSigmaUnlockFromUrl() {
+  try {
+    var u = new URL(window.location.href);
+    var code = u.searchParams.get("unlock") || u.searchParams.get("sigma");
+    if (!code) return false;
+    if (String(code) === SIGMA_UNLOCK_CODE) {
+      localStorage.setItem(SIGMA_LS_KEY, "1");
+      u.searchParams.delete("unlock");
+      u.searchParams.delete("sigma");
+      var clean = u.pathname + (u.search ? u.search : "") + (u.hash || "");
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, "", clean || u.pathname);
+      }
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+function deltaForExpStrike(data, exp, strike, side) {
+  if (!data || !exp) return null;
+  var view = null;
+  try { view = getViewRowsFor(data, exp, "ALL", "ALL"); } catch (e) { return null; }
+  if (!view || !view.pullDates || view.pullDates.length < 2) return null;
+  var row = null;
+  for (var i = 0; i < view.rows.length; i++) {
+    if (Number(view.rows[i].strike) === Number(strike)) { row = view.rows[i]; break; }
+  }
+  if (!row) return null;
+  var lastI = view.pullDates.length - 1;
+  var arr = side === "put" ? row.puts : row.calls;
+  return positiveDelta(arr[lastI] || 0, arr[lastI - 1] || 0);
+}
+
+function sumSigmaAcrossExps(data, strike, side, expList) {
+  if (!data || !expList || !expList.length) return null;
+  var sum = 0, any = false;
+  for (var i = 0; i < expList.length; i++) {
+    var d = deltaForExpStrike(data, expList[i], strike, side);
+    if (d != null) { sum += d; any = true; }
+  }
+  return any ? sum : null;
+}
+
+function ensureSigmaModal() {
+  if ($("#sigmaModal")) return;
+  var div = document.createElement("div");
+  div.id = "sigmaModal";
+  div.className = "map-modal hidden";
+  div.setAttribute("role", "dialog");
+  div.setAttribute("aria-modal", "true");
+  div.innerHTML =
+    '<div class="map-panel export-panel">' +
+    '<div class="map-head"><div><h3>ΣΔ · مجموع التزايد</h3></div>' +
+    '<button id="sigmaClose" class="btn" type="button">إغلاق</button></div>' +
+    '<div id="sigmaBody" class="map-body export-body"></div></div>';
+  document.body.appendChild(div);
+  div.addEventListener("click", function (e) {
+    if (e.target.id === "sigmaModal") closeSigmaDialog();
+  });
+  setTimeout(function () {
+    var cl = $("#sigmaClose");
+    if (cl) cl.onclick = function () { closeSigmaDialog(); };
+  }, 0);
+}
+
+function closeSigmaDialog() {
+  var modal = $("#sigmaModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function openSigmaDialog() {
+  if (!isSigmaUnlocked()) return;
+  var data = state.cache[state.ticker];
+  if (!data) { setStatus("لا بيانات — اختر مؤشرًا أولًا", "err"); return; }
+  ensureSigmaModal();
+  var modal = $("#sigmaModal");
+  var body = $("#sigmaBody");
+  if (!modal || !body) return;
+  var allExps = Object.keys(data.by_expiration || {}).sort();
+  var exps = typeof futureExpirations === "function" ? futureExpirations(allExps) : allExps;
+  if (!exps.length) { setStatus("لا تواريخ انتهاء من اليوم فصاعدًا", "err"); return; }
+  var groups = {}, order = [];
+  exps.forEach(function (exp) {
+    var meta = formatExpExportChip(exp);
+    if (!groups[meta.monthKey]) {
+      groups[meta.monthKey] = { label: meta.monthLabel, items: [] };
+      order.push(meta.monthKey);
+    }
+    groups[meta.monthKey].items.push({ exp: exp, meta: meta });
+  });
+  var selected = {};
+  (state.sigmaExps || []).forEach(function (e) { selected[e] = true; });
+  if (!(state.sigmaExps || []).length && state.expiration && exps.indexOf(state.expiration) >= 0) {
+    selected[state.expiration] = true;
+  }
+  var html = '<p class="map-sub" style="text-align:center;margin:0 0 10px">اختر تاريخًا</p>';
+  html += '<div class="exp-month-list">';
+  order.forEach(function (key) {
+    var g = groups[key];
+    html += '<div class="exp-month"><div class="exp-month-title">' + (g.label || key) + "</div>";
+    html += '<div class="exp-month-dates">';
+    html += '<button type="button" class="exp-date-chip" data-sigma-month-all="' + key + '"><span class="d">الكل</span><span class="s">' + g.items.length + " يوم</span></button>";
+    g.items.forEach(function (it) {
+      html +=
+        '<button type="button" class="exp-date-chip' + (selected[it.exp] ? " on" : "") +
+        '" data-sigma-exp="' + it.exp + '"><span class="d">' + it.meta.day +
+        (it.meta.monShort ? " " + it.meta.monShort : "") +
+        '</span><span class="s">' + it.meta.sub + "</span></button>";
+    });
+    html += "</div></div>";
+  });
+  html += "</div>";
+  html += '<div class="exp-unified-bar">';
+  html += '<button type="button" class="chip" id="sigmaSelectAll">تحديد الكل</button>';
+  html += '<button type="button" class="btn btn-teal" id="sigmaApplyBtn">تطبيق</button>';
+  html += "</div><p id=\"sigmaStatus\" class=\"exp-status\"></p>";
+  body.innerHTML = html;
+  modal.classList.remove("hidden");
+
+  function selectedExpsFromDom() {
+    var out = [];
+    body.querySelectorAll(".exp-date-chip.on[data-sigma-exp]").forEach(function (c) {
+      out.push(c.getAttribute("data-sigma-exp"));
+    });
+    return out.sort();
+  }
+  body.querySelectorAll("[data-sigma-exp]").forEach(function (btn) {
+    btn.onclick = function () { btn.classList.toggle("on"); };
+  });
+  body.querySelectorAll("[data-sigma-month-all]").forEach(function (btn) {
+    btn.onclick = function () {
+      var monthBox = btn.closest(".exp-month");
+      if (!monthBox) return;
+      var chips = monthBox.querySelectorAll("[data-sigma-exp]");
+      var allOn = Array.prototype.every.call(chips, function (c) { return c.classList.contains("on"); });
+      chips.forEach(function (c) { c.classList.toggle("on", !allOn); });
+    };
+  });
+  var selAll = $("#sigmaSelectAll");
+  if (selAll) {
+    selAll.onclick = function () {
+      var chips = body.querySelectorAll("[data-sigma-exp]");
+      var allOn = Array.prototype.every.call(chips, function (c) { return c.classList.contains("on"); });
+      chips.forEach(function (c) { c.classList.toggle("on", !allOn); });
+    };
+  }
+  var apply = $("#sigmaApplyBtn");
+  if (apply) {
+    apply.onclick = function () {
+      var list = selectedExpsFromDom();
+      if (!list.length) {
+        var st = $("#sigmaStatus");
+        if (st) st.textContent = "اختري تاريخ انتهاء واحد على الأقل";
+        return;
+      }
+      state.sigmaExps = list;
+      state.showSigma = true;
+      var sb = $("#sigmaBtn");
+      if (sb) sb.classList.add("active");
+      closeSigmaDialog();
+      renderTable();
+    };
+  }
+}
+
+function injectSigmaButtonIfUnlocked() {
+  if (!isSigmaUnlocked()) return;
+  if ($("#sigmaBtn")) {
+    $("#sigmaBtn").classList.toggle("active", !!state.showSigma);
+    return;
+  }
+  var delta = $("#deltaBtn");
+  if (!delta || !delta.parentNode) return;
+  var btn = document.createElement("button");
+  btn.id = "sigmaBtn";
+  btn.type = "button";
+  btn.className = "delta-btn sigma-btn" + (state.showSigma ? " active" : "");
+  btn.title = "مجموع التزايد";
+  btn.textContent = "ΣΔ";
+  if (delta.nextSibling) delta.parentNode.insertBefore(btn, delta.nextSibling);
+  else delta.parentNode.appendChild(btn);
+  btn.onclick = function () {
+    if (state.showSigma) {
+      state.showSigma = false;
+      btn.classList.remove("active");
+      renderTable();
+      return;
+    }
+    openSigmaDialog();
+  };
+}
+
 
 function setStatus(msg, cls) {
   const el = $("#status");
@@ -645,7 +828,6 @@ function renderTickers() {
       state.sessionClose = null;
       if (typeof renderStocksDropdown === "function") renderStocksDropdown();
       renderTickers();
-      if (typeof syncSpx5kBtn === "function") syncSpx5kBtn();
       refresh();
       refreshLivePrice();
     };
@@ -653,7 +835,6 @@ function renderTickers() {
   });
 
   renderStocksDropdown();
-  if (typeof syncSpx5kBtn === "function") syncSpx5kBtn();
 }
 
 function renderStocksDropdown() {
@@ -724,7 +905,6 @@ function renderStocksDropdown() {
       var lab = $("#stocksDdLabel");
       if (lab) lab.textContent = v;
       renderTickers();
-      if (typeof syncSpx5kBtn === "function") syncSpx5kBtn();
       refresh();
       if (typeof refreshLivePrice === "function") refreshLivePrice();
     };
@@ -879,19 +1059,17 @@ async function refresh() {
   }
 }
 
-function greenBarRow(canDelta, n, close) {
-  const cols = (canDelta ? 1 : 0) + n + 1 + n + (canDelta ? 1 : 0);
-  let html = "<tr>";
-  for (let i = 0; i < cols; i++) {
-    const isStrike = i === (canDelta ? 1 : 0) + n;
-    html +=
-      '<td class="green">' +
-      (isStrike
-        ? Number(close).toLocaleString(undefined, { maximumFractionDigits: 2 })
-        : "") +
-      "</td>";
-  }
-  return html + "</tr>";
+function greenBarRow(canDelta, n, close, canSigma) {
+  var extra = (canDelta ? 1 : 0) + (canSigma ? 1 : 0);
+  var cols = n * 2 + 1 + extra * 2;
+  var label = close != null ? Number(close).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "";
+  return (
+    '<tr class="close-bar"><td colspan="' +
+    cols +
+    '">الإغلاق ≈ ' +
+    label +
+    "</td></tr>"
+  );
 }
 
 
@@ -1037,8 +1215,7 @@ function renderOneMiniTable(data, expiration, label, opts) {
     for (var ci = pullDates.length - 1; ci >= 0; ci--) {
       var cv = r.calls[ci] || 0;
       var maxC = callMax[ci] > 0 && cv === callMax[ci] ? " max-oi" : "";
-      var hi5c = spxHi5kClass(state.ticker, ci, lastI, cv);
-      html += '<td class="' + callCls + maxC + hi5c + '">' + cv.toLocaleString() + "</td>";
+      html += '<td class="' + callCls + maxC + '">' + cv.toLocaleString() + "</td>";
     }
     if (isCloseRow && close != null) {
       html +=
@@ -1051,8 +1228,7 @@ function renderOneMiniTable(data, expiration, label, opts) {
     for (var pi = 0; pi < pullDates.length; pi++) {
       var pv = r.puts[pi] || 0;
       var maxP = putMax[pi] > 0 && pv === putMax[pi] ? " max-oi" : "";
-      var hi5p = spxHi5kClass(state.ticker, pi, lastI, pv);
-      html += '<td class="' + putCls + maxP + hi5p + '">' + pv.toLocaleString() + "</td>";
+      html += '<td class="' + putCls + maxP + '">' + pv.toLocaleString() + "</td>";
     }
     if (canDelta) {
       var dp = positiveDelta(r.puts[lastI], r.puts[prevI]);
@@ -1174,10 +1350,8 @@ function findExpBlockForPullDay(data, pullLabel, yearHint) {
  * مثال: عمود 25-8 ← انتهاء 2026-08-25 | عمود 26-8 ← انتهاء 2026-08-26
  * لا يُدرج يناير/يونيو البعيدة لأنها ليست أيام سحب في السلسلة.
  */
-function getSeriesPrevDayView(data, daysLimit, strikesLimit) {
+function getSeriesPrevDayView(data) {
   if (!data || !data.by_expiration) return null;
-  if (daysLimit == null) daysLimit = state.days;
-  if (strikesLimit == null) strikesLimit = state.strikes;
 
   var pulls = (data.pull_dates || []).slice();
   if (!pulls.length) {
@@ -1229,7 +1403,7 @@ function getSeriesPrevDayView(data, daysLimit, strikesLimit) {
   if (!columns.length) return null;
 
   // Days: آخر N أيام سحب (آخرها = اليوم الحالي في البيانات، مثل 25-8)
-  columns = lastN(columns, daysLimit);
+  columns = lastN(columns, state.days);
   var pullDates = columns.map(function (c) {
     return c.label;
   });
@@ -1267,12 +1441,11 @@ function getSeriesPrevDayView(data, daysLimit, strikesLimit) {
       : typeof effectiveClose === "function"
         ? effectiveClose(data)
         : null;
-  rows = filterStrikes(rows, closePx, strikesLimit);
+  rows = filterStrikes(rows, closePx, state.strikes);
   return {
     pullDates: pullDates,
     rows: rows,
     close: closePx,
-    expiration: "اليوم بالسابق",
     seriesExps: columns.map(function (c) {
       return c.exp;
     }),
@@ -1408,12 +1581,10 @@ function renderSeriesTable() {
     for (let i = pullDates.length - 1; i >= 0; i--) {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
-      const hi5 = spxHi5kClass(state.ticker, i, lastI, cv);
       html +=
         '<td class="' +
         seriesColClass(bodyPos++, pullDates.length * 2) +
         maxCls +
-        hi5 +
         '">' +
         cv.toLocaleString() +
         "</td>";
@@ -1422,12 +1593,10 @@ function renderSeriesTable() {
     for (let i = 0; i < pullDates.length; i++) {
       const pv = r.puts[i] || 0;
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
-      const hi5 = spxHi5kClass(state.ticker, i, lastI, pv);
       html +=
         '<td class="' +
         seriesColClass(bodyPos++, pullDates.length * 2) +
         maxCls +
-        hi5 +
         '">' +
         pv.toLocaleString() +
         "</td>";
@@ -1477,6 +1646,7 @@ function renderTable() {
   const rows = view.rows;
   const close = effectiveClose(data);
   const canDelta = state.showDelta && pullDates.length >= 2;
+  const canSigma = !!(isSigmaUnlocked() && state.showSigma && state.sigmaExps && state.sigmaExps.length);
   const lastI = pullDates.length - 1;
   const prevI = pullDates.length - 2;
 
@@ -1498,12 +1668,15 @@ function renderTable() {
   html += '</div><div class="table-scroll"><table class="oi" style="width:auto;max-width:none"><thead>';
   var nCols = pullDates.length;
   html += '<tr class="side-label-row">';
+  if (canSigma) html += '<th class="sigma side-pad"></th>';
   if (canDelta) html += '<th class="delta side-pad"></th>';
   html += '<th class="side-label call-side" colspan="' + nCols + '">CALL</th>';
   html += '<th class="strike side-mid"></th>';
   html += '<th class="side-label put-side" colspan="' + nCols + '">PUT</th>';
   if (canDelta) html += '<th class="delta side-pad"></th>';
+  if (canSigma) html += '<th class="sigma side-pad"></th>';
   html += "</tr><tr>";
+  if (canSigma) html += '<th class="sigma" style="background:rgba(45,212,191,0.12)!important;color:inherit;font-weight:600">ΣΔ</th>';
   if (canDelta) html += '<th class="delta">Δ</th>';
   for (let i = pullDates.length - 1; i >= 0; i--) {
     const f = formatPullDate(pullDates[i]);
@@ -1515,6 +1688,7 @@ function renderTable() {
     html += "<th>" + f.top + '<br><span class="subh">' + f.sub + "</span></th>";
   }
   if (canDelta) html += '<th class="delta">Δ</th>';
+  if (canSigma) html += '<th class="sigma" style="background:rgba(45,212,191,0.12)!important;color:inherit;font-weight:600">ΣΔ</th>';
   html += "</tr></thead><tbody>";
 
   // أعلى قيمة لكل عمود Call/Put (بدون Strike)
@@ -1540,11 +1714,20 @@ function renderTable() {
       if (dp != null && dp > deltaPutMax) deltaPutMax = dp;
     });
   }
+  let sigmaCallMax = 0, sigmaPutMax = 0;
+  if (canSigma) {
+    rows.forEach(function (r) {
+      const sc = sumSigmaAcrossExps(data, r.strike, "call", state.sigmaExps);
+      const sp = sumSigmaAcrossExps(data, r.strike, "put", state.sigmaExps);
+      if (sc != null && sc > sigmaCallMax) sigmaCallMax = sc;
+      if (sp != null && sp > sigmaPutMax) sigmaPutMax = sp;
+    });
+  }
 
   let barDone = false;
   rows.forEach(function (r, ri) {
     if (close != null && !barDone && r.strike > close) {
-      html += greenBarRow(canDelta, pullDates.length, close);
+      html += greenBarRow(canDelta, pullDates.length, close, canSigma);
       barDone = true;
     }
     const zebra = ri % 2 === 1 ? " zebra" : "";
@@ -1556,6 +1739,16 @@ function renderTable() {
       above || (close != null && r.strike === close) ? "itm" : "otm";
 
     html += '<tr class="' + zebra + '">';
+    if (canSigma) {
+      const s = sumSigmaAcrossExps(data, r.strike, "call", state.sigmaExps);
+      const maxCls = s != null && sigmaCallMax > 0 && s === sigmaCallMax ? " max-oi" : "";
+      html +=
+        (maxCls
+          ? '<td class="sigma max-oi">'
+          : '<td class="sigma" style="background:rgba(45,212,191,0.12)!important;color:inherit">') +
+        (s != null ? s.toLocaleString() : "") +
+        "</td>";
+    }
     if (canDelta) {
       const d = positiveDelta(r.calls[lastI], r.calls[prevI]);
       const maxCls = d != null && deltaCallMax > 0 && d === deltaCallMax ? " max-oi" : "";
@@ -1569,12 +1762,10 @@ function renderTable() {
     for (let i = pullDates.length - 1; i >= 0; i--) {
       const cv = r.calls[i] || 0;
       const maxCls = callMax[i] > 0 && cv === callMax[i] ? " max-oi" : "";
-      const hi5 = spxHi5kClass(state.ticker, i, lastI, cv);
       html +=
         '<td class="' +
         callCls +
         maxCls +
-        hi5 +
         '">' +
         cv.toLocaleString() +
         "</td>";
@@ -1583,12 +1774,10 @@ function renderTable() {
     for (let i = 0; i < pullDates.length; i++) {
       const pv = r.puts[i] || 0;
       const maxCls = putMax[i] > 0 && pv === putMax[i] ? " max-oi" : "";
-      const hi5 = spxHi5kClass(state.ticker, i, lastI, pv);
       html +=
         '<td class="' +
         putCls +
         maxCls +
-        hi5 +
         '">' +
         pv.toLocaleString() +
         "</td>";
@@ -1603,10 +1792,20 @@ function renderTable() {
         (d != null ? d.toLocaleString() : "") +
         "</td>";
     }
+    if (canSigma) {
+      const s = sumSigmaAcrossExps(data, r.strike, "put", state.sigmaExps);
+      const maxCls = s != null && sigmaPutMax > 0 && s === sigmaPutMax ? " max-oi" : "";
+      html +=
+        (maxCls
+          ? '<td class="sigma max-oi">'
+          : '<td class="sigma" style="background:rgba(45,212,191,0.12)!important;color:inherit">') +
+        (s != null ? s.toLocaleString() : "") +
+        "</td>";
+    }
     html += "</tr>";
   });
   if (close != null && !barDone) {
-    html += greenBarRow(canDelta, pullDates.length, close);
+    html += greenBarRow(canDelta, pullDates.length, close, canSigma);
   }
   html += "</tbody></table></div>";
   host.innerHTML = html;
@@ -1704,13 +1903,8 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
 
   let headerDate = view.expiration || "";
   try {
-    const rawExp = String(view.expiration || "");
-    if (rawExp === "اليوم بالسابق" || rawExp.indexOf("-") < 0) {
-      headerDate = rawExp;
-    } else {
-      const p = rawExp.split("-").map(Number);
-      if (p.length >= 3 && !isNaN(p[1])) headerDate = p[2] + "-" + (arabicMonths[p[1]] || "");
-    }
+    const p = String(view.expiration).split("-").map(Number);
+    if (p.length >= 3) headerDate = p[2] + "-" + (arabicMonths[p[1]] || "");
   } catch (e) {}
 
   const rTitle = startRow;
@@ -1914,10 +2108,11 @@ function formatExpExportChip(exp) {
 }
 
 
-/** أول يوم من الشهر الميلادي (1 من كل شهر — بتاريخ الجهاز) */
-function isFirstDayOfMonth(d) {
+/** أول اثنين من الشهر الميلادي (بتاريخ الجهاز) */
+function isFirstMondayOfMonth(d) {
   d = d || new Date();
-  return d.getDate() === 1;
+  if (d.getDay() !== 1) return false;
+  return d.getDate() <= 7;
 }
 
 function openExportDialog() {
@@ -1960,7 +2155,7 @@ function openExportDialog() {
   html += '<div class="exp-export-top">';
   html += '<div class="exp-export-heading">';
   html += '<div class="exp-export-title">' + (state.ticker || "") + "</div>";
-  if (isFirstDayOfMonth(new Date())) {
+  if (isFirstMondayOfMonth(new Date())) {
     html += '<div class="exp-month-tip">بداية شهر جديد — مناسبة لتصدير ما يهمّك</div>';
   }
   html += "</div>";
@@ -1968,14 +2163,6 @@ function openExportDialog() {
   html += "</div>";
 
   html += '<div class="exp-month-list">';
-  // اليوم بالسابق داخل شريط بنفس تنسيق الأشهر
-  html += '<div class="exp-month">';
-  html += '<div class="exp-month-dates">';
-  html +=
-    '<button type="button" class="exp-date-chip exp-series-chip" data-exp="__SERIES_PREV__">' +
-    '<span class="d">اليوم بالسابق</span>' +
-    '<span class="s">مقارنة يومية</span></button>';
-  html += "</div></div>";
   order.forEach(function (key) {
     const g = groups[key];
     html += '<div class="exp-month">';
@@ -2016,9 +2203,9 @@ function openExportDialog() {
       "</button>";
   });
   html += '<span class="lab">Strikes</span>';
-  ["30", "50", "100", "ALL"].forEach(function (s) {
+  ["50", "100", "ALL"].forEach(function (s) {
     const curS =
-      ["30", "50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
+      ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
         ? String(state.strikes)
         : "50";
     const on = curS === s ? " on" : "";
@@ -2046,7 +2233,7 @@ function openExportDialog() {
   let emode = "single";
   let edays = String(state.days || "2");
   let estrikes =
-    ["30", "50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
+    ["50", "100", "ALL"].indexOf(String(state.strikes)) >= 0
       ? String(state.strikes)
       : "50";
 
@@ -2134,22 +2321,11 @@ function runExportFromDialog(emode, edays, estrikes) {
     const GAP = 4;
     const showDelta = !!state.showDelta;
 
-    function viewForChoice(exp) {
-      if (exp === "__SERIES_PREV__") {
-        return getSeriesPrevDayView(data, edays, estrikes);
-      }
-      return getViewRowsFor(data, exp, edays, estrikes);
-    }
-    function sheetNameFor(exp) {
-      if (exp === "__SERIES_PREV__") return "اليوم بالسابق";
-      return String(exp).slice(0, 31);
-    }
-
     if (emode === "multi") {
       chosen.forEach(function (exp, i) {
-        const view = viewForChoice(exp);
+        const view = getViewRowsFor(data, exp, edays, estrikes);
         if (!view) return;
-        const ws = wb.addWorksheet(sheetNameFor(exp), {
+        const ws = wb.addWorksheet(String(exp).slice(0, 31), {
           views: [{ rightToLeft: true, state: "frozen", ySplit: 5 }],
         });
         writeOiTableToSheet(ws, 2, 2, view, state.ticker, showDelta);
@@ -2160,7 +2336,7 @@ function runExportFromDialog(emode, edays, estrikes) {
       });
       let col = 2;
       chosen.forEach(function (exp) {
-        const view = viewForChoice(exp);
+        const view = getViewRowsFor(data, exp, edays, estrikes);
         if (!view) return;
         const last = writeOiTableToSheet(ws, 2, col, view, state.ticker, showDelta);
         col = last + 1 + GAP;
@@ -2424,23 +2600,11 @@ function toggleTheme() {
 function init() {
   state.dark = true;
   try { localStorage.setItem("oi-theme", "dark"); } catch (e) {}
-  try {
-    if (localStorage.getItem("oi-spx5k") === "1") state.spx5k = true;
-  } catch (e) {}
   applyTheme();
   renderTickers();
   renderChips("#daysRow", ["2", "3", "5", "10", "ALL"], "days");
   renderChips("#strikesRow", ["30", "50", "ALL"], "strikes");
-  syncSpx5kBtn();
-  if ($("#spx5kBtn")) {
-    $("#spx5kBtn").onclick = function () {
-      state.spx5k = !state.spx5k;
-      try { localStorage.setItem("oi-spx5k", state.spx5k ? "1" : "0"); } catch (e) {}
-      syncSpx5kBtn();
-      renderTable();
-    };
-  }
-
+  
   if ($("#seriesBtn")) {
     $("#seriesBtn").onclick = function () {
       state.seriesMode = !state.seriesMode;
@@ -2471,6 +2635,8 @@ if ($("#expSelect")) {
       renderTable();
     };
   }
+  tryConsumeSigmaUnlockFromUrl();
+  injectSigmaButtonIfUnlocked();
   $("#deltaBtn").onclick = function () {
     state.showDelta = !state.showDelta;
     $("#deltaBtn").classList.toggle("active", state.showDelta);
