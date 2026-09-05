@@ -2215,14 +2215,12 @@ function openExportDialog() {
   html += "</div>";
 
   html += '<div class="exp-month-list">';
-  // شريط منفصل: اليوم بالسابق
+  // شريط منفصل: اليوم بالسابق (كلمة واحدة داخل الشريحة فقط)
   html += '<div class="exp-month exp-series-row-block">';
-  html += '<div class="exp-month-title">اليوم بالسابق</div>';
   html += '<div class="exp-month-dates">';
   html +=
     '<button type="button" class="exp-date-chip exp-series-chip" data-exp="__SERIES_PREV__">' +
-    '<span class="d">اليوم بالسابق</span>' +
-    '<span class="s">مقارنة يومية</span></button>';
+    '<span class="d">اليوم بالسابق</span></button>';
   html += "</div></div>";
   order.forEach(function (key) {
     const g = groups[key];
