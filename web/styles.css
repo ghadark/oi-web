@@ -498,8 +498,8 @@ html[data-theme="dark"] .brand-sign-wrap {
   width: 36px !important;
   height: 36px !important;
   border-radius: 50% !important;
-  background: var(--sidebar) !important;
-  border: 1px solid rgba(91, 141, 239, 0.35) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   color: #ffffff !important;
   display: grid !important;
   place-items: center !important;
@@ -521,12 +521,19 @@ html[data-theme="dark"] .brand-sign-wrap {
   display: block !important;
   border-radius: 1px !important;
 }
-.logo-pulse path {
-  animation: logoPulseFade 1.8s ease-in-out infinite !important;
+.logo-dot {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #22D3A8 !important;
+  display: block !important;
+  box-shadow: 0 0 8px 1px rgba(34, 211, 168, 0.7) !important;
+  animation: logoDotPulse 1.8s infinite !important;
 }
-@keyframes logoPulseFade {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+@keyframes logoDotPulse {
+  0%   { box-shadow: 0 0 8px 1px rgba(34, 211, 168, 0.7), 0 0 0 0 rgba(34, 211, 168, 0.55); }
+  70%  { box-shadow: 0 0 8px 1px rgba(34, 211, 168, 0.7), 0 0 0 11px rgba(34, 211, 168, 0); }
+  100% { box-shadow: 0 0 8px 1px rgba(34, 211, 168, 0.7), 0 0 0 0 rgba(34, 211, 168, 0); }
 }
 .brand-divider {
   width: 1px !important;
