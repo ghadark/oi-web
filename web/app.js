@@ -1933,6 +1933,13 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   const rows = view.rows;
   const n = pullDates.length;
   const hasDelta = !!(showDelta && n >= 2);
+  const hasSigma = !!(
+    typeof isSigmaUnlocked === "function" &&
+    isSigmaUnlocked() &&
+    state.showSigma &&
+    state.sigmaExps &&
+    state.sigmaExps.length
+  );
   const lastI = n - 1;
   const prevI = n - 2;
   const pad = 2;
@@ -1942,6 +1949,7 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   const fillRow3 = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
   const fillRow4 = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDDD9C4" } };
   const fillDelta = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE4E4D2" } };
+  const fillSigma = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD5F5F0" } };
   const fillMax = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEECE1" } };
   const fontB = { name: "Calibri", size: 11, bold: true, color: { argb: "FF000000" } };
   const fontN = { name: "Calibri", size: 11, color: { argb: "FF000000" } };
@@ -1966,6 +1974,11 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   const dataStart = startRow + 4;
 
   let col = startCol + pad;
+  let putSigmaCol = null;
+  if (hasSigma) {
+    putSigmaCol = col;
+    col += 1;
+  }
   let putDeltaCol = null;
   if (hasDelta) {
     putDeltaCol = col;
@@ -1988,6 +2001,11 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
     callDeltaCol = col;
     col += 1;
   }
+  let callSigmaCol = null;
+  if (hasSigma) {
+    callSigmaCol = col;
+    col += 1;
+  }
   const contentEnd = col - 1;
   const headerEnd = contentEnd + pad;
 
@@ -2008,8 +2026,14 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
   ws.getCell(rTitle, strikeCol).value = ticker;
 
   // Section labels Put / Strike / Call
-  const putCols = (putDeltaCol ? [putDeltaCol] : []).concat(putDateCols.map(function (x) { return x.c; }));
-  const callCols = callDateCols.map(function (x) { return x.c; }).concat(callDeltaCol ? [callDeltaCol] : []);
+  const putCols = []
+    .concat(putSigmaCol ? [putSigmaCol] : [])
+    .concat(putDeltaCol ? [putDeltaCol] : [])
+    .concat(putDateCols.map(function (x) { return x.c; }));
+  const callCols = callDateCols
+    .map(function (x) { return x.c; })
+    .concat(callDeltaCol ? [callDeltaCol] : [])
+    .concat(callSigmaCol ? [callSigmaCol] : []);
   if (putCols.length) {
     ws.mergeCells(rSection, Math.min.apply(null, putCols), rSection, Math.max.apply(null, putCols));
     const cell = ws.getCell(rSection, Math.min.apply(null, putCols));
@@ -2050,6 +2074,34 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
     cell.font = fontB;
     cell.alignment = alignC;
   });
+  if (hasDelta && putDeltaCol) {
+    const cell = ws.getCell(rDates, putDeltaCol);
+    cell.value = "Δ";
+    cell.fill = fillRow3;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  }
+  if (hasDelta && callDeltaCol) {
+    const cell = ws.getCell(rDates, callDeltaCol);
+    cell.value = "Δ";
+    cell.fill = fillRow3;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  }
+  if (hasSigma && putSigmaCol) {
+    const cell = ws.getCell(rDates, putSigmaCol);
+    cell.value = "ΣΔ";
+    cell.fill = fillRow3;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  }
+  if (hasSigma && callSigmaCol) {
+    const cell = ws.getCell(rDates, callSigmaCol);
+    cell.value = "ΣΔ";
+    cell.fill = fillRow3;
+    cell.font = fontB;
+    cell.alignment = alignC;
+  }
 
   // Exp row: Arabic date under strike
   ws.getCell(rExp, strikeCol).value = headerDate;
@@ -2078,6 +2130,19 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
 
   rows.forEach(function (r, ri) {
     const rowIdx = dataStart + ri;
+    if (hasSigma && putSigmaCol) {
+      const sv =
+        typeof sumSigmaAcrossExps === "function"
+          ? sumSigmaAcrossExps(state.cache[state.ticker], r.strike, "put", state.sigmaExps)
+          : null;
+      const cell = ws.getCell(rowIdx, putSigmaCol);
+      cell.value = sv != null ? sv : "";
+      cell.numFmt = "#,##0";
+      cell.font = fontN;
+      cell.alignment = alignC;
+      cell.border = border;
+      cell.fill = fillSigma;
+    }
     if (hasDelta && putDeltaCol) {
       const dlt = positiveDelta(r.puts[lastI], r.puts[prevI]);
       const cell = ws.getCell(rowIdx, putDeltaCol);
@@ -2129,6 +2194,19 @@ function writeOiTableToSheet(ws, startRow, startCol, view, ticker, showDelta) {
       cell.alignment = alignC;
       cell.border = border;
       cell.fill = fillDelta;
+    }
+    if (hasSigma && callSigmaCol) {
+      const sv =
+        typeof sumSigmaAcrossExps === "function"
+          ? sumSigmaAcrossExps(state.cache[state.ticker], r.strike, "call", state.sigmaExps)
+          : null;
+      const cell = ws.getCell(rowIdx, callSigmaCol);
+      cell.value = sv != null ? sv : "";
+      cell.numFmt = "#,##0";
+      cell.font = fontN;
+      cell.alignment = alignC;
+      cell.border = border;
+      cell.fill = fillSigma;
     }
   });
 
@@ -2215,12 +2293,13 @@ function openExportDialog() {
   html += "</div>";
 
   html += '<div class="exp-month-list">';
-  // شريط منفصل: اليوم بالسابق (كلمة واحدة داخل الشريحة فقط)
+  // شريط منفصل: اليوم بالسابق (تنسيق ذهبي)
   html += '<div class="exp-month exp-series-row-block">';
   html += '<div class="exp-month-dates">';
   html +=
     '<button type="button" class="exp-date-chip exp-series-chip" data-exp="__SERIES_PREV__">' +
-    '<span class="d">اليوم بالسابق</span></button>';
+    '<span class="d">اليوم بالسابق</span>' +
+    '<span class="s">مقارنة يومية</span></button>';
   html += "</div></div>";
   order.forEach(function (key) {
     const g = groups[key];
