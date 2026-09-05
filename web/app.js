@@ -611,23 +611,25 @@ function syncSpx5kBtn() {
 }
 
 function injectSpx5kButton() {
-  if ($("#spx5kBtn")) {
-    syncSpx5kBtn();
-    return;
+  var btn = $("#spx5kBtn");
+  if (!btn) {
+    var anchor = $("#sigmaBtn") || $("#deltaBtn") || $("#x3Btn");
+    if (!anchor || !anchor.parentNode) return;
+    btn = document.createElement("button");
+    btn.id = "spx5kBtn";
+    btn.type = "button";
+    btn.className = "spx5k-btn";
+    btn.title = "تمييز عقود SPX ≥ 5000 في عمود اليوم";
+    btn.textContent = "5K";
+    if (anchor.nextSibling) anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+    else anchor.parentNode.appendChild(btn);
   }
-  var anchor = $("#sigmaBtn") || $("#deltaBtn");
-  if (!anchor || !anchor.parentNode) return;
-  var btn = document.createElement("button");
-  btn.id = "spx5kBtn";
-  btn.type = "button";
-  btn.className = "spx5k-btn";
-  btn.title = "تمييز عقود SPX ≥ 5000 في عمود اليوم";
-  btn.textContent = "5K";
-  if (anchor.nextSibling) anchor.parentNode.insertBefore(btn, anchor.nextSibling);
-  else anchor.parentNode.appendChild(btn);
-  btn.onclick = function () {
+  // اربط الضغط دائمًا (حتى لو الزر موجود في HTML)
+  btn.onclick = function (e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (String(state.ticker || "").toUpperCase() !== "SPX") return;
     state.spx5k = !state.spx5k;
-    try { localStorage.setItem("oi-spx5k", state.spx5k ? "1" : "0"); } catch (e) {}
+    try { localStorage.setItem("oi-spx5k", state.spx5k ? "1" : "0"); } catch (err) {}
     syncSpx5kBtn();
     renderTable();
   };
@@ -740,13 +742,6 @@ function openSigmaDialog() {
   }
   var html = '<p class="map-sub" style="text-align:center;margin:0 0 10px">اختر تاريخًا</p>';
   html += '<div class="exp-month-list">';
-  // اليوم بالسابق
-  html += '<div class="exp-month"><div class="exp-month-dates">';
-  html +=
-    '<button type="button" class="exp-date-chip exp-series-chip" data-exp="__SERIES_PREV__">' +
-    '<span class="d">اليوم بالسابق</span>' +
-    '<span class="s">مقارنة يومية</span></button>';
-  html += "</div></div>";
   order.forEach(function (key) {
     var g = groups[key];
     html += '<div class="exp-month"><div class="exp-month-title">' + (g.label || key) + "</div>";
@@ -2220,6 +2215,15 @@ function openExportDialog() {
   html += "</div>";
 
   html += '<div class="exp-month-list">';
+  // شريط منفصل: اليوم بالسابق
+  html += '<div class="exp-month exp-series-row-block">';
+  html += '<div class="exp-month-title">اليوم بالسابق</div>';
+  html += '<div class="exp-month-dates">';
+  html +=
+    '<button type="button" class="exp-date-chip exp-series-chip" data-exp="__SERIES_PREV__">' +
+    '<span class="d">اليوم بالسابق</span>' +
+    '<span class="s">مقارنة يومية</span></button>';
+  html += "</div></div>";
   order.forEach(function (key) {
     const g = groups[key];
     html += '<div class="exp-month">';

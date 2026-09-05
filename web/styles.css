@@ -495,8 +495,8 @@ html[data-theme="dark"] .brand-sign-wrap {
   gap: 10px !important;
 }
 .logo {
-  width: 36px !important;
-  height: 36px !important;
+  width: 28px !important;
+  height: 28px !important;
   border-radius: 50% !important;
   background: linear-gradient(90deg, #1e3a5f 0 50%, #2dd4bf 50% 100%) !important;
   color: transparent !important;
@@ -4442,9 +4442,10 @@ html[data-theme="light"] table.oi td.hi5k {
 }
 .spx5k-btn:hover { border-color: #38bdf8; color: #7dd3fc; }
 .spx5k-btn.active {
-  background: rgba(56, 189, 248, 0.14);
-  border-color: #38bdf8;
-  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.22) !important;
+  border-color: #38bdf8 !important;
+  color: #e0f2fe !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35) !important;
 }
 .controls .spx5k-btn { flex-shrink: 0; }
 .exp-series-chip {
@@ -4453,4 +4454,19 @@ html[data-theme="light"] table.oi td.hi5k {
 }
 .exp-series-chip.on {
   border-style: solid !important;
+}
+
+.exp-series-row-block {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #1e293b;
+}
+.exp-series-chip {
+  min-width: 110px !important;
+  border-style: dashed !important;
+}
+.exp-series-chip.on {
+  border-style: solid !important;
+  background: linear-gradient(160deg, #134e4a, #0f766e) !important;
+  border-color: #2dd4bf !important;
 }
