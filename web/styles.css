@@ -497,8 +497,8 @@ html[data-theme="dark"] .brand-sign-wrap {
 .logo {
   width: 36px !important;
   height: 36px !important;
-  border-radius: 9px !important;
-  background: #101b33 !important;
+  border-radius: 50% !important;
+  background: var(--bg) !important;
   border: 1px solid rgba(91, 141, 239, 0.35) !important;
   color: #ffffff !important;
   display: grid !important;
@@ -520,6 +520,14 @@ html[data-theme="dark"] .brand-sign-wrap {
 .logo-cell {
   display: block !important;
   border-radius: 1px !important;
+}
+.logo-pulse path {
+  stroke-dasharray: 120 !important;
+  stroke-dashoffset: 120 !important;
+  animation: logoPulseDraw 2.2s ease-out infinite alternate !important;
+}
+@keyframes logoPulseDraw {
+  to { stroke-dashoffset: 0; }
 }
 .brand-divider {
   width: 1px !important;
