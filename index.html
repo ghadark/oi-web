@@ -15,7 +15,11 @@
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <div class="logo">Oi</div>
+        <div class="logo">
+          <svg class="logo-pulse" width="22" height="22" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M10 30L18 30L22 18L27 34L31 22L34 30L42 30" stroke="#5B8DEF" stroke-width="4.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
         <span class="brand-divider brand-divider-light"></span>
         <div class="brand-left">
           <div class="brand-oi">Oi</div>
@@ -36,6 +40,9 @@
         <div style="display:flex;gap:8px;align-items:center">
           <button id="exportBtn" class="btn btn-excel" type="button">Excel</button>
           <button id="mapBtn" class="btn btn-map" type="button">Map</button>
+          <button id="archiveBtn" class="btn btn-archive" type="button" title="أرشيف الأسبوع" aria-label="أرشيف">
+            <svg class="arch-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+          </button>
           <button id="feedbackBtn" class="btn btn-feedback" type="button" title="تعليق خاص">💬</button>
         </div>
       </div>
@@ -55,6 +62,7 @@
         <label>Strikes</label>
         <div id="strikesRow" class="chip-row"></div>
         <button id="deltaBtn" class="delta-btn" type="button" title="التزايد">Δ</button>
+        <button id="spx5kBtn" class="spx5k-btn" type="button" title="تمييز ≥5000 في عمود اليوم (SPX فقط)" style="display:none">5K+</button>
         <div id="stocksRow" class="stocks-inline"></div>
         <button id="x3Btn" class="x3-btn" type="button" title="عرض ثلاثي">×3</button>
       </div>
@@ -87,6 +95,32 @@
       <div id="exportBody" class="map-body export-body"></div>
     </div>
   </div>
+
+  <div id="archiveModal" class="map-modal hidden" role="dialog" aria-modal="true">
+    <div class="map-panel archive-panel archive-export-only">
+      <button id="archiveClose" class="arch-close-x" type="button" aria-label="إغلاق">×</button>
+      <div class="archive-head-center">
+        <div class="arch-title-row">
+          <h3 id="archiveTitle">أرشيف الأسبوع</h3>
+        </div>
+        <p id="archiveSub" class="map-sub">اختر تاريخًا</p>
+      </div>
+      <div id="archDateRow" class="arch-date-row"></div>
+      <div class="archive-toolbar-center">
+        <span class="arch-lab">Days</span>
+        <div id="archDaysRow" class="chip-row"></div>
+        <span class="arch-lab">Strikes</span>
+        <div id="archStrikesRow" class="chip-row"></div>
+        <button id="archDeltaBtn" class="delta-btn" type="button" title="التزايد">Δ</button>
+        <select id="archExportMode" class="arch-select" title="وضع التصدير">
+          <option value="single">صفحة واحدة</option>
+          <option value="multi">صفحات متعددة</option>
+        </select>
+        <button id="archExportBtn" class="btn btn-teal" type="button">Excel</button>
+      </div>
+    </div>
+  </div>
+
   <div id="feedbackModal" class="map-modal hidden" role="dialog" aria-modal="true">
     <div class="map-panel feedback-panel">
       <div class="map-head">
