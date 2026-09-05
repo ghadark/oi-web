@@ -4474,7 +4474,6 @@ html[data-theme="light"] table.oi td.hi5k {
   width: 100% !important;
   box-sizing: border-box !important;
   margin: 0 0 8px 0 !important;
-  /* لا نلغي خلفية/حدود الشريط */
   display: block !important;
   direction: rtl !important;
   text-align: right !important;
@@ -4482,8 +4481,9 @@ html[data-theme="light"] table.oi td.hi5k {
 
 #exportModal .exp-series-row-block .exp-month-dates,
 .exp-series-row-block .exp-month-dates {
+  /* نفس محاذاة شرائح الأشهر (بداية الصف يمين في RTL) */
   display: flex !important;
-  direction: ltr !important;           /* يسار الشاشة */
+  direction: rtl !important;
   justify-content: flex-start !important;
   align-items: center !important;
   grid-template-columns: none !important;
